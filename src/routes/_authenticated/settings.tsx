@@ -1,0 +1,45 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { PageHeader } from "@/components/page-header";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Users, Building2, FolderTree, Settings as SettingsIcon, ClipboardList, Tag } from "lucide-react";
+
+export const Route = createFileRoute("/_authenticated/settings")({
+  head: () => ({ meta: [{ title: "ตั้งค่าระบบ | Document Hub" }] }),
+  component: Settings,
+});
+
+const cards = [
+  { icon: Users, title: "ผู้ใช้งานและสิทธิ์", desc: "จัดการผู้ใช้ กำหนดบทบาท" },
+  { icon: Building2, title: "แผนก", desc: "จัดการแผนกและโครงสร้างองค์กร" },
+  { icon: FolderTree, title: "หมวดหมู่เอกสาร", desc: "หมวดหมู่และ Custom Fields" },
+  { icon: Tag, title: "Tag และ Keyword", desc: "จัดการ Master Data" },
+  { icon: ClipboardList, title: "Workflow", desc: "Workflow Templates" },
+  { icon: SettingsIcon, title: "การตั้งค่าทั่วไป", desc: "รูปแบบเลขเอกสาร, Retention" },
+];
+
+function Settings() {
+  return (
+    <div className="space-y-6">
+      <PageHeader title="ตั้งค่าระบบ" description="จัดการ Master Data และการตั้งค่าองค์กร (สำหรับ Super Admin)" />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {cards.map((c) => (
+          <Card key={c.title} className="cursor-pointer transition-shadow hover:shadow-md">
+            <CardHeader>
+              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <c.icon className="h-5 w-5" />
+              </div>
+              <CardTitle className="mt-3 text-base">{c.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">{c.desc}</p>
+              <p className="mt-2 text-xs text-warning">Phase 3+</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        <Link to="/audit-log" className="text-primary hover:underline">→ ดู Audit Log</Link>
+      </p>
+    </div>
+  );
+}
