@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { UserPlus, Trash2, Loader2, Users } from "lucide-react";
+import { UserPlus, Trash2, Loader2, Users, ShieldCheck } from "lucide-react";
+import { PermissionEditorDialog } from "@/components/project/permission-editor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
