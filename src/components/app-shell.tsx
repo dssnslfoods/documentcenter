@@ -125,6 +125,33 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 }
 
+function NotificationBell({ userId }: { userId: string | undefined }) {
+  const { data: count } = useQuery({
+    queryKey: ["notifications-unread", userId],
+    queryFn: async () => {
+      if (!userId) return 0;
+      const { count } = await getSupabase()
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("is_read", false);
+      return count ?? 0;
+    },
+    enabled: !!userId,
+    refetchInterval: 60_000,
+  });
+  return (
+    <Link to="/notifications" className="relative rounded p-2 hover:bg-muted" aria-label="Notifications">
+      <Bell className="h-5 w-5" />
+      {count && count > 0 ? (
+        <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
+          {count > 99 ? "99+" : count}
+        </span>
+      ) : null}
+    </Link>
+  );
+}
+
 function SidebarContent({ collapsed, pathname }: { collapsed: boolean; pathname: string }) {
   return (
     <>
