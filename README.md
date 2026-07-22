@@ -33,7 +33,7 @@ Built with React 19 + TanStack Start + TypeScript + Tailwind v4 + shadcn/ui + **
 ### 1) เตรียม External Supabase Project
 
 1. เข้า Supabase dashboard ของบริษัท → เปิด SQL Editor
-2. รันไฟล์ `supabase/migrations/0001_initial_schema.sql` — จะสร้าง:
+2. รันไฟล์ `db/0001_initial_schema.sql` — จะสร้าง:
    - ตาราง 30+ ตาราง, Enums, Indexes, Foreign keys, Constraints
    - `has_role(uuid, app_role)` security-definer function (roles อยู่ในตาราง `user_roles` แยกจาก profiles)
    - RLS policies ครบทุกตาราง — dept-scope, owner-scope, management cross-dept, audit append-only
@@ -42,7 +42,7 @@ Built with React 19 + TanStack Start + TypeScript + Tailwind v4 + shadcn/ui + **
    - Full-text search (tsvector + GIN index)
    - Auto-create profile trigger เมื่อมีผู้ใช้สมัคร
 3. **สมัครผู้ใช้แรกในแอปก่อน** (ผ่านหน้า `/auth`) เพื่อให้มี `auth.users` row
-4. รัน `supabase/migrations/0002_seed_data.sql` — จะเพิ่ม 5 แผนก, 15 คู่ค้า, 10 สัญญา, 15 ใบเสนอราคา, 10 procurements, 25 documents, notifications ตัวอย่างภาษาไทย และให้ role `super_admin` แก่ผู้ใช้แรก
+4. รัน `db/0002_seed_data.sql` — จะเพิ่ม 5 แผนก, 15 คู่ค้า, 10 สัญญา, 15 ใบเสนอราคา, 10 procurements, 25 documents, notifications ตัวอย่างภาษาไทย และให้ role `super_admin` แก่ผู้ใช้แรก
 
 ### 2) เปิด Email Auth ใน Supabase
 Supabase Dashboard → Authentication → Providers → Email → เปิด (ค่าเริ่มต้นเปิดอยู่แล้ว)
@@ -136,7 +136,7 @@ src/
 │   ├── supabase-config.functions.ts     # Server fn: returns URL + anon key
 │   ├── format.ts                        # Thai date/currency formatters
 │   └── types.ts
-supabase/migrations/
+db/
 ├── 0001_initial_schema.sql              # 30+ tables, RLS, storage, triggers
 └── 0002_seed_data.sql                   # Thai sample data
 ```
