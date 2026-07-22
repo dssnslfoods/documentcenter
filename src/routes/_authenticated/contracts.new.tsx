@@ -1,10 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus, Trash2, Truck, Receipt } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,14 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getSupabase } from "@/lib/supabase";
+import { fmtCurrency } from "@/lib/format";
+
+const milestoneSchema = z.object({
+  name: z.string().trim().min(1, "กรุณากรอกชื่องวด").max(200),
+  due_date: z.string().optional().or(z.literal("")),
+  amount: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
+  notes: z.string().optional(),
+});
 
 const schema = z.object({
   title: z.string().trim().min(1, "กรุณากรอกชื่อสัญญา").max(200),
@@ -24,11 +32,13 @@ const schema = z.object({
   end_date: z.string().min(1, "กรุณาระบุวันสิ้นสุด"),
   notice_days: z.coerce.number().int().min(0).optional(),
   auto_renewal: z.boolean().default(false),
-  value_amount: z.coerce.number().min(0).optional().or(z.literal("")),
+  value_amount: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
   currency: z.string().default("THB"),
   payment_terms: z.string().optional(),
   key_terms: z.string().optional(),
   notes: z.string().optional(),
+  deliveries: z.array(milestoneSchema).default([]),
+  billings: z.array(milestoneSchema).default([]),
 }).refine((v) => new Date(v.end_date) >= new Date(v.start_date), { path: ["end_date"], message: "วันสิ้นสุดต้องไม่น้อยกว่าวันเริ่ม" });
 
 type FormValues = z.infer<typeof schema>;
@@ -53,8 +63,16 @@ function NewContract() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema) as never,
-    defaultValues: { currency: "THB", auto_renewal: false, notice_days: 30 },
+    defaultValues: { currency: "THB", auto_renewal: false, notice_days: 30, deliveries: [], billings: [] },
   });
+
+  const deliveries = useFieldArray({ control: form.control, name: "deliveries" });
+  const billings = useFieldArray({ control: form.control, name: "billings" });
+
+  const watchDeliveries = form.watch("deliveries");
+  const watchBillings = form.watch("billings");
+  const watchCurrency = form.watch("currency") || "THB";
+  const sumBillings = (watchBillings ?? []).reduce((s, m) => s + (Number(m.amount) || 0), 0);
 
   const create = useMutation({
     mutationFn: async (values: FormValues) => {
@@ -82,6 +100,25 @@ function NewContract() {
       };
       const { data, error } = await sb.from("contracts").insert(payload).select("id").single();
       if (error) throw error;
+
+      const rows = [
+        ...values.deliveries.map((m, i) => ({
+          contract_id: data.id, kind: "delivery", sort_order: i,
+          name: m.name, due_date: m.due_date || null,
+          amount: m.amount === "" || m.amount == null ? null : Number(m.amount),
+          notes: m.notes || null,
+        })),
+        ...values.billings.map((m, i) => ({
+          contract_id: data.id, kind: "billing", sort_order: i,
+          name: m.name, due_date: m.due_date || null,
+          amount: m.amount === "" || m.amount == null ? null : Number(m.amount),
+          notes: m.notes || null,
+        })),
+      ];
+      if (rows.length > 0) {
+        const { error: mErr } = await sb.from("contract_milestones").insert(rows);
+        if (mErr) throw mErr;
+      }
       return data;
     },
     onSuccess: (row) => {
@@ -161,6 +198,46 @@ function NewContract() {
           </CardContent>
         </Card>
 
+        <MilestoneCard
+          title="งวดส่งงาน"
+          description="กำหนดงวดการส่งมอบงานตามสัญญา เพิ่มได้อิสระ"
+          icon={Truck}
+          fields={deliveries.fields}
+          onAdd={() => deliveries.append({ name: "", due_date: "", amount: "", notes: "" })}
+          onRemove={(i) => deliveries.remove(i)}
+          register={form.register}
+          fieldName="deliveries"
+          amountLabel="มูลค่างวด"
+          nameLabel="รายละเอียดงวดส่งงาน"
+        />
+
+        <MilestoneCard
+          title="การเรียกเก็บเงิน"
+          description="กำหนดงวดการเรียกเก็บเงิน / การชำระเงินตามสัญญา"
+          icon={Receipt}
+          fields={billings.fields}
+          onAdd={() => billings.append({ name: "", due_date: "", amount: "", notes: "" })}
+          onRemove={(i) => billings.remove(i)}
+          register={form.register}
+          fieldName="billings"
+          amountLabel="จำนวนเงินที่เรียกเก็บ"
+          nameLabel="รายละเอียดการเรียกเก็บ"
+          footer={
+            (watchBillings?.length ?? 0) > 0 ? (
+              <div className="flex justify-end text-sm">
+                <span className="text-muted-foreground">รวมยอดเรียกเก็บ:&nbsp;</span>
+                <span className="font-semibold">{fmtCurrency(sumBillings, watchCurrency)}</span>
+              </div>
+            ) : null
+          }
+        />
+
+        {(watchDeliveries?.length ?? 0) > 0 && (watchBillings?.length ?? 0) > 0 && (
+          <p className="text-xs text-muted-foreground">
+            เพิ่มงวดส่งงาน {watchDeliveries.length} งวด · งวดเรียกเก็บ {watchBillings.length} งวด
+          </p>
+        )}
+
         <Card>
           <CardHeader><CardTitle>เงื่อนไขและหมายเหตุ</CardTitle></CardHeader>
           <CardContent className="grid gap-4">
@@ -178,5 +255,71 @@ function NewContract() {
         </div>
       </form>
     </div>
+  );
+}
+
+type RHFRegister = ReturnType<typeof useForm<FormValues>>["register"];
+
+function MilestoneCard({
+  title, description, icon: Icon, fields, onAdd, onRemove, register, fieldName, amountLabel, nameLabel, footer,
+}: {
+  title: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+  fields: { id: string }[];
+  onAdd: () => void;
+  onRemove: (i: number) => void;
+  register: RHFRegister;
+  fieldName: "deliveries" | "billings";
+  amountLabel: string;
+  nameLabel: string;
+  footer?: React.ReactNode;
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+        <div className="space-y-1">
+          <CardTitle className="flex items-center gap-2"><Icon className="h-4 w-4" />{title}</CardTitle>
+          <p className="text-xs text-muted-foreground">{description}</p>
+        </div>
+        <Button type="button" size="sm" variant="outline" onClick={onAdd}>
+          <Plus className="mr-1 h-4 w-4" />เพิ่มงวด
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {fields.length === 0 && (
+          <p className="text-sm text-muted-foreground text-center py-4">ยังไม่มีรายการ กด "เพิ่มงวด" เพื่อเริ่มต้น</p>
+        )}
+        {fields.map((f, i) => (
+          <div key={f.id} className="rounded-md border p-3 space-y-3 bg-muted/30">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted-foreground">งวดที่ {i + 1}</span>
+              <Button type="button" size="icon" variant="ghost" onClick={() => onRemove(i)} className="h-7 w-7">
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-6">
+              <div className="sm:col-span-3 space-y-1">
+                <Label className="text-xs">{nameLabel} *</Label>
+                <Input {...register(`${fieldName}.${i}.name` as const)} placeholder="เช่น งวดที่ 1 - ส่งมอบเอกสารตั้งต้น" />
+              </div>
+              <div className="sm:col-span-2 space-y-1">
+                <Label className="text-xs">วันครบกำหนด</Label>
+                <Input type="date" {...register(`${fieldName}.${i}.due_date` as const)} />
+              </div>
+              <div className="sm:col-span-1 space-y-1">
+                <Label className="text-xs">{amountLabel}</Label>
+                <Input type="number" step="0.01" min="0" {...register(`${fieldName}.${i}.amount` as const)} />
+              </div>
+              <div className="sm:col-span-6 space-y-1">
+                <Label className="text-xs">หมายเหตุ</Label>
+                <Input {...register(`${fieldName}.${i}.notes` as const)} placeholder="เงื่อนไข / เอกสารประกอบ" />
+              </div>
+            </div>
+          </div>
+        ))}
+        {footer}
+      </CardContent>
+    </Card>
   );
 }
