@@ -55,6 +55,20 @@ function ContractDetail() {
     },
   });
 
+  const { data: milestones } = useQuery({
+    queryKey: ["contract-milestones", id],
+    queryFn: async () => {
+      const { data, error } = await getSupabase()
+        .from("contract_milestones")
+        .select("*")
+        .eq("contract_id", id)
+        .order("kind")
+        .order("sort_order");
+      if (error) throw error;
+      return (data ?? []) as Milestone[];
+    },
+  });
+
   const updateStatus = useMutation({
     mutationFn: async (status: ContractStatus) => {
       const { error } = await getSupabase().from("contracts").update({ status }).eq("id", id);
