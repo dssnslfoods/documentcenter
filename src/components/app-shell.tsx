@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -91,9 +92,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Input placeholder="ค้นหาเอกสาร สัญญา คู่ค้า..." className="pl-9" />
           </div>
 
-          <button className="relative rounded p-2 hover:bg-muted" aria-label="Notifications">
-            <Bell className="h-5 w-5" />
-          </button>
+          <NotificationBell userId={user?.id} />
+
 
           <DropdownMenu>
             <DropdownMenuTrigger className="flex items-center gap-2 rounded-md p-1.5 hover:bg-muted">
@@ -122,6 +122,33 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main className="min-w-0 flex-1 p-6">{children}</main>
       </div>
     </div>
+  );
+}
+
+function NotificationBell({ userId }: { userId: string | undefined }) {
+  const { data: count } = useQuery({
+    queryKey: ["notifications-unread", userId],
+    queryFn: async () => {
+      if (!userId) return 0;
+      const { count } = await getSupabase()
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("is_read", false);
+      return count ?? 0;
+    },
+    enabled: !!userId,
+    refetchInterval: 60_000,
+  });
+  return (
+    <Link to="/notifications" className="relative rounded p-2 hover:bg-muted" aria-label="Notifications">
+      <Bell className="h-5 w-5" />
+      {count && count > 0 ? (
+        <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
+          {count > 99 ? "99+" : count}
+        </span>
+      ) : null}
+    </Link>
   );
 }
 

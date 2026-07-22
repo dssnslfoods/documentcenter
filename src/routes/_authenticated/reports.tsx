@@ -1,17 +1,206 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Construction } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend, LineChart, Line,
+} from "recharts";
 import { PageHeader } from "@/components/page-header";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getSupabase } from "@/lib/supabase";
+import { fmtCurrency, fmtNumber } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/reports")({
   head: () => ({ meta: [{ title: "รายงาน | Document Hub" }] }),
-  component: () => (
-    <div className="space-y-6">
-      <PageHeader title="รายงาน" description="รายงานและการส่งออกข้อมูล" />
-      <Card><CardContent className="flex flex-col items-center py-16 text-center">
-        <Construction className="h-8 w-8 text-warning" />
-        <p className="mt-3 text-sm text-muted-foreground">รายงานต่างๆ อยู่ใน Phase 5 (Management & Compliance)</p>
-      </CardContent></Card>
-    </div>
-  ),
+  component: ReportsPage,
 });
+
+const COLORS = [
+  "oklch(0.47 0.13 258)", "oklch(0.5 0.09 190)", "oklch(0.75 0.16 70)",
+  "oklch(0.63 0.17 148)", "oklch(0.58 0.22 27)", "oklch(0.55 0.15 300)",
+];
+
+const CONTRACT_STATUS_LABELS: Record<string, string> = {
+  draft: "ร่าง", under_review: "กำลังตรวจ", pending_approval: "รออนุมัติ",
+  pending_signature: "รอลงนาม", active: "มีผล", near_expiry: "ใกล้หมดอายุ",
+  renewal_in_progress: "ต่ออายุ", expired: "หมดอายุ", terminated: "ยกเลิก", archived: "จัดเก็บ",
+};
+
+function ReportsPage() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["reports-data"],
+    queryFn: async () => {
+      const sb = getSupabase();
+      const [contracts, procs, docs, projects] = await Promise.all([
+        sb.from("contracts").select("status, value_amount, created_at"),
+        sb.from("procurements").select("status, budget_amount, created_at"),
+        sb.from("documents").select("category_id, status, document_categories(name_th)"),
+        sb.from("projects").select("status, budget"),
+      ]);
+
+      // Contract status distribution
+      const contractStatus: Record<string, number> = {};
+      let totalContractValue = 0;
+      (contracts.data ?? []).forEach((c: { status: string; value_amount: number | null }) => {
+        contractStatus[c.status] = (contractStatus[c.status] ?? 0) + 1;
+        if (c.status === "active") totalContractValue += c.value_amount ?? 0;
+      });
+
+      // Monthly created (last 12 months) — contracts & procs
+      const now = new Date();
+      const months: { key: string; label: string; contracts: number; procurements: number }[] = [];
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        months.push({ key, label: d.toLocaleDateString("th-TH", { month: "short", year: "2-digit" }), contracts: 0, procurements: 0 });
+      }
+      const mMap = new Map(months.map((m) => [m.key, m]));
+      (contracts.data ?? []).forEach((c: { created_at: string }) => {
+        const k = c.created_at.slice(0, 7);
+        const m = mMap.get(k); if (m) m.contracts += 1;
+      });
+      (procs.data ?? []).forEach((p: { created_at: string }) => {
+        const k = p.created_at.slice(0, 7);
+        const m = mMap.get(k); if (m) m.procurements += 1;
+      });
+
+      // Documents by category
+      const catMap = new Map<string, number>();
+      (docs.data ?? []).forEach((d: { document_categories: { name_th: string } | { name_th: string }[] | null }) => {
+        const c = Array.isArray(d.document_categories) ? d.document_categories[0] : d.document_categories;
+        const name = c?.name_th ?? "อื่นๆ";
+        catMap.set(name, (catMap.get(name) ?? 0) + 1);
+      });
+      const docsByCat = Array.from(catMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 8);
+
+      // Procurement budget by status
+      const procBudget: Record<string, number> = {};
+      (procs.data ?? []).forEach((p: { status: string; budget_amount: number | null }) => {
+        procBudget[p.status] = (procBudget[p.status] ?? 0) + (p.budget_amount ?? 0);
+      });
+      const procBudgetArr = Object.entries(procBudget).map(([status, amount]) => ({ status, amount })).sort((a, b) => b.amount - a.amount).slice(0, 6);
+
+      // Projects
+      const projStatus: Record<string, number> = {};
+      let totalProjectBudget = 0;
+      (projects.data ?? []).forEach((p: { status: string; budget: number | null }) => {
+        projStatus[p.status] = (projStatus[p.status] ?? 0) + 1;
+        totalProjectBudget += p.budget ?? 0;
+      });
+
+      return {
+        contractStatus: Object.entries(contractStatus).map(([k, v]) => ({ name: CONTRACT_STATUS_LABELS[k] ?? k, value: v })),
+        totalContractValue,
+        totalProjectBudget,
+        totalContracts: (contracts.data ?? []).length,
+        totalProcurements: (procs.data ?? []).length,
+        totalDocs: (docs.data ?? []).length,
+        totalProjects: (projects.data ?? []).length,
+        months,
+        docsByCat,
+        procBudgetArr,
+        projStatus: Object.entries(projStatus).map(([k, v]) => ({ name: k, value: v })),
+      };
+    },
+  });
+
+  if (isLoading || !data) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="รายงาน" description="สรุปข้อมูลเชิงบริหารทุกโมดูล" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-24 animate-pulse rounded-lg bg-muted/60" />)}
+        </div>
+        <div className="h-80 animate-pulse rounded-lg bg-muted/60" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title="รายงาน" description="สรุปข้อมูลเชิงบริหารทุกโมดูล — สัญญา จัดซื้อ เอกสาร โครงการ" />
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard label="สัญญาทั้งหมด" value={fmtNumber(data.totalContracts)} sub={`มูลค่าใช้งาน ${fmtCurrency(data.totalContractValue)}`} />
+        <KpiCard label="จัดซื้อ/จัดจ้าง" value={fmtNumber(data.totalProcurements)} sub="รวมทุกสถานะ" />
+        <KpiCard label="เอกสารในระบบ" value={fmtNumber(data.totalDocs)} sub="ทุกหมวดหมู่" />
+        <KpiCard label="โครงการ" value={fmtNumber(data.totalProjects)} sub={`งบรวม ${fmtCurrency(data.totalProjectBudget)}`} />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader><CardTitle className="text-base">สัญญาและจัดซื้อรายเดือน (12 เดือน)</CardTitle></CardHeader>
+          <CardContent className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data.months}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip />
+                <Legend />
+                <Line type="monotone" dataKey="contracts" name="สัญญา" stroke={COLORS[0]} strokeWidth={2} />
+                <Line type="monotone" dataKey="procurements" name="จัดซื้อ" stroke={COLORS[2]} strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle className="text-base">สัดส่วนสถานะสัญญา</CardTitle></CardHeader>
+          <CardContent className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={data.contractStatus} dataKey="value" nameKey="name" outerRadius={90} label={{ fontSize: 11 }}>
+                  {data.contractStatus.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                </Pie>
+                <Tooltip />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle className="text-base">เอกสารแยกตามหมวดหมู่</CardTitle></CardHeader>
+          <CardContent className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data.docsByCat} layout="vertical" margin={{ left: 60 }}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <XAxis type="number" tick={{ fontSize: 11 }} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={120} />
+                <Tooltip />
+                <Bar dataKey="value" fill={COLORS[1]} radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle className="text-base">งบประมาณจัดซื้อตามสถานะ</CardTitle></CardHeader>
+          <CardContent className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data.procBudgetArr}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <XAxis dataKey="status" tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1_000_000).toFixed(1)}M`} />
+                <Tooltip formatter={(v: number) => fmtCurrency(v)} />
+                <Bar dataKey="amount" fill={COLORS[3]} radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function KpiCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <Card>
+      <CardContent className="p-5">
+        <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
+        <div className="mt-1 text-2xl font-semibold">{value}</div>
+        {sub && <div className="mt-1 text-xs text-muted-foreground">{sub}</div>}
+      </CardContent>
+    </Card>
+  );
+}
