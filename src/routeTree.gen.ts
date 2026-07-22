@@ -29,6 +29,7 @@ import { Route as AuthenticatedDocumentsIndexRouteImport } from './routes/_authe
 import { Route as AuthenticatedContractsIndexRouteImport } from './routes/_authenticated/contracts.index'
 import { Route as AuthenticatedQuotationsNewRouteImport } from './routes/_authenticated/quotations.new'
 import { Route as AuthenticatedQuotationsIdRouteImport } from './routes/_authenticated/quotations.$id'
+import { Route as AuthenticatedProjectsNewRouteImport } from './routes/_authenticated/projects.new'
 import { Route as AuthenticatedProcurementsNewRouteImport } from './routes/_authenticated/procurements.new'
 import { Route as AuthenticatedProcurementsIdRouteImport } from './routes/_authenticated/procurements.$id'
 import { Route as AuthenticatedDocumentsNewRouteImport } from './routes/_authenticated/documents.new'
@@ -143,6 +144,12 @@ const AuthenticatedQuotationsIdRoute =
     path: '/quotations/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedProjectsNewRoute =
+  AuthenticatedProjectsNewRouteImport.update({
+    id: '/projects/new',
+    path: '/projects/new',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedProcurementsNewRoute =
   AuthenticatedProcurementsNewRouteImport.update({
     id: '/procurements/new',
@@ -199,6 +206,7 @@ export interface FileRoutesByFullPath {
   '/documents/new': typeof AuthenticatedDocumentsNewRoute
   '/procurements/$id': typeof AuthenticatedProcurementsIdRoute
   '/procurements/new': typeof AuthenticatedProcurementsNewRoute
+  '/projects/new': typeof AuthenticatedProjectsNewRoute
   '/quotations/$id': typeof AuthenticatedQuotationsIdRoute
   '/quotations/new': typeof AuthenticatedQuotationsNewRoute
   '/contracts/': typeof AuthenticatedContractsIndexRoute
@@ -226,6 +234,7 @@ export interface FileRoutesByTo {
   '/documents/new': typeof AuthenticatedDocumentsNewRoute
   '/procurements/$id': typeof AuthenticatedProcurementsIdRoute
   '/procurements/new': typeof AuthenticatedProcurementsNewRoute
+  '/projects/new': typeof AuthenticatedProjectsNewRoute
   '/quotations/$id': typeof AuthenticatedQuotationsIdRoute
   '/quotations/new': typeof AuthenticatedQuotationsNewRoute
   '/contracts': typeof AuthenticatedContractsIndexRoute
@@ -255,6 +264,7 @@ export interface FileRoutesById {
   '/_authenticated/documents/new': typeof AuthenticatedDocumentsNewRoute
   '/_authenticated/procurements/$id': typeof AuthenticatedProcurementsIdRoute
   '/_authenticated/procurements/new': typeof AuthenticatedProcurementsNewRoute
+  '/_authenticated/projects/new': typeof AuthenticatedProjectsNewRoute
   '/_authenticated/quotations/$id': typeof AuthenticatedQuotationsIdRoute
   '/_authenticated/quotations/new': typeof AuthenticatedQuotationsNewRoute
   '/_authenticated/contracts/': typeof AuthenticatedContractsIndexRoute
@@ -284,6 +294,7 @@ export interface FileRouteTypes {
     | '/documents/new'
     | '/procurements/$id'
     | '/procurements/new'
+    | '/projects/new'
     | '/quotations/$id'
     | '/quotations/new'
     | '/contracts/'
@@ -311,6 +322,7 @@ export interface FileRouteTypes {
     | '/documents/new'
     | '/procurements/$id'
     | '/procurements/new'
+    | '/projects/new'
     | '/quotations/$id'
     | '/quotations/new'
     | '/contracts'
@@ -339,6 +351,7 @@ export interface FileRouteTypes {
     | '/_authenticated/documents/new'
     | '/_authenticated/procurements/$id'
     | '/_authenticated/procurements/new'
+    | '/_authenticated/projects/new'
     | '/_authenticated/quotations/$id'
     | '/_authenticated/quotations/new'
     | '/_authenticated/contracts/'
@@ -497,6 +510,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedQuotationsIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/projects/new': {
+      id: '/_authenticated/projects/new'
+      path: '/projects/new'
+      fullPath: '/projects/new'
+      preLoaderRoute: typeof AuthenticatedProjectsNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/procurements/new': {
       id: '/_authenticated/procurements/new'
       path: '/procurements/new'
@@ -558,6 +578,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDocumentsNewRoute: typeof AuthenticatedDocumentsNewRoute
   AuthenticatedProcurementsIdRoute: typeof AuthenticatedProcurementsIdRoute
   AuthenticatedProcurementsNewRoute: typeof AuthenticatedProcurementsNewRoute
+  AuthenticatedProjectsNewRoute: typeof AuthenticatedProjectsNewRoute
   AuthenticatedQuotationsIdRoute: typeof AuthenticatedQuotationsIdRoute
   AuthenticatedQuotationsNewRoute: typeof AuthenticatedQuotationsNewRoute
   AuthenticatedContractsIndexRoute: typeof AuthenticatedContractsIndexRoute
@@ -583,6 +604,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDocumentsNewRoute: AuthenticatedDocumentsNewRoute,
   AuthenticatedProcurementsIdRoute: AuthenticatedProcurementsIdRoute,
   AuthenticatedProcurementsNewRoute: AuthenticatedProcurementsNewRoute,
+  AuthenticatedProjectsNewRoute: AuthenticatedProjectsNewRoute,
   AuthenticatedQuotationsIdRoute: AuthenticatedQuotationsIdRoute,
   AuthenticatedQuotationsNewRoute: AuthenticatedQuotationsNewRoute,
   AuthenticatedContractsIndexRoute: AuthenticatedContractsIndexRoute,
