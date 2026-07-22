@@ -1,15 +1,18 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Calendar, DollarSign, Building2 } from "lucide-react";
+import { ArrowLeft, Loader2, Calendar, DollarSign, Building2, Truck, Receipt } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDate, fmtCurrency } from "@/lib/format";
 import { ContractStatusBadge } from "@/components/status-badge";
 import type { ContractStatus } from "@/lib/types";
+
+type Milestone = { id: string; kind: string; name: string; due_date: string | null; amount: number | null; status: string | null; notes: string | null; sort_order: number };
 
 export const Route = createFileRoute("/_authenticated/contracts/$id")({
   head: () => ({ meta: [{ title: "รายละเอียดสัญญา | Document Hub" }] }),
