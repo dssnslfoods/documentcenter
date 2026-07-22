@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -91,9 +92,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Input placeholder="ค้นหาเอกสาร สัญญา คู่ค้า..." className="pl-9" />
           </div>
 
-          <button className="relative rounded p-2 hover:bg-muted" aria-label="Notifications">
-            <Bell className="h-5 w-5" />
-          </button>
+          <NotificationBell userId={user?.id} />
+
 
           <DropdownMenu>
             <DropdownMenuTrigger className="flex items-center gap-2 rounded-md p-1.5 hover:bg-muted">
