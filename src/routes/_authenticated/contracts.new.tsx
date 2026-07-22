@@ -245,6 +245,49 @@ function NewContract() {
         )}
 
         <Card>
+          <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+            <div className="space-y-1">
+              <CardTitle className="flex items-center gap-2"><LinkIcon className="h-4 w-4" />ลิงก์เอกสารแนบ</CardTitle>
+              <p className="text-xs text-muted-foreground">แนบเป็นลิงก์ URL เท่านั้น (Google Drive, SharePoint ฯลฯ) — ระบบไม่จัดเก็บไฟล์</p>
+            </div>
+            <Button type="button" size="sm" variant="outline" onClick={() => links.append({ label: "", url: "" })}>
+              <Plus className="mr-1 h-4 w-4" />เพิ่มลิงก์
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {links.fields.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">ยังไม่มีลิงก์ กด "เพิ่มลิงก์" เพื่อวาง URL เอกสาร</p>
+            )}
+            {links.fields.map((f, i) => (
+              <div key={f.id} className="rounded-md border p-3 space-y-2 bg-muted/30">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">ลิงก์ที่ {i + 1}</span>
+                  <Button type="button" size="icon" variant="ghost" onClick={() => links.remove(i)} className="h-7 w-7">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-5">
+                  <div className="sm:col-span-2 space-y-1">
+                    <Label className="text-xs">ชื่อเอกสาร *</Label>
+                    <Input placeholder="เช่น สัญญาต้นฉบับ, ภาคผนวก ก" {...form.register(`attachment_links.${i}.label` as const)} />
+                    {form.formState.errors.attachment_links?.[i]?.label && (
+                      <p className="text-xs text-destructive">{form.formState.errors.attachment_links[i]?.label?.message}</p>
+                    )}
+                  </div>
+                  <div className="sm:col-span-3 space-y-1">
+                    <Label className="text-xs">URL *</Label>
+                    <Input type="url" placeholder="https://..." {...form.register(`attachment_links.${i}.url` as const)} />
+                    {form.formState.errors.attachment_links?.[i]?.url && (
+                      <p className="text-xs text-destructive">{form.formState.errors.attachment_links[i]?.url?.message}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
           <CardHeader><CardTitle>เงื่อนไขและหมายเหตุ</CardTitle></CardHeader>
           <CardContent className="grid gap-4">
             <div className="space-y-2"><Label>เงื่อนไขการชำระเงิน</Label><Textarea rows={2} {...form.register("payment_terms")} /></div>
