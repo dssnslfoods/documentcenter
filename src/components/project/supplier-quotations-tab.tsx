@@ -1,0 +1,245 @@
+import { useState, type ChangeEvent } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Trash2, Upload, Download, Plus, Loader2, Package } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { EmptyState } from "@/components/page-header";
+import { getSupabase } from "@/lib/supabase";
+import { fmtDate, fmtCurrency } from "@/lib/format";
+import { uploadProjectFile, getProjectFileUrl } from "@/lib/project-files";
+
+type Row = {
+  id: string;
+  supplier_id: string | null;
+  supplier_name: string | null;
+  quotation_amount: number | null;
+  received_date: string | null;
+  notes: string | null;
+  file_urls: string[];
+  partners?: { name: string } | null;
+};
+
+export function SupplierQuotationsTab({
+  projectId,
+  canEdit = true,
+  canSeePrice = true,
+}: {
+  projectId: string;
+  canEdit?: boolean;
+  canSeePrice?: boolean;
+}) {
+  const sb = getSupabase();
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+
+  const { data: partners } = useQuery({
+    queryKey: ["partners-suppliers"],
+    queryFn: async () => {
+      const { data } = await sb.from("partners").select("id, name").eq("kind", "vendor").order("name");
+      return data ?? [];
+    },
+  });
+
+  const { data: rows, isLoading } = useQuery({
+    queryKey: ["supplier-quotations", projectId],
+    queryFn: async () => {
+      const { data, error } = await sb
+        .from("supplier_quotations")
+        .select("id, supplier_id, supplier_name, quotation_amount, received_date, notes, file_urls, partners(name)")
+        .eq("project_id", projectId)
+        .order("received_date", { ascending: false, nullsFirst: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as Row[];
+    },
+  });
+
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await sb.from("supplier_quotations").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("ลบเรียบร้อย");
+      qc.invalidateQueries({ queryKey: ["supplier-quotations", projectId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const openFile = async (path: string) => {
+    const url = await getProjectFileUrl(path);
+    if (url) window.open(url, "_blank");
+  };
+
+  const cheapest = rows && rows.length ? Math.min(...rows.filter((r) => r.quotation_amount != null).map((r) => Number(r.quotation_amount))) : null;
+
+  return (
+    <div className="space-y-4">
+      {canEdit && (
+        <div className="flex justify-end">
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm"><Plus className="mr-2 h-4 w-4" />เพิ่มใบเสนอราคา</Button>
+            </DialogTrigger>
+            <AddDialog
+              projectId={projectId}
+              partners={partners ?? []}
+              onClose={() => setOpen(false)}
+              onSaved={() => {
+                setOpen(false);
+                qc.invalidateQueries({ queryKey: ["supplier-quotations", projectId] });
+              }}
+            />
+          </Dialog>
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="py-8 text-center text-sm text-muted-foreground">กำลังโหลด...</div>
+      ) : !rows || rows.length === 0 ? (
+        <EmptyState icon={Package} title="ยังไม่มีใบเสนอราคาจาก Supplier" description="เพิ่มใบเสนอราคาที่ได้รับจาก Supplier แต่ละราย" />
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2">
+          {rows.map((r) => {
+            const isCheap = cheapest != null && Number(r.quotation_amount) === cheapest;
+            const supplierLabel = r.partners?.name || r.supplier_name || "-";
+            return (
+              <Card key={r.id} className={isCheap ? "ring-1 ring-success/40" : ""}>
+                <CardContent className="space-y-3 p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-medium">{supplierLabel}</div>
+                      <div className="text-xs text-muted-foreground">{fmtDate(r.received_date)}</div>
+                    </div>
+                    {isCheap && <Badge className="bg-success/15 text-success">ราคาต่ำสุด</Badge>}
+                  </div>
+                  <div className="text-lg font-semibold tabular-nums">
+                    {canSeePrice ? fmtCurrency(r.quotation_amount, "THB") : "฿ ••••••"}
+                  </div>
+                  {r.notes && <p className="text-sm text-muted-foreground">{r.notes}</p>}
+                  {r.file_urls?.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {r.file_urls.map((f, i) => (
+                        <Button key={i} size="sm" variant="outline" onClick={() => openFile(f)}>
+                          <Download className="mr-1 h-3 w-3" />ไฟล์ {i + 1}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                  {canEdit && (
+                    <div className="flex justify-end">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive"
+                        onClick={() => confirm("ลบใบเสนอราคานี้?") && remove.mutate(r.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AddDialog({
+  projectId,
+  partners,
+  onClose,
+  onSaved,
+}: {
+  projectId: string;
+  partners: { id: string; name: string }[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const sb = getSupabase();
+  const [supplierId, setSupplierId] = useState<string>("");
+  const [supplierName, setSupplierName] = useState("");
+  const [amount, setAmount] = useState("");
+  const [date, setDate] = useState("");
+  const [notes, setNotes] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    setSaving(true);
+    try {
+      const file_urls: string[] = [];
+      if (file) file_urls.push(await uploadProjectFile(projectId, file));
+      const { error } = await sb.from("supplier_quotations").insert({
+        project_id: projectId,
+        supplier_id: supplierId || null,
+        supplier_name: supplierName || null,
+        quotation_amount: amount ? Number(amount) : null,
+        received_date: date || null,
+        notes: notes || null,
+        file_urls,
+      });
+      if (error) throw error;
+      toast.success("บันทึกเรียบร้อย");
+      onSaved();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <DialogContent className="max-w-lg">
+      <DialogHeader><DialogTitle>เพิ่มใบเสนอราคา Supplier</DialogTitle></DialogHeader>
+      <div className="space-y-3">
+        <div>
+          <Label>Supplier (จากรายชื่อคู่ค้า)</Label>
+          <Select value={supplierId} onValueChange={setSupplierId}>
+            <SelectTrigger><SelectValue placeholder="เลือก Supplier" /></SelectTrigger>
+            <SelectContent>
+              {partners.map((p) => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>หรือ พิมพ์ชื่อ Supplier</Label>
+          <Input value={supplierName} onChange={(e) => setSupplierName(e.target.value)} placeholder="ชื่อ Supplier" />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <Label>ยอดเงิน (บาท)</Label>
+            <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          </div>
+          <div>
+            <Label>วันที่ได้รับ</Label>
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </div>
+        </div>
+        <div>
+          <Label>หมายเหตุ</Label>
+          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
+        </div>
+        <div>
+          <Label>ไฟล์แนบ</Label>
+          <Input type="file" onChange={(e: ChangeEvent<HTMLInputElement>) => setFile(e.target.files?.[0] ?? null)} />
+        </div>
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose}>ยกเลิก</Button>
+        <Button onClick={submit} disabled={saving}>
+          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}บันทึก
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+}
