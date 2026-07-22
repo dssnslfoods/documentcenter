@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Calendar, DollarSign, Building2, Truck, Receipt } from "lucide-react";
+import { ArrowLeft, Loader2, Calendar, DollarSign, Building2, Truck, Receipt, LinkIcon, ExternalLink } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -164,6 +164,29 @@ function ContractDetail() {
           showTotal
         />
       </div>
+
+      {(() => {
+        const rawLinks = (c as { attachment_links?: unknown }).attachment_links;
+        const linkList = Array.isArray(rawLinks) ? (rawLinks as { label?: string; url?: string }[]) : [];
+        if (linkList.length === 0) return null;
+        return (
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2 text-base"><LinkIcon className="h-4 w-4" />ลิงก์เอกสารแนบ ({linkList.length})</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              {linkList.map((l, i) => (
+                <a key={i} href={l.url} target="_blank" rel="noopener noreferrer"
+                   className="flex items-center justify-between gap-3 rounded-md border p-3 hover:bg-muted/50 transition-colors">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium truncate">{l.label || "-"}</div>
+                    <div className="text-xs text-muted-foreground truncate">{l.url}</div>
+                  </div>
+                  <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </a>
+              ))}
+            </CardContent>
+          </Card>
+        );
+      })()}
     </div>
   );
 }
