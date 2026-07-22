@@ -9,7 +9,7 @@ export const Route = createFileRoute("/_authenticated/settings")({
 });
 
 const cards = [
-  { icon: Users, title: "ผู้ใช้งานและสิทธิ์", desc: "จัดการผู้ใช้ กำหนดบทบาท" },
+  { icon: Users, title: "ผู้ใช้งานและสิทธิ์", desc: "จัดการผู้ใช้ กำหนดบทบาท", to: "/settings/users" as const },
   { icon: Building2, title: "แผนก", desc: "จัดการแผนกและโครงสร้างองค์กร" },
   { icon: FolderTree, title: "หมวดหมู่เอกสาร", desc: "หมวดหมู่และ Custom Fields" },
   { icon: Tag, title: "Tag และ Keyword", desc: "จัดการ Master Data" },
