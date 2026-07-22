@@ -29,6 +29,7 @@ export function TeamTab({
   const sb = getSupabase();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editMember, setEditMember] = useState<{ id: string; label: string } | null>(null);
 
   const { data: members, isLoading } = useQuery({
     queryKey: ["project-members", projectId],
