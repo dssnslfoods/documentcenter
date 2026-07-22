@@ -1,15 +1,18 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Calendar, DollarSign, Building2 } from "lucide-react";
+import { ArrowLeft, Loader2, Calendar, DollarSign, Building2, Truck, Receipt } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDate, fmtCurrency } from "@/lib/format";
 import { ContractStatusBadge } from "@/components/status-badge";
 import type { ContractStatus } from "@/lib/types";
+
+type Milestone = { id: string; kind: string; name: string; due_date: string | null; amount: number | null; status: string | null; notes: string | null; sort_order: number };
 
 export const Route = createFileRoute("/_authenticated/contracts/$id")({
   head: () => ({ meta: [{ title: "รายละเอียดสัญญา | Document Hub" }] }),
@@ -49,6 +52,20 @@ function ContractDetail() {
         .eq("id", id).single();
       if (error) throw error;
       return data;
+    },
+  });
+
+  const { data: milestones } = useQuery({
+    queryKey: ["contract-milestones", id],
+    queryFn: async () => {
+      const { data, error } = await getSupabase()
+        .from("contract_milestones")
+        .select("*")
+        .eq("contract_id", id)
+        .order("kind")
+        .order("sort_order");
+      if (error) throw error;
+      return (data ?? []) as Milestone[];
     },
   });
 
@@ -131,7 +148,64 @@ function ContractDetail() {
           </CardContent>
         </Card>
       </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <MilestoneList
+          title="งวดส่งงาน"
+          icon={Truck}
+          currency={c.currency ?? "THB"}
+          items={(milestones ?? []).filter((m) => m.kind === "delivery")}
+        />
+        <MilestoneList
+          title="การเรียกเก็บเงิน"
+          icon={Receipt}
+          currency={c.currency ?? "THB"}
+          items={(milestones ?? []).filter((m) => m.kind === "billing")}
+          showTotal
+        />
+      </div>
     </div>
+  );
+}
+
+function MilestoneList({ title, icon: Icon, items, currency, showTotal }: {
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  items: Milestone[];
+  currency: string;
+  showTotal?: boolean;
+}) {
+  const total = items.reduce((s, m) => s + (Number(m.amount) || 0), 0);
+  return (
+    <Card>
+      <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Icon className="h-4 w-4" />{title} ({items.length})</CardTitle></CardHeader>
+      <CardContent className="space-y-2">
+        {items.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-2">ไม่มีรายการ</p>
+        ) : (
+          items.map((m, i) => (
+            <div key={m.id} className="flex items-start justify-between gap-3 rounded-md border p-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">งวด {i + 1}</span>
+                  <Badge variant="secondary" className="text-[10px]">{m.status ?? "pending"}</Badge>
+                </div>
+                <div className="text-sm font-medium mt-0.5 truncate">{m.name}</div>
+                {m.notes && <div className="text-xs text-muted-foreground mt-0.5 truncate">{m.notes}</div>}
+                <div className="text-xs text-muted-foreground mt-1">ครบกำหนด: {fmtDate(m.due_date)}</div>
+              </div>
+              <div className="text-sm font-semibold whitespace-nowrap">{fmtCurrency(m.amount, currency)}</div>
+            </div>
+          ))
+        )}
+        {showTotal && items.length > 0 && (
+          <div className="flex justify-end pt-2 border-t text-sm">
+            <span className="text-muted-foreground">รวม:&nbsp;</span>
+            <span className="font-semibold">{fmtCurrency(total, currency)}</span>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
