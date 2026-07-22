@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { UserPlus, Trash2, Loader2, Users } from "lucide-react";
+import { UserPlus, Trash2, Loader2, Users, ShieldCheck } from "lucide-react";
+import { PermissionEditorDialog } from "@/components/project/permission-editor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -28,6 +29,7 @@ export function TeamTab({
   const sb = getSupabase();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editMember, setEditMember] = useState<{ id: string; label: string } | null>(null);
 
   const { data: members, isLoading } = useQuery({
     queryKey: ["project-members", projectId],
@@ -149,20 +151,37 @@ export function TeamTab({
                 </div>
                 <Badge variant="outline">{m.perm_count} สิทธิ์</Badge>
                 {isAdmin && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-destructive"
-                    onClick={() => confirm("ลบสมาชิกออกจากโครงการ?") && remove.mutate(m.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setEditMember({ id: m.id, label: m.profiles?.full_name || m.profiles?.email || "-" })}
+                      title="แก้ไขสิทธิ์"
+                    >
+                      <ShieldCheck className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive"
+                      onClick={() => confirm("ลบสมาชิกออกจากโครงการ?") && remove.mutate(m.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </>
                 )}
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+
+      <PermissionEditorDialog
+        open={!!editMember}
+        onOpenChange={(v) => !v && setEditMember(null)}
+        projectMemberId={editMember?.id ?? null}
+        memberLabel={editMember?.label ?? ""}
+      />
     </div>
   );
 }
