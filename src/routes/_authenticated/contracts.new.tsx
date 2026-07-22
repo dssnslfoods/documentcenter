@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, Truck, Receipt } from "lucide-react";
+import { Loader2, Plus, Trash2, Truck, Receipt, LinkIcon } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,10 @@ const schema = z.object({
   notes: z.string().optional(),
   deliveries: z.array(milestoneSchema).default([]),
   billings: z.array(milestoneSchema).default([]),
+  attachment_links: z.array(z.object({
+    label: z.string().trim().min(1, "กรุณากรอกชื่อเอกสาร").max(200),
+    url: z.string().trim().url("ลิงก์ไม่ถูกต้อง (ต้องเป็น URL เต็ม เช่น https://...)"),
+  })).default([]),
 }).refine((v) => new Date(v.end_date) >= new Date(v.start_date), { path: ["end_date"], message: "วันสิ้นสุดต้องไม่น้อยกว่าวันเริ่ม" });
 
 type FormValues = z.infer<typeof schema>;
