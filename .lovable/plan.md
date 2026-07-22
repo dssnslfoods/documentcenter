@@ -1,93 +1,102 @@
+# Project-Centric Document Hub — Rework Plan
 
-# แผนการสร้าง Corporate Document & Contract Hub (Phase 1 + Phase 2)
+Turn the app around so **Project** is the root of every workflow, add per-user/per-project tick-based permissions, and add cross-project Smart Search. Existing modules (Contracts, Quotations, Procurements, Documents) stay accessible but the primary UX becomes the Project lifecycle.
 
-## 1. Setup & Supabase Connection
-- ขอ credentials จากคุณผ่าน secure form: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` (anon key)
-- สร้าง `src/lib/supabase.ts` client อ่านค่าจาก `import.meta.env`
-- ไม่มี hardcoded URL/keys ใน source code
-- ส่งมอบ SQL migration files ใน `supabase/migrations/` ให้คุณรันเองบน Supabase dashboard (Lovable ไม่ต่อ external Supabase อัตโนมัติได้)
+Because this is a large change, I'll ship it in ordered milestones. Each milestone ends in a working app you can test. You approve, I proceed to the next.
 
-## 2. Database Schema (SQL migration พร้อมใช้จริง)
-ครอบคลุมทุก table ที่ spec ระบุตั้งแต่ต้น เพื่อรองรับ Phase 3–5 ในอนาคต:
+---
 
-`profiles, departments, roles, permissions, user_roles, document_categories, documents, document_files, document_versions, tags, document_tags, contracts, contract_milestones, quotations, quotation_items, procurements, procurement_vendors, partners, partner_contacts, projects, approval_workflows, approval_steps, approval_requests, approval_actions, reminders, calendar_events, notifications, notification_logs, comments, favorites, saved_searches, audit_logs, system_settings, document_number_sequences`
+## Milestone A — Schema & RLS foundation (SQL you run once)
 
-รายละเอียด:
-- UUID PK ทุก table, `created_at/updated_at` + triggers, `created_by/updated_by`, soft-delete `archived_at/deleted_at`
-- Enums: `app_role` (super_admin, management, dept_manager, staff, viewer), `confidentiality_level`, `document_status`, `contract_status`, `quotation_status`, `procurement_status`, `approval_action_type`
-- Foreign keys + indexes ทุก FK และ field ที่ค้นบ่อย (status, dept_id, partner_id, end_date, tsvector)
-- Unique constraint บนเลขเอกสาร (partial unique where not archived)
-- Full-text search column (`tsvector` + GIN index) บน documents/contracts/quotations
-- `has_role(uuid, app_role)` security definer function — role เก็บใน `user_roles` แยกจาก profiles
-- RLS เปิดครบ + policies ครอบคลุม: dept-scope, owner-scope, management cross-dept, audit_logs append-only
-- Trigger สำหรับ auto-numbering (CON-2026-0001, QUO-, PRC-, DOC-)
-- Trigger auto-create profile บน signup
-- Storage bucket `documents` (private) + storage.objects policies ผูกกับ `has_role`
-- Seed data ภาษาไทยเสมือนจริง (8 users, 5 แผนก, 15 partners, 10 contracts, 15 quotations, 10 procurements, 25 documents, reminders, notifications)
+New migration `db/0006_project_centric.sql`:
 
-## 3. Design System (Modern Corporate ไทย)
-`src/styles.css` ใช้ oklch tokens ตาม palette ที่ระบุ:
-- Primary Deep Navy #163F73, Secondary #1F5AA6, Accent Teal #0F766E
-- Background #F7F9FC, Surface white
-- Success/Warning/Critical tokens
-- Typography: Inter + Noto Sans Thai (link tag ใน __root)
-- Semantic tokens: `--sidebar`, `--badge-confidential`, `--status-active/expired/warning`
-- Custom button/badge variants (hero, sidebar-active, status-*)
+1. **Extend `projects`**: `customer_name`, `project_type`, `contract_value`, `lost_reason`, `completion_comment`, and expand `status` enum to `draft | rfq_sent | quotation_received | proposal_submitted | won | lost | in_progress | completed`. Keep old statuses mapped (`planning→draft`, `active→in_progress`).
+2. **New tables**:
+   - `project_members (project_id, user_id, added_by, created_at)` — UNIQUE(project_id, user_id)
+   - `project_member_permissions (project_member_id, permission_key text, granted bool)` — UNIQUE(project_member_id, permission_key)
+   - `permission_templates (name, permissions jsonb, is_system bool)` + seed 4 system templates (Full / View w/ Price / View no Price / Scope Only)
+   - `supplier_quotations (project_id, supplier_id → partners, amount, received_date, notes, file_urls text[])`
+   - `customer_quotations (project_id, amount, submitted_date, notes, file_url, is_final)`
+   - `project_documents (project_id, document_type enum, name, file_url)` — types: `rfq_spec | tor | contract | final_quotation | other`
+   - Extend existing `contract_milestones` OR add `project_milestones` with: `milestone_number, description, due_date, payment_type (percentage|fixed_amount), payment_value, status (pending|completed|postponed|failed), actual_completion_date, postponed_to_date, status_reason, notes`. **Decision**: new `project_milestones` table to avoid conflating with contract-scoped milestones.
+3. **Security helper**: `public.has_project_permission(_user uuid, _project uuid, _key text) returns bool` (SECURITY DEFINER) — returns true if user is `super_admin`, or if a matching granted row exists.
+4. **RLS**: rewrite policies on `projects`, `project_documents`, `supplier_quotations`, `customer_quotations`, `project_milestones` so a non-admin sees a row only if they're a member. Price-hiding is done in the app layer (SELECT still returns amount; UI masks it) because column-level RLS complicates queries — server helpers return sanitized shapes.
+5. **Storage bucket** `project-files` (private) + policies (member-only read, `upload_documents` write).
+6. **Grants** on every new public table per Lovable rules.
 
-## 4. Auth (Phase 1)
-- หน้า `/auth` — Sign in / Sign up (email+password), Forgot password
-- `/reset-password` — set new password (public route)
-- `_authenticated/route.tsx` gate — redirect ไป `/auth`
-- Session listener ใน `__root.tsx` → `router.invalidate()`
-- Password policy (min 8, uppercase, number)
-- Session timeout warning
+---
 
-## 5. Layout & Navigation (Phase 1)
-- Collapsible left sidebar (shadcn) พร้อม 13 เมนู (แสดงตาม role)
-- Top nav: breadcrumb, global search, notification bell (badge count), user profile dropdown
-- Responsive (desktop-first, mobile ใช้ sheet)
-- Sample state: loading skeleton, empty state, error state components
+## Milestone B — Auth model & user management
 
-## 6. Phase 1 Modules — Foundation
-- `/dashboard` — Executive Dashboard: KPI cards (10), charts (Recharts: docs by type/dept, expiring monthly, procurement trend), urgent lists, upcoming, recent activity, filters (ปี/แผนก/สถานะ)
-- `/admin/users` — user management (list/invite/edit role/deactivate)
-- `/admin/roles` — roles & permissions viewer
-- `/admin/departments` — CRUD แผนก
-- `/admin/document-categories` — CRUD หมวดหมู่เอกสาร + custom fields
-- `/admin/master-data` — tags, projects, workflow templates, numbering formats
-- `/admin/audit-log` — ตารางบันทึกกิจกรรม (read-only, filter, export)
-- `/profile` — user profile, change password
-- `/my-tasks`, `/favorites` — placeholder ใช้จริง
+- Extend `profiles` with `role: admin | member` derivation via existing `user_roles` (already present). Rename mental model: `super_admin` = Admin, others = Member.
+- New route `/_authenticated/users` (Admin only): list users, invite by email (Supabase admin API via server fn), toggle role, deactivate.
+- Header user menu + Profile page already exist; keep.
 
-## 7. Phase 2 Modules — Document Repository
-- `/documents` — list พร้อม server-side pagination, sort, column selector, advanced filter drawer (category, dept, status, confidentiality, date range, value range, expiring, has attachment), saved searches, export CSV
-- `/documents/new`, `/documents/:id/edit` — form แบ่ง section: ข้อมูลหลัก / กำหนดการ / ไฟล์แนบ / สิทธิ์ / tags — validation ครบ (end ≥ start, value ≥ 0)
-- `/documents/:id` — detail page: header + status/confidentiality badge, tabs (ข้อมูล / ไฟล์ & versions / กิจกรรม / สิทธิ์ / audit)
-- File upload: drag & drop, multi-file, validate type/size, upload ไป Supabase Storage `documents/{dept}/{year}/{type}/{doc_id}/v{n}/`, บันทึก file_hash, signed URL สำหรับ download/preview (PDF/image)
-- Version control: อัปโหลด version ใหม่ = สร้าง row ใหม่ใน `document_versions`, ตั้ง current_version_id, ไม่ทับไฟล์เดิม
-- Soft delete + restore (admin)
-- Global search bar (debounced, ใช้ tsvector)
-- Favorites toggle
-- Audit logs ทุก view/create/update/upload/download
+---
 
-## 8. Business Rules & Validation
-Zod schemas ทุก form, database CHECK constraints, RLS policies บังคับซ้ำ
+## Milestone C — Project lifecycle UI (the core rework)
 
-## 9. Definition of Done
-ทุก feature: UI + form validation + DB constraint + RLS + loading/empty/error state + responsive + audit log + ทดสอบ RLS ต่อ role
+Rebuild `projects.$id` as a **Stepper + Tab layout** with these tabs, gated by permissions:
 
-## Deliverables ที่คุณต้องทำเอง
-1. รัน SQL migrations ที่ผมสร้างบน Supabase SQL Editor (ผมจะทำเป็นไฟล์ single-file ให้ copy-paste)
-2. สร้าง Storage bucket `documents` (private) — ผมจะรวม SQL ไว้ให้
-3. เปิด Email auth ใน Supabase (default เปิดอยู่แล้ว)
+1. **ภาพรวม (Overview)** — basic info, status, contract value, dates, completion comment
+2. **Spec & RFQ** — spec text/rich, uploaded RFQ files, supplier selection → "ส่ง RFQ" action moves status to `rfq_sent`
+3. **ใบเสนอราคา Supplier** — table + upload form (multi-file), compare view
+4. **ใบเสนอราคาลูกค้า** — upload, amount, submit date
+5. **ผลการเสนองาน** — Won / Lost buttons (+ lost reason if Lost)
+6. **เอกสารสำคัญ** (unlocked when Won) — TOR, Contract, Other; pick existing Customer Quotation as Final or upload new
+7. **งวดงาน (Milestones)** — inline-editable table, add/remove rows, status dropdown per row with side-effect fields (actual date / postponed date / reason), progress bar computed from completion
+8. **สมาชิก (Members)** — Admin-only Permission Matrix (rows=users, cols=13 permission keys, checkboxes, "Select all", template dropdown)
+9. **ปิดโครงการ** — Mark as Completed with confirmation + comment
 
-## Assumptions (จะระบุใน README)
-- Email/password auth เท่านั้นใน Phase 1 (Google/Microsoft ไว้ Phase ถัดไป)
-- Notification เฉพาะ in-app (Email/LINE/Teams webhook ไว้ Phase 4)
-- OCR/AI Semantic Search ยังไม่ทำ (spec ระบุให้เตรียมโครงสร้างพอ)
-- Approval Workflow, Calendar, Reminder Engine, Reports รายละเอียดลึก = Phase 4-5 (spec ให้เริ่ม Phase 1+2 ก่อน)
+New page `projects.new` updated to match new fields (customer, type).
 
-## ขั้นตอนถัดไป
-1. ยืนยันแผนนี้
-2. ผมขอ `VITE_SUPABASE_URL` + `VITE_SUPABASE_PUBLISHABLE_KEY` ผ่าน secure form
-3. เริ่ม build design system → schema SQL → auth → layout → dashboard → documents module
+Project list: filter by expanded status set, status color badges.
+
+---
+
+## Milestone D — Permission enforcement
+
+- `usePermissions(projectId)` hook → fetches current user's permissions for that project, returns `{ can(key), isAdmin }`.
+- Every tab section wraps in `<PermGate keys={[...]}>` — hides (not disables) when denied.
+- Price masking helper `<Money value={n} allowed={can('view_supplier_quotation')} />` renders `฿ ••••••` when not allowed.
+- Server: for each project fetcher, add a server fn that resolves permissions and strips amount fields before returning to non-privileged users (defense in depth beyond RLS).
+
+---
+
+## Milestone E — Smart Search
+
+New route `/_authenticated/search`:
+
+- Tabs: Milestones / Supplier Quotations / Projects / Documents
+- Each tab: filters as spec'd + result table
+- Global search bar in header (already exists as concept) → routes to `/search?q=...` with grouped results (Projects / Documents / Suppliers / Milestones)
+
+Dashboard additions: Upcoming Milestones (next 30d), Overdue Milestones (red), status summary cards using new statuses.
+
+---
+
+## Technical notes
+
+- **Stack unchanged**: TanStack Start, external Supabase, TanStack Query, shadcn/ui, Thai UI labels.
+- **Legacy modules stay**: Contracts / Quotations / Procurements pages continue to work standalone; they're not deleted. Over time the primary workflow shifts into Projects.
+- **Storage**: use existing `getSupabase()` client + new `project-files` bucket; signed URLs for downloads to enforce membership.
+- **Migrations you run manually** after each SQL milestone (I'll tell you which file). Milestone A ships one file.
+- **Roles**: reuse existing `user_roles` + `has_role` — no new role table.
+
+---
+
+## Suggested order & sizing
+
+| # | Milestone | Files touched | Requires SQL run |
+|---|-----------|---------------|------------------|
+| A | Schema + RLS + storage bucket | 1 SQL | ✅ yes |
+| B | User Management page | ~3 tsx | no |
+| C | Project lifecycle tabs + forms | ~8 tsx | no |
+| D | Permission hook + gating + masking | ~4 tsx + helpers | no |
+| E | Smart Search + Dashboard updates | ~3 tsx | no |
+
+I'll start with **Milestone A** on approval, wait for you to run the SQL and confirm, then continue B→E without stopping unless you want checkpoints between them.
+
+**Two quick questions before I start:**
+1. Confirm: create new `project_milestones` table (not reuse `contract_milestones`)?
+2. For "invite user by email" — OK to use Supabase Admin API via a server function that requires `super_admin`? (needs service role key in secrets)
