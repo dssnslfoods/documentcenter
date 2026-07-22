@@ -27,8 +27,14 @@ import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedAuditLogRouteImport } from './routes/_authenticated/audit-log'
 import { Route as AuthenticatedApprovalsRouteImport } from './routes/_authenticated/approvals'
 import { Route as AuthenticatedDocumentsIndexRouteImport } from './routes/_authenticated/documents.index'
+import { Route as AuthenticatedQuotationsNewRouteImport } from './routes/_authenticated/quotations.new'
+import { Route as AuthenticatedQuotationsIdRouteImport } from './routes/_authenticated/quotations.$id'
+import { Route as AuthenticatedProcurementsNewRouteImport } from './routes/_authenticated/procurements.new'
+import { Route as AuthenticatedProcurementsIdRouteImport } from './routes/_authenticated/procurements.$id'
 import { Route as AuthenticatedDocumentsNewRouteImport } from './routes/_authenticated/documents.new'
 import { Route as AuthenticatedDocumentsIdRouteImport } from './routes/_authenticated/documents.$id'
+import { Route as AuthenticatedContractsNewRouteImport } from './routes/_authenticated/contracts.new'
+import { Route as AuthenticatedContractsIdRouteImport } from './routes/_authenticated/contracts.$id'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -122,6 +128,30 @@ const AuthenticatedDocumentsIndexRoute =
     path: '/documents/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedQuotationsNewRoute =
+  AuthenticatedQuotationsNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => AuthenticatedQuotationsRoute,
+  } as any)
+const AuthenticatedQuotationsIdRoute =
+  AuthenticatedQuotationsIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedQuotationsRoute,
+  } as any)
+const AuthenticatedProcurementsNewRoute =
+  AuthenticatedProcurementsNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => AuthenticatedProcurementsRoute,
+  } as any)
+const AuthenticatedProcurementsIdRoute =
+  AuthenticatedProcurementsIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedProcurementsRoute,
+  } as any)
 const AuthenticatedDocumentsNewRoute =
   AuthenticatedDocumentsNewRouteImport.update({
     id: '/documents/new',
@@ -134,6 +164,18 @@ const AuthenticatedDocumentsIdRoute =
     path: '/documents/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedContractsNewRoute =
+  AuthenticatedContractsNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => AuthenticatedContractsRoute,
+  } as any)
+const AuthenticatedContractsIdRoute =
+  AuthenticatedContractsIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedContractsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -142,18 +184,24 @@ export interface FileRoutesByFullPath {
   '/approvals': typeof AuthenticatedApprovalsRoute
   '/audit-log': typeof AuthenticatedAuditLogRoute
   '/calendar': typeof AuthenticatedCalendarRoute
-  '/contracts': typeof AuthenticatedContractsRoute
+  '/contracts': typeof AuthenticatedContractsRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/partners': typeof AuthenticatedPartnersRoute
-  '/procurements': typeof AuthenticatedProcurementsRoute
+  '/procurements': typeof AuthenticatedProcurementsRouteWithChildren
   '/profile': typeof AuthenticatedProfileRoute
   '/projects': typeof AuthenticatedProjectsRoute
-  '/quotations': typeof AuthenticatedQuotationsRoute
+  '/quotations': typeof AuthenticatedQuotationsRouteWithChildren
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/contracts/$id': typeof AuthenticatedContractsIdRoute
+  '/contracts/new': typeof AuthenticatedContractsNewRoute
   '/documents/$id': typeof AuthenticatedDocumentsIdRoute
   '/documents/new': typeof AuthenticatedDocumentsNewRoute
+  '/procurements/$id': typeof AuthenticatedProcurementsIdRoute
+  '/procurements/new': typeof AuthenticatedProcurementsNewRoute
+  '/quotations/$id': typeof AuthenticatedQuotationsIdRoute
+  '/quotations/new': typeof AuthenticatedQuotationsNewRoute
   '/documents/': typeof AuthenticatedDocumentsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -163,18 +211,24 @@ export interface FileRoutesByTo {
   '/approvals': typeof AuthenticatedApprovalsRoute
   '/audit-log': typeof AuthenticatedAuditLogRoute
   '/calendar': typeof AuthenticatedCalendarRoute
-  '/contracts': typeof AuthenticatedContractsRoute
+  '/contracts': typeof AuthenticatedContractsRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/partners': typeof AuthenticatedPartnersRoute
-  '/procurements': typeof AuthenticatedProcurementsRoute
+  '/procurements': typeof AuthenticatedProcurementsRouteWithChildren
   '/profile': typeof AuthenticatedProfileRoute
   '/projects': typeof AuthenticatedProjectsRoute
-  '/quotations': typeof AuthenticatedQuotationsRoute
+  '/quotations': typeof AuthenticatedQuotationsRouteWithChildren
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/contracts/$id': typeof AuthenticatedContractsIdRoute
+  '/contracts/new': typeof AuthenticatedContractsNewRoute
   '/documents/$id': typeof AuthenticatedDocumentsIdRoute
   '/documents/new': typeof AuthenticatedDocumentsNewRoute
+  '/procurements/$id': typeof AuthenticatedProcurementsIdRoute
+  '/procurements/new': typeof AuthenticatedProcurementsNewRoute
+  '/quotations/$id': typeof AuthenticatedQuotationsIdRoute
+  '/quotations/new': typeof AuthenticatedQuotationsNewRoute
   '/documents': typeof AuthenticatedDocumentsIndexRoute
 }
 export interface FileRoutesById {
@@ -186,18 +240,24 @@ export interface FileRoutesById {
   '/_authenticated/approvals': typeof AuthenticatedApprovalsRoute
   '/_authenticated/audit-log': typeof AuthenticatedAuditLogRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
-  '/_authenticated/contracts': typeof AuthenticatedContractsRoute
+  '/_authenticated/contracts': typeof AuthenticatedContractsRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/notifications': typeof AuthenticatedNotificationsRoute
   '/_authenticated/partners': typeof AuthenticatedPartnersRoute
-  '/_authenticated/procurements': typeof AuthenticatedProcurementsRoute
+  '/_authenticated/procurements': typeof AuthenticatedProcurementsRouteWithChildren
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/projects': typeof AuthenticatedProjectsRoute
-  '/_authenticated/quotations': typeof AuthenticatedQuotationsRoute
+  '/_authenticated/quotations': typeof AuthenticatedQuotationsRouteWithChildren
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/_authenticated/contracts/$id': typeof AuthenticatedContractsIdRoute
+  '/_authenticated/contracts/new': typeof AuthenticatedContractsNewRoute
   '/_authenticated/documents/$id': typeof AuthenticatedDocumentsIdRoute
   '/_authenticated/documents/new': typeof AuthenticatedDocumentsNewRoute
+  '/_authenticated/procurements/$id': typeof AuthenticatedProcurementsIdRoute
+  '/_authenticated/procurements/new': typeof AuthenticatedProcurementsNewRoute
+  '/_authenticated/quotations/$id': typeof AuthenticatedQuotationsIdRoute
+  '/_authenticated/quotations/new': typeof AuthenticatedQuotationsNewRoute
   '/_authenticated/documents/': typeof AuthenticatedDocumentsIndexRoute
 }
 export interface FileRouteTypes {
@@ -219,8 +279,14 @@ export interface FileRouteTypes {
     | '/quotations'
     | '/reports'
     | '/settings'
+    | '/contracts/$id'
+    | '/contracts/new'
     | '/documents/$id'
     | '/documents/new'
+    | '/procurements/$id'
+    | '/procurements/new'
+    | '/quotations/$id'
+    | '/quotations/new'
     | '/documents/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -240,8 +306,14 @@ export interface FileRouteTypes {
     | '/quotations'
     | '/reports'
     | '/settings'
+    | '/contracts/$id'
+    | '/contracts/new'
     | '/documents/$id'
     | '/documents/new'
+    | '/procurements/$id'
+    | '/procurements/new'
+    | '/quotations/$id'
+    | '/quotations/new'
     | '/documents'
   id:
     | '__root__'
@@ -262,8 +334,14 @@ export interface FileRouteTypes {
     | '/_authenticated/quotations'
     | '/_authenticated/reports'
     | '/_authenticated/settings'
+    | '/_authenticated/contracts/$id'
+    | '/_authenticated/contracts/new'
     | '/_authenticated/documents/$id'
     | '/_authenticated/documents/new'
+    | '/_authenticated/procurements/$id'
+    | '/_authenticated/procurements/new'
+    | '/_authenticated/quotations/$id'
+    | '/_authenticated/quotations/new'
     | '/_authenticated/documents/'
   fileRoutesById: FileRoutesById
 }
@@ -402,6 +480,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDocumentsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/quotations/new': {
+      id: '/_authenticated/quotations/new'
+      path: '/new'
+      fullPath: '/quotations/new'
+      preLoaderRoute: typeof AuthenticatedQuotationsNewRouteImport
+      parentRoute: typeof AuthenticatedQuotationsRoute
+    }
+    '/_authenticated/quotations/$id': {
+      id: '/_authenticated/quotations/$id'
+      path: '/$id'
+      fullPath: '/quotations/$id'
+      preLoaderRoute: typeof AuthenticatedQuotationsIdRouteImport
+      parentRoute: typeof AuthenticatedQuotationsRoute
+    }
+    '/_authenticated/procurements/new': {
+      id: '/_authenticated/procurements/new'
+      path: '/new'
+      fullPath: '/procurements/new'
+      preLoaderRoute: typeof AuthenticatedProcurementsNewRouteImport
+      parentRoute: typeof AuthenticatedProcurementsRoute
+    }
+    '/_authenticated/procurements/$id': {
+      id: '/_authenticated/procurements/$id'
+      path: '/$id'
+      fullPath: '/procurements/$id'
+      preLoaderRoute: typeof AuthenticatedProcurementsIdRouteImport
+      parentRoute: typeof AuthenticatedProcurementsRoute
+    }
     '/_authenticated/documents/new': {
       id: '/_authenticated/documents/new'
       path: '/documents/new'
@@ -416,21 +522,83 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDocumentsIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/contracts/new': {
+      id: '/_authenticated/contracts/new'
+      path: '/new'
+      fullPath: '/contracts/new'
+      preLoaderRoute: typeof AuthenticatedContractsNewRouteImport
+      parentRoute: typeof AuthenticatedContractsRoute
+    }
+    '/_authenticated/contracts/$id': {
+      id: '/_authenticated/contracts/$id'
+      path: '/$id'
+      fullPath: '/contracts/$id'
+      preLoaderRoute: typeof AuthenticatedContractsIdRouteImport
+      parentRoute: typeof AuthenticatedContractsRoute
+    }
   }
 }
+
+interface AuthenticatedContractsRouteChildren {
+  AuthenticatedContractsIdRoute: typeof AuthenticatedContractsIdRoute
+  AuthenticatedContractsNewRoute: typeof AuthenticatedContractsNewRoute
+}
+
+const AuthenticatedContractsRouteChildren: AuthenticatedContractsRouteChildren =
+  {
+    AuthenticatedContractsIdRoute: AuthenticatedContractsIdRoute,
+    AuthenticatedContractsNewRoute: AuthenticatedContractsNewRoute,
+  }
+
+const AuthenticatedContractsRouteWithChildren =
+  AuthenticatedContractsRoute._addFileChildren(
+    AuthenticatedContractsRouteChildren,
+  )
+
+interface AuthenticatedProcurementsRouteChildren {
+  AuthenticatedProcurementsIdRoute: typeof AuthenticatedProcurementsIdRoute
+  AuthenticatedProcurementsNewRoute: typeof AuthenticatedProcurementsNewRoute
+}
+
+const AuthenticatedProcurementsRouteChildren: AuthenticatedProcurementsRouteChildren =
+  {
+    AuthenticatedProcurementsIdRoute: AuthenticatedProcurementsIdRoute,
+    AuthenticatedProcurementsNewRoute: AuthenticatedProcurementsNewRoute,
+  }
+
+const AuthenticatedProcurementsRouteWithChildren =
+  AuthenticatedProcurementsRoute._addFileChildren(
+    AuthenticatedProcurementsRouteChildren,
+  )
+
+interface AuthenticatedQuotationsRouteChildren {
+  AuthenticatedQuotationsIdRoute: typeof AuthenticatedQuotationsIdRoute
+  AuthenticatedQuotationsNewRoute: typeof AuthenticatedQuotationsNewRoute
+}
+
+const AuthenticatedQuotationsRouteChildren: AuthenticatedQuotationsRouteChildren =
+  {
+    AuthenticatedQuotationsIdRoute: AuthenticatedQuotationsIdRoute,
+    AuthenticatedQuotationsNewRoute: AuthenticatedQuotationsNewRoute,
+  }
+
+const AuthenticatedQuotationsRouteWithChildren =
+  AuthenticatedQuotationsRoute._addFileChildren(
+    AuthenticatedQuotationsRouteChildren,
+  )
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedApprovalsRoute: typeof AuthenticatedApprovalsRoute
   AuthenticatedAuditLogRoute: typeof AuthenticatedAuditLogRoute
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
-  AuthenticatedContractsRoute: typeof AuthenticatedContractsRoute
+  AuthenticatedContractsRoute: typeof AuthenticatedContractsRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedNotificationsRoute: typeof AuthenticatedNotificationsRoute
   AuthenticatedPartnersRoute: typeof AuthenticatedPartnersRoute
-  AuthenticatedProcurementsRoute: typeof AuthenticatedProcurementsRoute
+  AuthenticatedProcurementsRoute: typeof AuthenticatedProcurementsRouteWithChildren
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedProjectsRoute: typeof AuthenticatedProjectsRoute
-  AuthenticatedQuotationsRoute: typeof AuthenticatedQuotationsRoute
+  AuthenticatedQuotationsRoute: typeof AuthenticatedQuotationsRouteWithChildren
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedDocumentsIdRoute: typeof AuthenticatedDocumentsIdRoute
@@ -442,14 +610,14 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedApprovalsRoute: AuthenticatedApprovalsRoute,
   AuthenticatedAuditLogRoute: AuthenticatedAuditLogRoute,
   AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
-  AuthenticatedContractsRoute: AuthenticatedContractsRoute,
+  AuthenticatedContractsRoute: AuthenticatedContractsRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedNotificationsRoute: AuthenticatedNotificationsRoute,
   AuthenticatedPartnersRoute: AuthenticatedPartnersRoute,
-  AuthenticatedProcurementsRoute: AuthenticatedProcurementsRoute,
+  AuthenticatedProcurementsRoute: AuthenticatedProcurementsRouteWithChildren,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedProjectsRoute: AuthenticatedProjectsRoute,
-  AuthenticatedQuotationsRoute: AuthenticatedQuotationsRoute,
+  AuthenticatedQuotationsRoute: AuthenticatedQuotationsRouteWithChildren,
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedDocumentsIdRoute: AuthenticatedDocumentsIdRoute,
@@ -469,13 +637,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

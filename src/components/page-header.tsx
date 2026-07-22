@@ -9,7 +9,7 @@ export function EmptyState({
 }: {
   icon?: React.ComponentType<{ className?: string }>;
   title: string;
-  description?: string;
+  description?: React.ReactNode;
   action?: ReactNode;
 }) {
   return (
@@ -30,7 +30,7 @@ export function PageHeader({
   actions,
 }: {
   title: string;
-  description?: string;
+  description?: React.ReactNode;
   actions?: ReactNode;
 }) {
   return (
