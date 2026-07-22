@@ -67,11 +67,12 @@ function NewContract() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema) as never,
-    defaultValues: { currency: "THB", auto_renewal: false, notice_days: 30, deliveries: [], billings: [] },
+    defaultValues: { currency: "THB", auto_renewal: false, notice_days: 30, deliveries: [], billings: [], attachment_links: [] },
   });
 
   const deliveries = useFieldArray({ control: form.control, name: "deliveries" });
   const billings = useFieldArray({ control: form.control, name: "billings" });
+  const links = useFieldArray({ control: form.control, name: "attachment_links" });
 
   const watchDeliveries = form.watch("deliveries");
   const watchBillings = form.watch("billings");
@@ -101,6 +102,7 @@ function NewContract() {
         owner_id: user.user.id,
         created_by: user.user.id,
         status: "draft" as const,
+        attachment_links: values.attachment_links ?? [],
       };
       const { data, error } = await sb.from("contracts").insert(payload).select("id").single();
       if (error) throw error;
