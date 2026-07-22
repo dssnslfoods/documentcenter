@@ -151,20 +151,37 @@ export function TeamTab({
                 </div>
                 <Badge variant="outline">{m.perm_count} สิทธิ์</Badge>
                 {isAdmin && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-destructive"
-                    onClick={() => confirm("ลบสมาชิกออกจากโครงการ?") && remove.mutate(m.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setEditMember({ id: m.id, label: m.profiles?.full_name || m.profiles?.email || "-" })}
+                      title="แก้ไขสิทธิ์"
+                    >
+                      <ShieldCheck className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive"
+                      onClick={() => confirm("ลบสมาชิกออกจากโครงการ?") && remove.mutate(m.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </>
                 )}
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+
+      <PermissionEditorDialog
+        open={!!editMember}
+        onOpenChange={(v) => !v && setEditMember(null)}
+        projectMemberId={editMember?.id ?? null}
+        memberLabel={editMember?.label ?? ""}
+      />
     </div>
   );
 }
