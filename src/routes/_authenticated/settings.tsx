@@ -22,20 +22,27 @@ function Settings() {
     <div className="space-y-6">
       <PageHeader title="ตั้งค่าระบบ" description="จัดการ Master Data และการตั้งค่าองค์กร (สำหรับ Super Admin)" />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {cards.map((c) => (
-          <Card key={c.title} className="cursor-pointer transition-shadow hover:shadow-md">
-            <CardHeader>
-              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <c.icon className="h-5 w-5" />
-              </div>
-              <CardTitle className="mt-3 text-base">{c.title}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">{c.desc}</p>
-              <p className="mt-2 text-xs text-warning">Phase 3+</p>
-            </CardContent>
-          </Card>
-        ))}
+        {cards.map((c) => {
+          const inner = (
+            <Card className="h-full cursor-pointer transition-shadow hover:shadow-md">
+              <CardHeader>
+                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <c.icon className="h-5 w-5" />
+                </div>
+                <CardTitle className="mt-3 text-base">{c.title}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">{c.desc}</p>
+                {!("to" in c) && <p className="mt-2 text-xs text-warning">เร็ว ๆ นี้</p>}
+              </CardContent>
+            </Card>
+          );
+          return "to" in c && c.to ? (
+            <Link key={c.title} to={c.to}>{inner}</Link>
+          ) : (
+            <div key={c.title}>{inner}</div>
+          );
+        })}
       </div>
       <p className="text-xs text-muted-foreground">
         <Link to="/audit-log" className="text-primary hover:underline">→ ดู Audit Log</Link>
