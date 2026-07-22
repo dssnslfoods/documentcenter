@@ -11,7 +11,7 @@ import { getSupabase } from "@/lib/supabase";
 import { fmtDate, fmtCurrency } from "@/lib/format";
 import { ContractStatusBadge } from "@/components/status-badge";
 
-export const Route = createFileRoute("/_authenticated/contracts")({
+export const Route = createFileRoute("/_authenticated/contracts/")({
   head: () => ({
     meta: [
       { title: "สัญญา | Document Hub" },

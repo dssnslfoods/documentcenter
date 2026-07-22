@@ -11,7 +11,7 @@ import { getSupabase } from "@/lib/supabase";
 import { fmtDate, fmtCurrency } from "@/lib/format";
 import { ProcurementStatusBadge } from "@/components/status-badge";
 
-export const Route = createFileRoute("/_authenticated/procurements")({
+export const Route = createFileRoute("/_authenticated/procurements/")({
   head: () => ({
     meta: [
       { title: "จัดซื้อและจัดจ้าง | Document Hub" },

@@ -11,7 +11,7 @@ import { getSupabase } from "@/lib/supabase";
 import { fmtDate, fmtCurrency } from "@/lib/format";
 import { QuotationStatusBadge } from "@/components/status-badge";
 
-export const Route = createFileRoute("/_authenticated/quotations")({
+export const Route = createFileRoute("/_authenticated/quotations/")({
   head: () => ({
     meta: [
       { title: "ใบเสนอราคา | Document Hub" },
