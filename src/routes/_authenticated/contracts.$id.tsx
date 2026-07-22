@@ -148,7 +148,64 @@ function ContractDetail() {
           </CardContent>
         </Card>
       </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <MilestoneList
+          title="งวดส่งงาน"
+          icon={Truck}
+          currency={c.currency ?? "THB"}
+          items={(milestones ?? []).filter((m) => m.kind === "delivery")}
+        />
+        <MilestoneList
+          title="การเรียกเก็บเงิน"
+          icon={Receipt}
+          currency={c.currency ?? "THB"}
+          items={(milestones ?? []).filter((m) => m.kind === "billing")}
+          showTotal
+        />
+      </div>
     </div>
+  );
+}
+
+function MilestoneList({ title, icon: Icon, items, currency, showTotal }: {
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  items: Milestone[];
+  currency: string;
+  showTotal?: boolean;
+}) {
+  const total = items.reduce((s, m) => s + (Number(m.amount) || 0), 0);
+  return (
+    <Card>
+      <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Icon className="h-4 w-4" />{title} ({items.length})</CardTitle></CardHeader>
+      <CardContent className="space-y-2">
+        {items.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-2">ไม่มีรายการ</p>
+        ) : (
+          items.map((m, i) => (
+            <div key={m.id} className="flex items-start justify-between gap-3 rounded-md border p-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">งวด {i + 1}</span>
+                  <Badge variant="secondary" className="text-[10px]">{m.status ?? "pending"}</Badge>
+                </div>
+                <div className="text-sm font-medium mt-0.5 truncate">{m.name}</div>
+                {m.notes && <div className="text-xs text-muted-foreground mt-0.5 truncate">{m.notes}</div>}
+                <div className="text-xs text-muted-foreground mt-1">ครบกำหนด: {fmtDate(m.due_date)}</div>
+              </div>
+              <div className="text-sm font-semibold whitespace-nowrap">{fmtCurrency(m.amount, currency)}</div>
+            </div>
+          ))
+        )}
+        {showTotal && items.length > 0 && (
+          <div className="flex justify-end pt-2 border-t text-sm">
+            <span className="text-muted-foreground">รวม:&nbsp;</span>
+            <span className="font-semibold">{fmtCurrency(total, currency)}</span>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
