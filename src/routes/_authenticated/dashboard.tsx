@@ -93,6 +93,44 @@ function Dashboard() {
     },
   });
 
+  const { data: pipeline } = useQuery({
+    queryKey: ["project-pipeline"],
+    queryFn: async () => {
+      const { data } = await getSupabase()
+        .from("projects")
+        .select("status")
+        .is("archived_at", null);
+      const labels: Record<string, string> = {
+        draft: "ร่าง", rfq_sent: "RFQ", quotation_received: "Supplier",
+        proposal_submitted: "Proposal", won: "ชนะงาน", lost: "แพ้งาน",
+        in_progress: "ดำเนินการ", completed: "ปิด",
+      };
+      const map = new Map<string, number>();
+      (data ?? []).forEach((r: { status: string | null }) => {
+        const k = labels[r.status ?? "draft"] ?? "อื่นๆ";
+        map.set(k, (map.get(k) ?? 0) + 1);
+      });
+      return Array.from(map, ([name, count]) => ({ name, count }));
+    },
+  });
+
+  const { data: upcomingMilestones } = useQuery({
+    queryKey: ["upcoming-milestones"],
+    queryFn: async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const in30 = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+      const { data } = await getSupabase()
+        .from("project_milestones")
+        .select("id, description, due_date, status, project_id, projects(code, name)")
+        .eq("status", "pending")
+        .gte("due_date", today)
+        .lte("due_date", in30)
+        .order("due_date", { ascending: true })
+        .limit(10);
+      return data ?? [];
+    },
+  });
+
   return (
     <div className="space-y-6">
       <PageHeader title="ภาพรวม" description="Executive Dashboard — สถานะเอกสาร สัญญา และงานสำคัญขององค์กร" />
