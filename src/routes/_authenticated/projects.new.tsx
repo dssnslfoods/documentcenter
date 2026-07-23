@@ -17,12 +17,13 @@ import { getSupabase } from "@/lib/supabase";
 const schema = z.object({
   name: z.string().trim().min(1, "กรุณากรอกชื่อโครงการ").max(200),
   description: z.string().optional(),
+  customer_name: z.string().trim().optional(),
+  project_type: z.string().trim().optional(),
   department_id: z.string().uuid("กรุณาเลือกแผนก").optional().or(z.literal("")),
   start_date: z.string().optional().or(z.literal("")),
   end_date: z.string().optional().or(z.literal("")),
+  contract_value: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
   budget: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
-  status: z.enum(["planning", "active", "on_hold", "completed", "cancelled"]).default("planning"),
-  progress: z.coerce.number().int().min(0).max(100).default(0),
 }).refine(
   (v) => !v.start_date || !v.end_date || new Date(v.end_date) >= new Date(v.start_date),
   { path: ["end_date"], message: "วันสิ้นสุดต้องไม่น้อยกว่าวันเริ่ม" },
@@ -46,7 +47,7 @@ function NewProject() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema) as never,
-    defaultValues: { status: "planning", progress: 0 },
+    defaultValues: {},
   });
 
   const create = useMutation({
@@ -57,12 +58,14 @@ function NewProject() {
       const payload = {
         name: values.name,
         description: values.description || null,
+        customer_name: values.customer_name || null,
+        project_type: values.project_type || null,
         department_id: values.department_id || null,
         start_date: values.start_date || null,
         end_date: values.end_date || null,
+        contract_value: values.contract_value === "" || values.contract_value == null ? null : Number(values.contract_value),
         budget: values.budget === "" || values.budget == null ? null : Number(values.budget),
-        status: values.status,
-        progress: values.progress,
+        status: "draft",
         owner_id: user.user.id,
         created_by: user.user.id,
       };
@@ -80,7 +83,7 @@ function NewProject() {
 
   return (
     <div className="max-w-3xl">
-      <PageHeader title="เพิ่มโครงการใหม่" description="กรอกข้อมูลโครงการ รหัสจะถูกสร้างอัตโนมัติ (PRJ-YYYY-NNNN)" />
+      <PageHeader title="เพิ่มโครงการใหม่" description="รหัสจะถูกสร้างอัตโนมัติ (PRJ-YYYY-NNNN) — โครงการจะเริ่มที่สถานะ 'ร่าง'" />
       <form onSubmit={form.handleSubmit((v) => create.mutate(v))} className="space-y-6">
         <Card>
           <CardHeader><CardTitle>ข้อมูลโครงการ</CardTitle></CardHeader>
@@ -89,6 +92,14 @@ function NewProject() {
               <Label>ชื่อโครงการ *</Label>
               <Input {...form.register("name")} />
               {form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label>ลูกค้า</Label>
+              <Input placeholder="ชื่อลูกค้า/หน่วยงาน" {...form.register("customer_name")} />
+            </div>
+            <div className="space-y-2">
+              <Label>ประเภทโครงการ</Label>
+              <Input placeholder="เช่น ติดตั้งระบบ, งานก่อสร้าง" {...form.register("project_type")} />
             </div>
             <div className="sm:col-span-2 space-y-2">
               <Label>รายละเอียด</Label>
@@ -103,24 +114,11 @@ function NewProject() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>สถานะ</Label>
-              <Select defaultValue="planning" onValueChange={(v) => form.setValue("status", v as FormValues["status"])}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="planning">วางแผน</SelectItem>
-                  <SelectItem value="active">ดำเนินการ</SelectItem>
-                  <SelectItem value="on_hold">พักไว้</SelectItem>
-                  <SelectItem value="completed">เสร็จสิ้น</SelectItem>
-                  <SelectItem value="cancelled">ยกเลิก</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>ระยะเวลาและงบประมาณ</CardTitle></CardHeader>
+          <CardHeader><CardTitle>ระยะเวลาและมูลค่า</CardTitle></CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-2"><Label>วันเริ่ม</Label><Input type="date" {...form.register("start_date")} /></div>
             <div className="space-y-2">
@@ -128,11 +126,8 @@ function NewProject() {
               <Input type="date" {...form.register("end_date")} />
               {form.formState.errors.end_date && <p className="text-xs text-destructive">{form.formState.errors.end_date.message}</p>}
             </div>
-            <div className="space-y-2"><Label>งบประมาณ (บาท)</Label><Input type="number" step="0.01" min="0" {...form.register("budget")} /></div>
-            <div className="space-y-2 sm:col-span-3">
-              <Label>ความคืบหน้า (%)</Label>
-              <Input type="number" min="0" max="100" {...form.register("progress")} />
-            </div>
+            <div className="space-y-2"><Label>งบประมาณภายใน (บาท)</Label><Input type="number" step="0.01" min="0" {...form.register("budget")} /></div>
+            <div className="space-y-2 sm:col-span-3"><Label>มูลค่าสัญญา (บาท)</Label><Input type="number" step="0.01" min="0" {...form.register("contract_value")} /></div>
           </CardContent>
         </Card>
 

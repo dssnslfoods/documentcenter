@@ -7,36 +7,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDate, fmtCurrency } from "@/lib/format";
+import { LIFECYCLE_LABEL, STATUS_TONE, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 
 export const Route = createFileRoute("/_authenticated/projects/")({
   head: () => ({
     meta: [
       { title: "โครงการ | Document Hub" },
-      { name: "description", content: "จัดการโครงการและเอกสารที่เชื่อมโยง" },
+      { name: "description", content: "จัดการโครงการตามวงจร Draft → RFQ → Proposal → Won/Lost → Execution → Closed" },
     ],
   }),
   component: ProjectsList,
 });
-
-const STATUS_LABEL: Record<string, string> = {
-  planning: "วางแผน",
-  active: "ดำเนินการ",
-  on_hold: "พักไว้",
-  completed: "เสร็จสิ้น",
-  cancelled: "ยกเลิก",
-};
-
-const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  planning: "outline",
-  active: "default",
-  on_hold: "secondary",
-  completed: "secondary",
-  cancelled: "destructive",
-};
 
 function ProjectsList() {
   const [q, setQ] = useState("");
@@ -50,11 +34,11 @@ function ProjectsList() {
       const sb = getSupabase();
       let query = sb
         .from("projects")
-        .select("id, code, name, status, progress, start_date, end_date, budget, departments(name_th)", { count: "exact" })
+        .select("id, code, name, status, customer_name, project_type, contract_value, start_date, end_date, budget", { count: "exact" })
         .is("archived_at", null)
         .order("created_at", { ascending: false })
         .range(page * pageSize, page * pageSize + pageSize - 1);
-      if (q.trim()) query = query.or(`name.ilike.%${q}%,code.ilike.%${q}%,description.ilike.%${q}%`);
+      if (q.trim()) query = query.or(`name.ilike.%${q}%,code.ilike.%${q}%,customer_name.ilike.%${q}%,description.ilike.%${q}%`);
       if (status !== "all") query = query.eq("status", status);
       const { data, count, error } = await query;
       if (error) throw error;
@@ -68,7 +52,7 @@ function ProjectsList() {
     <div className="space-y-6">
       <PageHeader
         title="โครงการ"
-        description="จัดการโครงการและติดตามความคืบหน้า"
+        description="จัดการโครงการตลอด lifecycle — RFQ, ใบเสนอราคา, สัญญา, งวดงาน"
         actions={
           <Button asChild>
             <Link to="/projects/new"><Plus className="mr-2 h-4 w-4" />เพิ่มโครงการใหม่</Link>
@@ -80,16 +64,16 @@ function ProjectsList() {
         <CardContent className="flex flex-col gap-3 p-4 sm:flex-row">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="ค้นหาชื่อ / รหัสโครงการ..." value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} className="pl-9" />
+            <Input placeholder="ค้นหาชื่อ / รหัส / ลูกค้า..." value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} className="pl-9" />
           </div>
           <Select value={status} onValueChange={(v) => { setStatus(v); setPage(0); }}>
-            <SelectTrigger className="w-full sm:w-48">
+            <SelectTrigger className="w-full sm:w-56">
               <Filter className="mr-2 h-4 w-4" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">สถานะทั้งหมด</SelectItem>
-              {Object.entries(STATUS_LABEL).map(([k, v]) => (
+              {Object.entries(LIFECYCLE_LABEL).map(([k, v]) => (
                 <SelectItem key={k} value={k}>{v}</SelectItem>
               ))}
             </SelectContent>
@@ -110,34 +94,31 @@ function ProjectsList() {
                   <tr>
                     <th className="px-4 py-3">รหัส</th>
                     <th className="px-4 py-3">ชื่อโครงการ</th>
-                    <th className="px-4 py-3">แผนก</th>
+                    <th className="px-4 py-3">ลูกค้า</th>
                     <th className="px-4 py-3">สถานะ</th>
-                    <th className="px-4 py-3 w-40">ความคืบหน้า</th>
                     <th className="px-4 py-3">เริ่ม</th>
                     <th className="px-4 py-3">สิ้นสุด</th>
-                    <th className="px-4 py-3 text-right">งบประมาณ</th>
+                    <th className="px-4 py-3 text-right">มูลค่าสัญญา</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data.data.map((p) => (
+                  {data.data.map((p) => {
+                    const st = (p.status ?? "draft") as ProjectLifecycleStatus;
+                    return (
                     <tr key={p.id} className="border-b last:border-0 hover:bg-muted/40">
                       <td className="px-4 py-3 font-mono text-xs">
                         <Link to="/projects/$id" params={{ id: p.id }} className="text-primary hover:underline">{p.code}</Link>
                       </td>
                       <td className="px-4 py-3 font-medium">{p.name}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{(p.departments as { name_th?: string } | null)?.name_th ?? "-"}</td>
-                      <td className="px-4 py-3"><Badge variant={STATUS_VARIANT[p.status ?? "planning"] ?? "outline"}>{STATUS_LABEL[p.status ?? "planning"] ?? p.status}</Badge></td>
+                      <td className="px-4 py-3 text-muted-foreground">{p.customer_name ?? "-"}</td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <Progress value={p.progress ?? 0} className="h-2" />
-                          <span className="text-xs tabular-nums text-muted-foreground w-10">{p.progress ?? 0}%</span>
-                        </div>
+                        <Badge variant="outline" className={STATUS_TONE[st]}>{LIFECYCLE_LABEL[st] ?? st}</Badge>
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">{fmtDate(p.start_date)}</td>
                       <td className="px-4 py-3 text-muted-foreground">{fmtDate(p.end_date)}</td>
-                      <td className="px-4 py-3 text-right font-mono tabular-nums">{fmtCurrency(p.budget, "THB")}</td>
+                      <td className="px-4 py-3 text-right font-mono tabular-nums">{fmtCurrency(p.contract_value ?? p.budget, "THB")}</td>
                     </tr>
-                  ))}
+                  );})}
                 </tbody>
               </table>
             </div>

@@ -87,10 +87,18 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Menu className="h-5 w-5" />
           </button>
 
-          <div className="relative flex-1 max-w-xl">
+          <form
+            className="relative flex-1 max-w-xl"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const v = new FormData(e.currentTarget).get("q");
+              const q = typeof v === "string" ? v.trim() : "";
+              navigate({ to: "/search", search: { q: q || undefined } });
+            }}
+          >
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="ค้นหาเอกสาร สัญญา คู่ค้า..." className="pl-9" />
-          </div>
+            <Input name="q" placeholder="ค้นหาโครงการ เอกสาร สัญญา งวดงาน..." className="pl-9" />
+          </form>
 
           <NotificationBell userId={user?.id} />
 

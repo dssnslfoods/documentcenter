@@ -93,6 +93,44 @@ function Dashboard() {
     },
   });
 
+  const { data: pipeline } = useQuery({
+    queryKey: ["project-pipeline"],
+    queryFn: async () => {
+      const { data } = await getSupabase()
+        .from("projects")
+        .select("status")
+        .is("archived_at", null);
+      const labels: Record<string, string> = {
+        draft: "ร่าง", rfq_sent: "RFQ", quotation_received: "Supplier",
+        proposal_submitted: "Proposal", won: "ชนะงาน", lost: "แพ้งาน",
+        in_progress: "ดำเนินการ", completed: "ปิด",
+      };
+      const map = new Map<string, number>();
+      (data ?? []).forEach((r: { status: string | null }) => {
+        const k = labels[r.status ?? "draft"] ?? "อื่นๆ";
+        map.set(k, (map.get(k) ?? 0) + 1);
+      });
+      return Array.from(map, ([name, count]) => ({ name, count }));
+    },
+  });
+
+  const { data: upcomingMilestones } = useQuery({
+    queryKey: ["upcoming-milestones"],
+    queryFn: async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const in30 = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+      const { data } = await getSupabase()
+        .from("project_milestones")
+        .select("id, description, due_date, status, project_id, projects(code, name)")
+        .eq("status", "pending")
+        .gte("due_date", today)
+        .lte("due_date", in30)
+        .order("due_date", { ascending: true })
+        .limit(10);
+      return data ?? [];
+    },
+  });
+
   return (
     <div className="space-y-6">
       <PageHeader title="ภาพรวม" description="Executive Dashboard — สถานะเอกสาร สัญญา และงานสำคัญขององค์กร" />
@@ -147,6 +185,56 @@ function Dashboard() {
               </ResponsiveContainer>
             ) : (
               <div className="py-12 text-center text-sm text-muted-foreground">ยังไม่มีข้อมูล</div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Pipeline โครงการตาม lifecycle</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {pipeline && pipeline.length > 0 ? (
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={pipeline}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis dataKey="name" fontSize={11} />
+                  <YAxis fontSize={11} allowDecimals={false} />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="var(--color-accent)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="py-12 text-center text-sm text-muted-foreground">ยังไม่มีโครงการ</div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle>งวดงานครบกำหนดใน 30 วัน</CardTitle>
+            <Link to="/projects" className="text-xs text-primary hover:underline">ดูโครงการทั้งหมด →</Link>
+          </CardHeader>
+          <CardContent>
+            {upcomingMilestones && upcomingMilestones.length > 0 ? (
+              <div className="divide-y">
+                {upcomingMilestones.map((m: any) => {
+                  const proj = Array.isArray(m.projects) ? m.projects[0] : m.projects;
+                  return (
+                    <Link key={m.id} to="/projects/$id" params={{ id: m.project_id }} className="flex items-center justify-between gap-3 py-2 text-sm hover:bg-muted/40">
+                      <div className="min-w-0">
+                        <div className="truncate font-medium">{m.description}</div>
+                        <div className="truncate text-xs text-muted-foreground">{proj?.code} · {proj?.name}</div>
+                      </div>
+                      <div className="shrink-0 text-xs text-muted-foreground tabular-nums">{fmtDate(m.due_date)}</div>
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="py-8 text-center text-sm text-muted-foreground">ไม่มีงวดงานครบกำหนดใน 30 วัน</p>
             )}
           </CardContent>
         </Card>
