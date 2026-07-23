@@ -3,7 +3,7 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, FileText, FileSignature, FileSpreadsheet, ShoppingCart,
   Users, FolderKanban, Calendar, CheckSquare, Bell, BarChart3, History, Settings,
-  Search, LogOut, User as UserIcon, Menu, X, ChevronDown,
+  Search, LogOut, User as UserIcon, Menu, X, ChevronDown, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -15,21 +15,45 @@ import {
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-supabase";
 
-const NAV = [
-  { to: "/dashboard", icon: LayoutDashboard, label: "ภาพรวม" },
-  { to: "/documents", icon: FileText, label: "คลังเอกสาร" },
-  { to: "/contracts", icon: FileSignature, label: "สัญญา" },
-  { to: "/quotations", icon: FileSpreadsheet, label: "ใบเสนอราคา" },
-  { to: "/procurements", icon: ShoppingCart, label: "จัดซื้อและจัดจ้าง" },
-  { to: "/partners", icon: Users, label: "คู่ค้าและลูกค้า" },
-  { to: "/projects", icon: FolderKanban, label: "โครงการ" },
-  { to: "/calendar", icon: Calendar, label: "ปฏิทินและกำหนดการ" },
-  { to: "/approvals", icon: CheckSquare, label: "งานรออนุมัติ" },
-  { to: "/notifications", icon: Bell, label: "การแจ้งเตือน" },
-  { to: "/reports", icon: BarChart3, label: "รายงาน" },
-  { to: "/audit-log", icon: History, label: "Audit Log" },
-  { to: "/settings", icon: Settings, label: "ตั้งค่าระบบ" },
-] as const;
+// Sidebar organized by workflow order: daily work → sales pipeline → post-sale docs → governance
+type NavItem = { to: string; icon: React.ComponentType<{ className?: string }>; label: string };
+type NavSection = { label: string; items: NavItem[] };
+
+const NAV_SECTIONS: NavSection[] = [
+  {
+    label: "งานประจำวัน",
+    items: [
+      { to: "/dashboard", icon: LayoutDashboard, label: "ภาพรวม" },
+      { to: "/calendar", icon: Calendar, label: "ปฏิทิน" },
+      { to: "/notifications", icon: Bell, label: "การแจ้งเตือน" },
+    ],
+  },
+  {
+    label: "งานขายและโครงการ",
+    items: [
+      { to: "/projects", icon: FolderKanban, label: "โครงการ" },
+      { to: "/quotations", icon: FileSpreadsheet, label: "ใบเสนอราคา" },
+      { to: "/procurements", icon: ShoppingCart, label: "จัดซื้อและจัดจ้าง" },
+      { to: "/partners", icon: Users, label: "คู่ค้าและลูกค้า" },
+    ],
+  },
+  {
+    label: "เอกสารและสัญญา",
+    items: [
+      { to: "/documents", icon: FileText, label: "คลังเอกสาร" },
+      { to: "/contracts", icon: FileSignature, label: "สัญญา" },
+    ],
+  },
+  {
+    label: "กำกับและควบคุม",
+    items: [
+      { to: "/approvals", icon: CheckSquare, label: "งานรออนุมัติ" },
+      { to: "/reports", icon: BarChart3, label: "รายงาน" },
+      { to: "/audit-log", icon: History, label: "Audit Log" },
+      { to: "/settings", icon: Settings, label: "ตั้งค่าระบบ" },
+    ],
+  },
+];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -48,8 +72,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen bg-background">
       {/* Desktop sidebar */}
       <aside
-        className={`hidden lg:flex flex-col bg-sidebar text-sidebar-foreground transition-all ${
-          collapsed ? "w-16" : "w-64"
+        className={`hidden lg:flex flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200 ${
+          collapsed ? "w-[68px]" : "w-64"
         }`}
       >
         <SidebarContent collapsed={collapsed} pathname={pathname} />
@@ -58,13 +82,14 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Mobile sidebar */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 flex w-64 flex-col bg-sidebar text-sidebar-foreground">
+          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
+          <aside className="absolute inset-y-0 left-0 flex w-72 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
             <button
               onClick={() => setMobileOpen(false)}
-              className="absolute right-2 top-2 rounded p-1 hover:bg-sidebar-accent"
+              className="absolute right-2 top-3 rounded-md p-1.5 hover:bg-sidebar-accent"
+              aria-label="ปิดเมนู"
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4" />
             </button>
             <SidebarContent collapsed={false} pathname={pathname} />
           </aside>
@@ -72,19 +97,20 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b bg-card px-4">
+        <header className="sticky top-0 z-40 flex h-16 items-center gap-3 border-b bg-card/80 px-4 backdrop-blur">
           <button
             onClick={() => setMobileOpen(true)}
-            className="rounded p-2 hover:bg-muted lg:hidden"
+            className="rounded-md p-2 hover:bg-muted lg:hidden"
+            aria-label="เปิดเมนู"
           >
             <Menu className="h-5 w-5" />
           </button>
           <button
             onClick={() => setCollapsed((v) => !v)}
-            className="hidden rounded p-2 hover:bg-muted lg:inline-flex"
+            className="hidden rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground lg:inline-flex"
             aria-label="Toggle sidebar"
           >
-            <Menu className="h-5 w-5" />
+            {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
           </button>
 
           <form
@@ -97,15 +123,18 @@ export function AppShell({ children }: { children: ReactNode }) {
             }}
           >
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input name="q" placeholder="ค้นหาโครงการ เอกสาร สัญญา งวดงาน..." className="pl-9" />
+            <Input
+              name="q"
+              placeholder="ค้นหาโครงการ เอกสาร สัญญา งวดงาน..."
+              className="h-10 rounded-full border-transparent bg-muted pl-9 focus-visible:border-ring focus-visible:bg-card"
+            />
           </form>
 
           <NotificationBell userId={user?.id} />
 
-
           <DropdownMenu>
-            <DropdownMenuTrigger className="flex items-center gap-2 rounded-md p-1.5 hover:bg-muted">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+            <DropdownMenuTrigger className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition-colors hover:bg-muted">
+              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
                 {(user?.email ?? "?").charAt(0).toUpperCase()}
               </div>
               <ChevronDown className="hidden h-4 w-4 text-muted-foreground sm:block" />
@@ -127,7 +156,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </DropdownMenu>
         </header>
 
-        <main className="min-w-0 flex-1 p-6">{children}</main>
+        <main className="min-w-0 flex-1 p-6 lg:p-8">{children}</main>
       </div>
     </div>
   );
@@ -149,10 +178,10 @@ function NotificationBell({ userId }: { userId: string | undefined }) {
     refetchInterval: 60_000,
   });
   return (
-    <Link to="/notifications" className="relative rounded p-2 hover:bg-muted" aria-label="Notifications">
+    <Link to="/notifications" className="relative rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Notifications">
       <Bell className="h-5 w-5" />
       {count && count > 0 ? (
-        <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
+        <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
           {count > 99 ? "99+" : count}
         </span>
       ) : null}
@@ -163,40 +192,53 @@ function NotificationBell({ userId }: { userId: string | undefined }) {
 function SidebarContent({ collapsed, pathname }: { collapsed: boolean; pathname: string }) {
   return (
     <>
-      <div className="flex h-14 items-center gap-2 border-b border-sidebar-border px-4">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
+      <div className="flex h-16 items-center gap-2.5 border-b border-sidebar-border px-4">
+        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground shadow-sm">
           <FileText className="h-4 w-4" />
         </div>
         {!collapsed && (
           <div className="min-w-0">
-            <div className="truncate text-sm font-semibold">Document Hub</div>
-            <div className="truncate text-[10px] opacity-70">บริหารเอกสารและสัญญา</div>
+            <div className="truncate font-display text-sm font-semibold tracking-tight">Document Hub</div>
+            <div className="truncate text-[10px] text-muted-foreground">Contract & workflow</div>
           </div>
         )}
       </div>
-      <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
-        {NAV.map((item) => {
-          const active = pathname === item.to || pathname.startsWith(item.to + "/");
-          return (
-            <Link
-              key={item.to}
-              to={item.to}
-              className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
-                active
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
-                  : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              }`}
-              title={collapsed ? item.label : undefined}
-            >
-              <item.icon className="h-4 w-4 shrink-0" />
-              {!collapsed && <span className="truncate">{item.label}</span>}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 space-y-4 overflow-y-auto p-2 py-4">
+        {NAV_SECTIONS.map((section) => (
+          <div key={section.label} className="space-y-0.5">
+            {!collapsed && (
+              <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+                {section.label}
+              </div>
+            )}
+            {collapsed && <div className="mx-3 my-2 border-t border-sidebar-border/60" />}
+            {section.items.map((item) => {
+              const active = pathname === item.to || pathname.startsWith(item.to + "/");
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={`group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
+                    active
+                      ? "bg-primary/10 text-primary font-semibold"
+                      : "text-sidebar-foreground/90 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  }`}
+                  title={collapsed ? item.label : undefined}
+                >
+                  {active && (
+                    <span className="absolute left-0 top-1.5 h-[calc(100%-0.75rem)] w-0.5 rounded-r bg-primary" aria-hidden />
+                  )}
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  {!collapsed && <span className="truncate">{item.label}</span>}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
       {!collapsed && (
-        <div className="border-t border-sidebar-border p-3 text-[10px] opacity-70">
-          v0.1.0 · Phase 1+2
+        <div className="border-t border-sidebar-border p-3 text-[10px] text-muted-foreground">
+          v0.2 · Cloud White
         </div>
       )}
     </>

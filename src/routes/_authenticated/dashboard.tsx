@@ -2,10 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   FileText, FileSignature, AlertTriangle, Clock, CheckCircle2, DollarSign,
-  ShoppingCart, TrendingUp, Users,
+  ShoppingCart, Plus, ArrowRight,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
+import { Button } from "@/components/ui/button";
 import { getSupabase } from "@/lib/supabase";
 import { fmtCurrency, fmtDate, fmtNumber } from "@/lib/format";
 import { ContractStatusBadge } from "@/components/status-badge";
@@ -26,7 +27,10 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
 
-const CHART_COLORS = ["oklch(0.47 0.13 258)", "oklch(0.5 0.09 190)", "oklch(0.75 0.16 70)", "oklch(0.63 0.17 148)", "oklch(0.58 0.22 27)"];
+const CHART_COLORS = [
+  "var(--color-chart-1)", "var(--color-chart-2)", "var(--color-chart-3)",
+  "var(--color-chart-4)", "var(--color-chart-5)",
+];
 
 function Dashboard() {
   const { data: kpi, isLoading } = useQuery({
@@ -102,7 +106,7 @@ function Dashboard() {
         .is("archived_at", null);
       const labels: Record<string, string> = {
         draft: "ร่าง", rfq_sent: "RFQ", quotation_received: "Supplier",
-        proposal_submitted: "Proposal", won: "ชนะงาน", lost: "แพ้งาน",
+        proposal_submitted: "Proposal", won: "ชนะ", lost: "แพ้",
         in_progress: "ดำเนินการ", completed: "ปิด",
       };
       const map = new Map<string, number>();
@@ -126,61 +130,119 @@ function Dashboard() {
         .gte("due_date", today)
         .lte("due_date", in30)
         .order("due_date", { ascending: true })
-        .limit(10);
+        .limit(6);
       return data ?? [];
     },
   });
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="ภาพรวม" description="Executive Dashboard — สถานะเอกสาร สัญญา และงานสำคัญขององค์กร" />
+    <div className="space-y-8">
+      <PageHeader
+        title="ภาพรวม"
+        description="เริ่มต้นวันด้วยงานที่ต้องทำ · ตามด้วยสถานะโครงการและสัญญา"
+        actions={
+          <Button asChild size="lg" className="rounded-full shadow-sm">
+            <Link to="/projects/new"><Plus className="mr-2 h-4 w-4" />เพิ่มโครงการ</Link>
+          </Button>
+        }
+      />
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard icon={FileText} label="เอกสารทั้งหมด" value={fmtNumber(kpi?.totalDocs)} loading={isLoading} />
-        <KpiCard icon={CheckCircle2} label="เอกสารกำลังใช้งาน" value={fmtNumber(kpi?.activeDocs)} loading={isLoading} tone="success" />
-        <KpiCard icon={Clock} label="สัญญาใกล้หมดอายุ (30 วัน)" value={fmtNumber(kpi?.expiring30)} loading={isLoading} tone="warning" />
-        <KpiCard icon={AlertTriangle} label="สัญญาหมดอายุแล้ว" value={fmtNumber(kpi?.expired)} loading={isLoading} tone="destructive" />
-        <KpiCard icon={FileSignature} label="ใบเสนอราคารอพิจารณา" value={fmtNumber(kpi?.quotPending)} loading={isLoading} />
-        <KpiCard icon={ShoppingCart} label="จัดจ้างระหว่างดำเนินการ" value={fmtNumber(kpi?.procInProgress)} loading={isLoading} />
-        <KpiCard icon={DollarSign} label="มูลค่าสัญญาที่ใช้งานอยู่" value={fmtCurrency(kpi?.totalContractValue)} loading={isLoading} tone="accent" />
-        <KpiCard icon={TrendingUp} label="งานที่รับผิดชอบ" value="—" loading={false} />
+      {/* Bento — What's next hero + KPI stack */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        {/* Hero: งานที่ต้องทำก่อน */}
+        <div className="tile relative overflow-hidden bg-gradient-to-br from-primary to-primary/70 p-6 text-primary-foreground lg:col-span-2 lg:row-span-2">
+          <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
+          <div className="relative">
+            <div className="text-xs font-semibold uppercase tracking-widest opacity-80">งานที่ต้องทำก่อน</div>
+            <div className="mt-1 font-display text-2xl font-semibold tracking-tight">งวดงานครบกำหนดใน 30 วัน</div>
+            <div className="mt-4 space-y-2">
+              {upcomingMilestones && upcomingMilestones.length > 0 ? (
+                upcomingMilestones.map((m: any) => {
+                  const proj = Array.isArray(m.projects) ? m.projects[0] : m.projects;
+                  return (
+                    <Link
+                      key={m.id}
+                      to="/projects/$id"
+                      params={{ id: m.project_id }}
+                      className="group flex items-center justify-between gap-3 rounded-lg bg-white/10 px-3 py-2.5 text-sm backdrop-blur transition-colors hover:bg-white/20"
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate font-medium">{m.description}</div>
+                        <div className="truncate text-xs opacity-80">{proj?.code} · {proj?.name}</div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2 text-xs opacity-90">
+                        <span className="tabular-nums">{fmtDate(m.due_date)}</span>
+                        <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                      </div>
+                    </Link>
+                  );
+                })
+              ) : (
+                <div className="rounded-lg bg-white/10 px-4 py-6 text-sm opacity-90">
+                  ไม่มีงวดงานเร่งด่วน — เยี่ยมมาก 🎉
+                </div>
+              )}
+            </div>
+            <Link to="/calendar" className="mt-4 inline-flex items-center gap-1 text-xs font-medium opacity-90 hover:opacity-100">
+              ดูปฏิทินทั้งหมด <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+        </div>
+
+        <KpiCard icon={Clock} label="สัญญาใกล้หมดอายุ (30 วัน)" value={fmtNumber(kpi?.expiring30)} loading={isLoading} tone="warning" href="/contracts" />
+        <KpiCard icon={AlertTriangle} label="สัญญาหมดอายุแล้ว" value={fmtNumber(kpi?.expired)} loading={isLoading} tone="destructive" href="/contracts" />
+        <KpiCard icon={FileSignature} label="ใบเสนอราคารอพิจารณา" value={fmtNumber(kpi?.quotPending)} loading={isLoading} href="/quotations" />
+        <KpiCard icon={ShoppingCart} label="จัดจ้างกำลังดำเนินการ" value={fmtNumber(kpi?.procInProgress)} loading={isLoading} href="/procurements" />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>จำนวนเอกสารแยกตามประเภท</CardTitle>
+      {/* Secondary KPI row */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard icon={FileText} label="เอกสารทั้งหมด" value={fmtNumber(kpi?.totalDocs)} loading={isLoading} href="/documents" />
+        <KpiCard icon={CheckCircle2} label="เอกสารกำลังใช้งาน" value={fmtNumber(kpi?.activeDocs)} loading={isLoading} tone="success" href="/documents" />
+        <KpiCard icon={DollarSign} label="มูลค่าสัญญาที่ใช้งาน" value={fmtCurrency(kpi?.totalContractValue)} loading={isLoading} tone="accent" href="/contracts" />
+        <KpiCard icon={CheckCircle2} label="งานรออนุมัติ" value="—" loading={false} href="/approvals" />
+      </div>
+
+      {/* Analytics */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="tile lg:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <div>
+              <CardTitle className="text-base">Pipeline โครงการ</CardTitle>
+              <p className="mt-1 text-xs text-muted-foreground">แยกตามระยะของ workflow</p>
+            </div>
+            <Link to="/projects" className="text-xs text-primary hover:underline">เปิด pipeline →</Link>
           </CardHeader>
           <CardContent>
-            {docsByType && docsByType.length > 0 ? (
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={docsByType}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                  <XAxis dataKey="name" fontSize={11} />
-                  <YAxis fontSize={11} />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
+            {pipeline && pipeline.length > 0 ? (
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={pipeline}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
+                  <XAxis dataKey="name" fontSize={11} stroke="var(--color-muted-foreground)" />
+                  <YAxis fontSize={11} allowDecimals={false} stroke="var(--color-muted-foreground)" />
+                  <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid var(--color-border)" }} />
+                  <Bar dataKey="count" fill="var(--color-primary)" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="py-12 text-center text-sm text-muted-foreground">ยังไม่มีข้อมูล</div>
+              <div className="py-12 text-center text-sm text-muted-foreground">ยังไม่มีโครงการ</div>
             )}
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="tile">
           <CardHeader>
-            <CardTitle>สัดส่วนหมวดเอกสาร</CardTitle>
+            <CardTitle className="text-base">สัดส่วนหมวดเอกสาร</CardTitle>
           </CardHeader>
           <CardContent>
             {docsByType && docsByType.length > 0 ? (
-              <ResponsiveContainer width="100%" height={280}>
+              <ResponsiveContainer width="100%" height={260}>
                 <PieChart>
-                  <Pie data={docsByType} dataKey="count" nameKey="name" innerRadius={50} outerRadius={100}>
+                  <Pie data={docsByType} dataKey="count" nameKey="name" innerRadius={45} outerRadius={90} paddingAngle={2}>
                     {docsByType.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                   </Pie>
-                  <Tooltip />
-                  <Legend />
+                  <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid var(--color-border)" }} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -190,59 +252,10 @@ function Dashboard() {
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Pipeline โครงการตาม lifecycle</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {pipeline && pipeline.length > 0 ? (
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={pipeline}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                  <XAxis dataKey="name" fontSize={11} />
-                  <YAxis fontSize={11} allowDecimals={false} />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="var(--color-accent)" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="py-12 text-center text-sm text-muted-foreground">ยังไม่มีโครงการ</div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle>งวดงานครบกำหนดใน 30 วัน</CardTitle>
-            <Link to="/projects" className="text-xs text-primary hover:underline">ดูโครงการทั้งหมด →</Link>
-          </CardHeader>
-          <CardContent>
-            {upcomingMilestones && upcomingMilestones.length > 0 ? (
-              <div className="divide-y">
-                {upcomingMilestones.map((m: any) => {
-                  const proj = Array.isArray(m.projects) ? m.projects[0] : m.projects;
-                  return (
-                    <Link key={m.id} to="/projects/$id" params={{ id: m.project_id }} className="flex items-center justify-between gap-3 py-2 text-sm hover:bg-muted/40">
-                      <div className="min-w-0">
-                        <div className="truncate font-medium">{m.description}</div>
-                        <div className="truncate text-xs text-muted-foreground">{proj?.code} · {proj?.name}</div>
-                      </div>
-                      <div className="shrink-0 text-xs text-muted-foreground tabular-nums">{fmtDate(m.due_date)}</div>
-                    </Link>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="py-8 text-center text-sm text-muted-foreground">ไม่มีงวดงานครบกำหนดใน 30 วัน</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>สัญญาที่จะครบกำหนดใน 90 วัน</CardTitle>
+      <Card className="tile">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-base">สัญญาที่จะครบกำหนดใน 90 วัน</CardTitle>
+          <Link to="/contracts" className="text-xs text-primary hover:underline">ดูสัญญาทั้งหมด →</Link>
         </CardHeader>
         <CardContent>
           {upcomingContracts && upcomingContracts.length > 0 ? (
@@ -262,14 +275,14 @@ function Dashboard() {
                   {upcomingContracts.map((c: any) => {
                     const partner = Array.isArray(c.partners) ? c.partners[0] : c.partners;
                     return (
-                    <tr key={c.id} className="border-b last:border-0 hover:bg-muted/40">
-                      <td className="px-3 py-2 font-mono text-xs">{c.contract_no}</td>
-                      <td className="px-3 py-2 font-medium">{c.title}</td>
-                      <td className="px-3 py-2 text-muted-foreground">{partner?.name ?? "-"}</td>
-                      <td className="px-3 py-2">{fmtDate(c.end_date)}</td>
-                      <td className="px-3 py-2 text-right font-mono">{fmtCurrency(c.value_amount)}</td>
-                      <td className="px-3 py-2"><ContractStatusBadge status={c.status as never} /></td>
-                    </tr>
+                      <tr key={c.id} className="border-b last:border-0 hover:bg-muted/40">
+                        <td className="px-3 py-2 font-mono text-xs">{c.contract_no}</td>
+                        <td className="px-3 py-2 font-medium">{c.title}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{partner?.name ?? "-"}</td>
+                        <td className="px-3 py-2">{fmtDate(c.end_date)}</td>
+                        <td className="px-3 py-2 text-right font-mono tabular-nums">{fmtCurrency(c.value_amount)}</td>
+                        <td className="px-3 py-2"><ContractStatusBadge status={c.status as never} /></td>
+                      </tr>
                     );
                   })}
                 </tbody>
@@ -278,9 +291,6 @@ function Dashboard() {
           ) : (
             <p className="py-8 text-center text-sm text-muted-foreground">ไม่มีสัญญาที่จะครบกำหนดใน 90 วัน</p>
           )}
-          <div className="mt-4 text-right">
-            <Link to="/contracts" className="text-xs text-primary hover:underline">ดูสัญญาทั้งหมด →</Link>
-          </div>
         </CardContent>
       </Card>
     </div>
@@ -288,34 +298,38 @@ function Dashboard() {
 }
 
 function KpiCard({
-  icon: Icon, label, value, loading, tone = "default",
+  icon: Icon, label, value, loading, tone = "default", href,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: ReactNode;
   loading: boolean;
   tone?: "default" | "success" | "warning" | "destructive" | "accent";
+  href?: string;
 }) {
   const toneClass = {
     default: "bg-primary/10 text-primary",
     success: "bg-success/15 text-success",
-    warning: "bg-warning/20 text-warning-foreground",
+    warning: "bg-warning/25 text-warning-foreground",
     destructive: "bg-destructive/15 text-destructive",
     accent: "bg-accent/10 text-accent",
   }[tone];
-  return (
-    <Card>
-      <CardContent className="flex items-center gap-3 p-4">
-        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${toneClass}`}>
-          <Icon className="h-5 w-5" />
+  const inner = (
+    <div className="flex items-center gap-3 p-5">
+      <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${toneClass}`}>
+        <Icon className="h-5 w-5" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-xs text-muted-foreground">{label}</div>
+        <div className="mt-0.5 truncate font-display text-xl font-semibold tabular-nums">
+          {loading ? <span className="inline-block h-5 w-16 animate-pulse rounded bg-muted" /> : value}
         </div>
-        <div className="min-w-0">
-          <div className="truncate text-xs text-muted-foreground">{label}</div>
-          <div className="mt-0.5 truncate text-lg font-semibold tabular-nums">
-            {loading ? <span className="inline-block h-4 w-16 animate-pulse rounded bg-muted" /> : value}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+      {href && <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
+    </div>
   );
+  if (href) {
+    return <Link to={href} className="tile tile-interactive block">{inner}</Link>;
+  }
+  return <div className="tile">{inner}</div>;
 }
