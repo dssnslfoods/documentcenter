@@ -9,12 +9,12 @@ export const Route = createFileRoute("/_authenticated/settings")({
 });
 
 const cards = [
-  { icon: Users, title: "ผู้ใช้งานและสิทธิ์", desc: "จัดการผู้ใช้ กำหนดบทบาท", to: "/settings/users" as const },
-  { icon: Building2, title: "แผนก", desc: "จัดการแผนกและโครงสร้างองค์กร" },
-  { icon: FolderTree, title: "หมวดหมู่เอกสาร", desc: "หมวดหมู่และ Custom Fields" },
-  { icon: Tag, title: "Tag และ Keyword", desc: "จัดการ Master Data" },
+  { icon: Users, title: "ผู้ใช้งานและสิทธิ์", desc: "เพิ่ม/เชิญผู้ใช้ กำหนดบทบาทและแผนก", to: "/settings/users" as const },
+  { icon: Building2, title: "แผนก", desc: "จัดการแผนกและโครงสร้างองค์กร", to: "/settings/departments" as const },
+  { icon: FolderTree, title: "หมวดหมู่เอกสาร", desc: "จัดการหมวดหมู่และรหัสนำหน้าเอกสาร", to: "/settings/categories" as const },
+  { icon: Tag, title: "Tag และ Keyword", desc: "จัดการ tag สำหรับเอกสารและโครงการ", to: "/settings/tags" as const },
   { icon: ClipboardList, title: "Workflow", desc: "Workflow Templates" },
-  { icon: SettingsIcon, title: "การตั้งค่าทั่วไป", desc: "รูปแบบเลขเอกสาร, Retention" },
+  { icon: SettingsIcon, title: "การตั้งค่าทั่วไป", desc: "ชื่อองค์กร, รูปแบบเลขเอกสาร, Retention", to: "/settings/general" as const },
 ];
 
 function Settings() {

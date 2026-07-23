@@ -1,0 +1,180 @@
+import { useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Plus, Trash2, Pencil, Building2 } from "lucide-react";
+import { PageHeader, EmptyState } from "@/components/page-header";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { getSupabase } from "@/lib/supabase";
+import { useAdminGuard } from "@/hooks/use-admin-guard";
+
+export const Route = createFileRoute("/_authenticated/settings/departments")({
+  head: () => ({ meta: [{ title: "แผนก | Document Hub" }] }),
+  component: DepartmentsPage,
+});
+
+type Dept = {
+  id: string;
+  code: string;
+  name_th: string;
+  name_en: string | null;
+  is_active: boolean;
+};
+
+function DepartmentsPage() {
+  const guard = useAdminGuard();
+  const sb = getSupabase();
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Dept | null>(null);
+  const [form, setForm] = useState({ code: "", name_th: "", name_en: "", is_active: true });
+
+  const { data: rows, isLoading } = useQuery({
+    queryKey: ["departments-admin"],
+    enabled: guard.allowed,
+    queryFn: async () => {
+      const { data, error } = await sb
+        .from("departments")
+        .select("id, code, name_th, name_en, is_active")
+        .order("code");
+      if (error) throw error;
+      return (data ?? []) as Dept[];
+    },
+  });
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const payload = {
+        code: form.code.trim().toUpperCase(),
+        name_th: form.name_th.trim(),
+        name_en: form.name_en.trim() || null,
+        is_active: form.is_active,
+      };
+      if (!payload.code || !payload.name_th) throw new Error("กรุณากรอกรหัสและชื่อแผนก");
+      if (editing) {
+        const { error } = await sb.from("departments").update(payload).eq("id", editing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await sb.from("departments").insert(payload);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success(editing ? "อัปเดตแผนกแล้ว" : "เพิ่มแผนกแล้ว");
+      setOpen(false); setEditing(null);
+      setForm({ code: "", name_th: "", name_en: "", is_active: true });
+      qc.invalidateQueries({ queryKey: ["departments-admin"] });
+      qc.invalidateQueries({ queryKey: ["departments"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const del = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await sb.from("departments").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("ลบแผนกแล้ว");
+      qc.invalidateQueries({ queryKey: ["departments-admin"] });
+      qc.invalidateQueries({ queryKey: ["departments"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const openEdit = (d: Dept) => {
+    setEditing(d);
+    setForm({ code: d.code, name_th: d.name_th, name_en: d.name_en ?? "", is_active: d.is_active });
+    setOpen(true);
+  };
+  const openNew = () => {
+    setEditing(null);
+    setForm({ code: "", name_th: "", name_en: "", is_active: true });
+    setOpen(true);
+  };
+
+  if (guard.node) return guard.node;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="แผนก"
+        description="จัดการแผนกและโครงสร้างองค์กร"
+        actions={
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={openNew}><Plus className="h-4 w-4 mr-1" /> เพิ่มแผนก</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>{editing ? "แก้ไขแผนก" : "เพิ่มแผนกใหม่"}</DialogTitle></DialogHeader>
+              <div className="space-y-3">
+                <div><Label>รหัสแผนก *</Label>
+                  <Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="เช่น HR, FIN, IT" />
+                </div>
+                <div><Label>ชื่อ (ภาษาไทย) *</Label>
+                  <Input value={form.name_th} onChange={(e) => setForm({ ...form, name_th: e.target.value })} />
+                </div>
+                <div><Label>ชื่อ (English)</Label>
+                  <Input value={form.name_en} onChange={(e) => setForm({ ...form, name_en: e.target.value })} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
+                  <Label>เปิดใช้งาน</Label>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setOpen(false)}>ยกเลิก</Button>
+                <Button onClick={() => save.mutate()} disabled={save.isPending}>บันทึก</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        }
+      />
+
+      <Card>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="p-8 text-center text-sm text-muted-foreground">กำลังโหลด...</div>
+          ) : !rows || rows.length === 0 ? (
+            <EmptyState title="ยังไม่มีแผนก" icon={Building2} />
+          ) : (
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>รหัส</TableHead>
+                <TableHead>ชื่อ (ไทย)</TableHead>
+                <TableHead>ชื่อ (Eng)</TableHead>
+                <TableHead>สถานะ</TableHead>
+                <TableHead className="w-[120px]"></TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {rows.map((d) => (
+                  <TableRow key={d.id}>
+                    <TableCell className="font-mono">{d.code}</TableCell>
+                    <TableCell>{d.name_th}</TableCell>
+                    <TableCell className="text-muted-foreground">{d.name_en ?? "-"}</TableCell>
+                    <TableCell>{d.is_active ? "ใช้งาน" : "ปิด"}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => openEdit(d)}><Pencil className="h-4 w-4" /></Button>
+                        <Button size="sm" variant="ghost" className="text-destructive"
+                          onClick={() => { if (confirm(`ลบแผนก ${d.name_th}?`)) del.mutate(d.id); }}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
