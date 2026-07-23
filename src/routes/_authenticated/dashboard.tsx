@@ -190,6 +190,56 @@ function Dashboard() {
         </Card>
       </div>
 
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Pipeline โครงการตาม lifecycle</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {pipeline && pipeline.length > 0 ? (
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={pipeline}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis dataKey="name" fontSize={11} />
+                  <YAxis fontSize={11} allowDecimals={false} />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="var(--color-accent)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="py-12 text-center text-sm text-muted-foreground">ยังไม่มีโครงการ</div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle>งวดงานครบกำหนดใน 30 วัน</CardTitle>
+            <Link to="/projects" className="text-xs text-primary hover:underline">ดูโครงการทั้งหมด →</Link>
+          </CardHeader>
+          <CardContent>
+            {upcomingMilestones && upcomingMilestones.length > 0 ? (
+              <div className="divide-y">
+                {upcomingMilestones.map((m: any) => {
+                  const proj = Array.isArray(m.projects) ? m.projects[0] : m.projects;
+                  return (
+                    <Link key={m.id} to="/projects/$id" params={{ id: m.project_id }} className="flex items-center justify-between gap-3 py-2 text-sm hover:bg-muted/40">
+                      <div className="min-w-0">
+                        <div className="truncate font-medium">{m.description}</div>
+                        <div className="truncate text-xs text-muted-foreground">{proj?.code} · {proj?.name}</div>
+                      </div>
+                      <div className="shrink-0 text-xs text-muted-foreground tabular-nums">{fmtDate(m.due_date)}</div>
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="py-8 text-center text-sm text-muted-foreground">ไม่มีงวดงานครบกำหนดใน 30 วัน</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle>สัญญาที่จะครบกำหนดใน 90 วัน</CardTitle>
