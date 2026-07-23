@@ -30,6 +30,7 @@ import { Route as AuthenticatedQuotationsIndexRouteImport } from './routes/_auth
 import { Route as AuthenticatedProjectsIndexRouteImport } from './routes/_authenticated/projects.index'
 import { Route as AuthenticatedDocumentsIndexRouteImport } from './routes/_authenticated/documents.index'
 import { Route as AuthenticatedContractsIndexRouteImport } from './routes/_authenticated/contracts.index'
+import { Route as AuthenticatedSettingsWorkTypesRouteImport } from './routes/_authenticated/settings.work-types'
 import { Route as AuthenticatedSettingsUsersRouteImport } from './routes/_authenticated/settings.users'
 import { Route as AuthenticatedSettingsTagsRouteImport } from './routes/_authenticated/settings.tags'
 import { Route as AuthenticatedSettingsGeneralRouteImport } from './routes/_authenticated/settings.general'
@@ -158,6 +159,12 @@ const AuthenticatedContractsIndexRoute =
     path: '/contracts/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedSettingsWorkTypesRoute =
+  AuthenticatedSettingsWorkTypesRouteImport.update({
+    id: '/settings/work-types',
+    path: '/settings/work-types',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSettingsUsersRoute =
   AuthenticatedSettingsUsersRouteImport.update({
     id: '/settings/users',
@@ -278,6 +285,7 @@ export interface FileRoutesByFullPath {
   '/settings/general': typeof AuthenticatedSettingsGeneralRoute
   '/settings/tags': typeof AuthenticatedSettingsTagsRoute
   '/settings/users': typeof AuthenticatedSettingsUsersRoute
+  '/settings/work-types': typeof AuthenticatedSettingsWorkTypesRoute
   '/contracts/': typeof AuthenticatedContractsIndexRoute
   '/documents/': typeof AuthenticatedDocumentsIndexRoute
   '/projects/': typeof AuthenticatedProjectsIndexRoute
@@ -315,6 +323,7 @@ export interface FileRoutesByTo {
   '/settings/general': typeof AuthenticatedSettingsGeneralRoute
   '/settings/tags': typeof AuthenticatedSettingsTagsRoute
   '/settings/users': typeof AuthenticatedSettingsUsersRoute
+  '/settings/work-types': typeof AuthenticatedSettingsWorkTypesRoute
   '/contracts': typeof AuthenticatedContractsIndexRoute
   '/documents': typeof AuthenticatedDocumentsIndexRoute
   '/projects': typeof AuthenticatedProjectsIndexRoute
@@ -354,6 +363,7 @@ export interface FileRoutesById {
   '/_authenticated/settings/general': typeof AuthenticatedSettingsGeneralRoute
   '/_authenticated/settings/tags': typeof AuthenticatedSettingsTagsRoute
   '/_authenticated/settings/users': typeof AuthenticatedSettingsUsersRoute
+  '/_authenticated/settings/work-types': typeof AuthenticatedSettingsWorkTypesRoute
   '/_authenticated/contracts/': typeof AuthenticatedContractsIndexRoute
   '/_authenticated/documents/': typeof AuthenticatedDocumentsIndexRoute
   '/_authenticated/projects/': typeof AuthenticatedProjectsIndexRoute
@@ -393,6 +403,7 @@ export interface FileRouteTypes {
     | '/settings/general'
     | '/settings/tags'
     | '/settings/users'
+    | '/settings/work-types'
     | '/contracts/'
     | '/documents/'
     | '/projects/'
@@ -430,6 +441,7 @@ export interface FileRouteTypes {
     | '/settings/general'
     | '/settings/tags'
     | '/settings/users'
+    | '/settings/work-types'
     | '/contracts'
     | '/documents'
     | '/projects'
@@ -468,6 +480,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/general'
     | '/_authenticated/settings/tags'
     | '/_authenticated/settings/users'
+    | '/_authenticated/settings/work-types'
     | '/_authenticated/contracts/'
     | '/_authenticated/documents/'
     | '/_authenticated/projects/'
@@ -636,6 +649,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedContractsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/settings/work-types': {
+      id: '/_authenticated/settings/work-types'
+      path: '/settings/work-types'
+      fullPath: '/settings/work-types'
+      preLoaderRoute: typeof AuthenticatedSettingsWorkTypesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/settings/users': {
       id: '/_authenticated/settings/users'
       path: '/settings/users'
@@ -767,6 +787,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsGeneralRoute: typeof AuthenticatedSettingsGeneralRoute
   AuthenticatedSettingsTagsRoute: typeof AuthenticatedSettingsTagsRoute
   AuthenticatedSettingsUsersRoute: typeof AuthenticatedSettingsUsersRoute
+  AuthenticatedSettingsWorkTypesRoute: typeof AuthenticatedSettingsWorkTypesRoute
   AuthenticatedContractsIndexRoute: typeof AuthenticatedContractsIndexRoute
   AuthenticatedDocumentsIndexRoute: typeof AuthenticatedDocumentsIndexRoute
   AuthenticatedProjectsIndexRoute: typeof AuthenticatedProjectsIndexRoute
@@ -797,6 +818,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsGeneralRoute: AuthenticatedSettingsGeneralRoute,
   AuthenticatedSettingsTagsRoute: AuthenticatedSettingsTagsRoute,
   AuthenticatedSettingsUsersRoute: AuthenticatedSettingsUsersRoute,
+  AuthenticatedSettingsWorkTypesRoute: AuthenticatedSettingsWorkTypesRoute,
   AuthenticatedContractsIndexRoute: AuthenticatedContractsIndexRoute,
   AuthenticatedDocumentsIndexRoute: AuthenticatedDocumentsIndexRoute,
   AuthenticatedProjectsIndexRoute: AuthenticatedProjectsIndexRoute,
