@@ -53,14 +53,17 @@ function CategoriesPage() {
 
   const save = useMutation({
     mutationFn: async () => {
+      const code = editing
+        ? form.code.trim().toUpperCase()
+        : nextCode("CAT", (rows ?? []).map((r) => r.code));
       const p = {
-        code: form.code.trim().toUpperCase(),
+        code,
         name_th: form.name_th.trim(),
         name_en: form.name_en.trim() || null,
         prefix: form.prefix.trim().toUpperCase() || null,
         is_active: form.is_active,
       };
-      if (!p.code || !p.name_th) throw new Error("กรุณากรอกรหัสและชื่อ");
+      if (!p.name_th) throw new Error("กรุณากรอกชื่อ");
       if (editing) {
         const { error } = await sb.from("document_categories").update(p).eq("id", editing.id);
         if (error) throw error;
