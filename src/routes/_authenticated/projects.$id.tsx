@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Loader2, Lock, ArrowRight, Sparkles, Trophy, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
