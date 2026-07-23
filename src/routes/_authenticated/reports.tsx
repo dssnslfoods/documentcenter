@@ -30,11 +30,10 @@ function ReportsPage() {
     queryKey: ["reports-data"],
     queryFn: async () => {
       const sb = getSupabase();
-      const [contracts, procs, docs, projects] = await Promise.all([
+      const [contracts, docs, projects] = await Promise.all([
         sb.from("contracts").select("status, value_amount, created_at"),
-        sb.from("procurements").select("status, budget_amount, created_at"),
         sb.from("documents").select("category_id, status, document_categories(name_th)"),
-        sb.from("projects").select("status, budget"),
+        sb.from("projects").select("status, budget, created_at"),
       ]);
 
       // Contract status distribution
@@ -45,22 +44,22 @@ function ReportsPage() {
         if (c.status === "active") totalContractValue += c.value_amount ?? 0;
       });
 
-      // Monthly created (last 12 months) — contracts & procs
+      // Monthly created (last 12 months) — contracts & projects
       const now = new Date();
-      const months: { key: string; label: string; contracts: number; procurements: number }[] = [];
+      const months: { key: string; label: string; contracts: number; projects: number }[] = [];
       for (let i = 11; i >= 0; i--) {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-        months.push({ key, label: d.toLocaleDateString("th-TH", { month: "short", year: "2-digit" }), contracts: 0, procurements: 0 });
+        months.push({ key, label: d.toLocaleDateString("th-TH", { month: "short", year: "2-digit" }), contracts: 0, projects: 0 });
       }
       const mMap = new Map(months.map((m) => [m.key, m]));
       (contracts.data ?? []).forEach((c: { created_at: string }) => {
         const k = c.created_at.slice(0, 7);
         const m = mMap.get(k); if (m) m.contracts += 1;
       });
-      (procs.data ?? []).forEach((p: { created_at: string }) => {
-        const k = p.created_at.slice(0, 7);
-        const m = mMap.get(k); if (m) m.procurements += 1;
+      (projects.data ?? []).forEach((p: { created_at: string }) => {
+        const k = (p.created_at ?? "").slice(0, 7);
+        const m = mMap.get(k); if (m) m.projects += 1;
       });
 
       // Documents by category
@@ -71,13 +70,6 @@ function ReportsPage() {
         catMap.set(name, (catMap.get(name) ?? 0) + 1);
       });
       const docsByCat = Array.from(catMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 8);
-
-      // Procurement budget by status
-      const procBudget: Record<string, number> = {};
-      (procs.data ?? []).forEach((p: { status: string; budget_amount: number | null }) => {
-        procBudget[p.status] = (procBudget[p.status] ?? 0) + (p.budget_amount ?? 0);
-      });
-      const procBudgetArr = Object.entries(procBudget).map(([status, amount]) => ({ status, amount })).sort((a, b) => b.amount - a.amount).slice(0, 6);
 
       // Projects
       const projStatus: Record<string, number> = {};
@@ -92,12 +84,10 @@ function ReportsPage() {
         totalContractValue,
         totalProjectBudget,
         totalContracts: (contracts.data ?? []).length,
-        totalProcurements: (procs.data ?? []).length,
         totalDocs: (docs.data ?? []).length,
         totalProjects: (projects.data ?? []).length,
         months,
         docsByCat,
-        procBudgetArr,
         projStatus: Object.entries(projStatus).map(([k, v]) => ({ name: k, value: v })),
       };
     },
@@ -117,18 +107,17 @@ function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="รายงาน" description="สรุปข้อมูลเชิงบริหารทุกโมดูล — สัญญา จัดซื้อ เอกสาร โครงการ" />
+      <PageHeader title="รายงาน" description="สรุปข้อมูลเชิงบริหารทุกโมดูล — สัญญา เอกสาร โครงการ" />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <KpiCard label="สัญญาทั้งหมด" value={fmtNumber(data.totalContracts)} sub={`มูลค่าใช้งาน ${fmtCurrency(data.totalContractValue)}`} />
-        <KpiCard label="จัดซื้อ/จัดจ้าง" value={fmtNumber(data.totalProcurements)} sub="รวมทุกสถานะ" />
         <KpiCard label="เอกสารในระบบ" value={fmtNumber(data.totalDocs)} sub="ทุกหมวดหมู่" />
         <KpiCard label="โครงการ" value={fmtNumber(data.totalProjects)} sub={`งบรวม ${fmtCurrency(data.totalProjectBudget)}`} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <CardHeader><CardTitle className="text-base">สัญญาและจัดซื้อรายเดือน (12 เดือน)</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">สัญญาและโครงการรายเดือน (12 เดือน)</CardTitle></CardHeader>
           <CardContent className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data.months}>
@@ -138,7 +127,7 @@ function ReportsPage() {
                 <Tooltip />
                 <Legend />
                 <Line type="monotone" dataKey="contracts" name="สัญญา" stroke={COLORS[0]} strokeWidth={2} />
-                <Line type="monotone" dataKey="procurements" name="จัดซื้อ" stroke={COLORS[2]} strokeWidth={2} />
+                <Line type="monotone" dataKey="projects" name="โครงการ" stroke={COLORS[2]} strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
@@ -159,7 +148,7 @@ function ReportsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="lg:col-span-2">
           <CardHeader><CardTitle className="text-base">เอกสารแยกตามหมวดหมู่</CardTitle></CardHeader>
           <CardContent className="h-72">
             <ResponsiveContainer width="100%" height="100%">
@@ -169,21 +158,6 @@ function ReportsPage() {
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={120} />
                 <Tooltip />
                 <Bar dataKey="value" fill={COLORS[1]} radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle className="text-base">งบประมาณจัดซื้อตามสถานะ</CardTitle></CardHeader>
-          <CardContent className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.procBudgetArr}>
-                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                <XAxis dataKey="status" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1_000_000).toFixed(1)}M`} />
-                <Tooltip formatter={(v: number) => fmtCurrency(v)} />
-                <Bar dataKey="amount" fill={COLORS[3]} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
