@@ -143,6 +143,11 @@ function ProjectDetail() {
      
   }, [gate.ready, gate.nextIfReady, canEditProject, id, status]);
 
+  if (isLoading || permsLoading) {
+    return <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
+  }
+  if (!p) return <div className="py-16 text-center text-muted-foreground">ไม่พบโครงการ</div>;
+
   const showManualBranch = status === "proposal_submitted"; // Won / Lost only
 
   return (
