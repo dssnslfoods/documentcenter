@@ -52,13 +52,16 @@ function DepartmentsPage() {
 
   const save = useMutation({
     mutationFn: async () => {
+      const code = editing
+        ? form.code.trim().toUpperCase()
+        : nextCode("DEPT", (rows ?? []).map((r) => r.code));
       const payload = {
-        code: form.code.trim().toUpperCase(),
+        code,
         name_th: form.name_th.trim(),
         name_en: form.name_en.trim() || null,
         is_active: form.is_active,
       };
-      if (!payload.code || !payload.name_th) throw new Error("กรุณากรอกรหัสและชื่อแผนก");
+      if (!payload.name_th) throw new Error("กรุณากรอกชื่อแผนก");
       if (editing) {
         const { error } = await sb.from("departments").update(payload).eq("id", editing.id);
         if (error) throw error;
