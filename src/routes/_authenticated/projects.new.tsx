@@ -18,8 +18,7 @@ const schema = z.object({
   name: z.string().trim().min(1, "กรุณากรอกชื่อโครงการ").max(200),
   description: z.string().optional(),
   customer_name: z.string().trim().optional(),
-  project_type: z.string().trim().optional(),
-  department_id: z.string().uuid("กรุณาเลือกแผนก").optional().or(z.literal("")),
+  project_type: z.string().trim().min(1, "กรุณาเลือกประเภทงาน"),
   start_date: z.string().optional().or(z.literal("")),
   end_date: z.string().optional().or(z.literal("")),
   contract_value: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
@@ -40,9 +39,9 @@ function NewProject() {
   const navigate = useNavigate();
   const qc = useQueryClient();
 
-  const { data: depts } = useQuery({
-    queryKey: ["departments"],
-    queryFn: async () => (await getSupabase().from("departments").select("id, name_th").eq("is_active", true).order("name_th")).data ?? [],
+  const { data: workTypes } = useQuery({
+    queryKey: ["work-types"],
+    queryFn: async () => (await getSupabase().from("work_types").select("id, code, name_th").eq("is_active", true).order("sort_order").order("name_th")).data ?? [],
   });
 
   const form = useForm<FormValues>({
@@ -60,7 +59,6 @@ function NewProject() {
         description: values.description || null,
         customer_name: values.customer_name || null,
         project_type: values.project_type || null,
-        department_id: values.department_id || null,
         start_date: values.start_date || null,
         end_date: values.end_date || null,
         contract_value: values.contract_value === "" || values.contract_value == null ? null : Number(values.contract_value),
@@ -98,21 +96,23 @@ function NewProject() {
               <Input placeholder="ชื่อลูกค้า/หน่วยงาน" {...form.register("customer_name")} />
             </div>
             <div className="space-y-2">
-              <Label>ประเภทโครงการ</Label>
-              <Input placeholder="เช่น ติดตั้งระบบ, งานก่อสร้าง" {...form.register("project_type")} />
+              <Label>ประเภทงาน *</Label>
+              <Select value={form.watch("project_type") || ""} onValueChange={(v) => form.setValue("project_type", v, { shouldValidate: true })}>
+                <SelectTrigger><SelectValue placeholder="เลือกประเภทงาน" /></SelectTrigger>
+                <SelectContent>
+                  {workTypes?.map((w: { id: string; code: string; name_th: string }) => (
+                    <SelectItem key={w.id} value={w.name_th}>{w.name_th}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {form.formState.errors.project_type && <p className="text-xs text-destructive">{form.formState.errors.project_type.message}</p>}
+              {(!workTypes || workTypes.length === 0) && (
+                <p className="text-xs text-muted-foreground">ยังไม่มีประเภทงาน — ให้ผู้ดูแลระบบเพิ่มที่ ตั้งค่า → ประเภทงาน</p>
+              )}
             </div>
             <div className="sm:col-span-2 space-y-2">
               <Label>รายละเอียด</Label>
               <Textarea rows={3} {...form.register("description")} />
-            </div>
-            <div className="space-y-2">
-              <Label>แผนกเจ้าของ</Label>
-              <Select onValueChange={(v) => form.setValue("department_id", v)}>
-                <SelectTrigger><SelectValue placeholder="เลือกแผนก" /></SelectTrigger>
-                <SelectContent>
-                  {depts?.map((d: { id: string; name_th: string }) => <SelectItem key={d.id} value={d.id}>{d.name_th}</SelectItem>)}
-                </SelectContent>
-              </Select>
             </div>
           </CardContent>
         </Card>
