@@ -1,0 +1,34 @@
+import { Link, useRouterState } from "@tanstack/react-router";
+import { Users, Building2, FolderTree, Tag, Settings as SettingsIcon, LayoutGrid } from "lucide-react";
+
+const items = [
+  { to: "/settings", label: "ภาพรวม", icon: LayoutGrid, exact: true },
+  { to: "/settings/users", label: "ผู้ใช้งาน", icon: Users },
+  { to: "/settings/departments", label: "แผนก", icon: Building2 },
+  { to: "/settings/categories", label: "หมวดหมู่", icon: FolderTree },
+  { to: "/settings/tags", label: "Tag", icon: Tag },
+  { to: "/settings/general", label: "ทั่วไป", icon: SettingsIcon },
+] as const;
+
+export function SettingsNav() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  return (
+    <div className="flex flex-wrap gap-1 rounded-lg border bg-card p-1">
+      {items.map((it) => {
+        const active = it.exact ? pathname === it.to || pathname === "/settings/" : pathname.startsWith(it.to);
+        return (
+          <Link
+            key={it.to}
+            to={it.to}
+            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
+              active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            <it.icon className="h-4 w-4" />
+            {it.label}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
