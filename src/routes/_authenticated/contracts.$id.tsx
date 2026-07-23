@@ -166,6 +166,8 @@ function ContractDetail() {
         />
       </div>
 
+      <ContractNotesList contractId={id} />
+
       {(() => {
         const rawLinks = (c as { attachment_links?: unknown }).attachment_links;
         const linkList = Array.isArray(rawLinks) ? (rawLinks as { label?: string; url?: string }[]) : [];
