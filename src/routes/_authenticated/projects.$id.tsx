@@ -122,7 +122,7 @@ function ProjectDetail() {
     }
   })();
 
-  const autoAdvancedRef = useRef<string | null>(null);
+  // (autoAdvancedRef declared above)
   const advance = async (next: ProjectLifecycleStatus, silent = false) => {
     const { error } = await sb.from("projects").update({ status: next }).eq("id", id);
     if (error) { if (!silent) toast.error(error.message); return; }
