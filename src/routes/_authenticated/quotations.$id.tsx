@@ -44,7 +44,7 @@ function QuotationDetail() {
     queryKey: ["quotation", id],
     queryFn: async () => {
       const { data, error } = await getSupabase().from("quotations")
-        .select("*, partners(name), departments(name_th)").eq("id", id).single();
+        .select("*, partners(name), departments(name_th), projects(id, code, name)").eq("id", id).single();
       if (error) throw error;
       return data;
     },
