@@ -74,15 +74,77 @@ function ProjectDetail() {
   const isAdmin = perms?.isAdmin ?? false;
   const canEditProject = isAdmin || (perms?.canEditProject ?? false);
   const status = (p.status ?? "draft") as ProjectLifecycleStatus;
-  const nextOptions = nextStatuses(status);
+  // ---------- Auto-detect readiness for next lifecycle stage from data ----------
+  const { data: signals } = useQuery({
+    queryKey: ["project-signals", id],
+    queryFn: async () => {
+      const [rfq, sup, supSel, cus, ms] = await Promise.all([
+        sb.from("project_documents").select("id", { count: "exact", head: true }).eq("project_id", id).eq("document_type", "rfq_spec"),
+        sb.from("supplier_quotations").select("id", { count: "exact", head: true }).eq("project_id", id),
+        sb.from("supplier_quotations").select("id", { count: "exact", head: true }).eq("project_id", id).eq("is_selected", true),
+        sb.from("customer_quotations").select("id", { count: "exact", head: true }).eq("project_id", id),
+        sb.from("project_milestones").select("status"). eq("project_id", id),
+      ]);
+      const mlist = (ms.data ?? []) as { status: string }[];
+      return {
+        rfqCount: rfq.count ?? 0,
+        supCount: sup.count ?? 0,
+        supSelectedCount: supSel.count ?? 0,
+        cusCount: cus.count ?? 0,
+        milestoneCount: mlist.length,
+        milestoneAllDone: mlist.length > 0 && mlist.every((m) => m.status === "completed"),
+      };
+    },
+  });
 
-  const advance = async (next: ProjectLifecycleStatus) => {
+  // Determine what data-driven step is currently pending
+  type Gate = { need: string; ready: boolean; nextIfReady: ProjectLifecycleStatus | null };
+  const gate: Gate = (() => {
+    const s = signals;
+    switch (status) {
+      case "draft":
+        return { need: "อัปโหลดเอกสาร RFQ / Spec ในแท็บ RFQ", ready: !!s && s.rfqCount > 0, nextIfReady: "rfq_sent" };
+      case "rfq_sent":
+        return { need: "บันทึกใบเสนอราคาจาก Supplier อย่างน้อย 1 ราย", ready: !!s && s.supCount > 0, nextIfReady: "quotation_received" };
+      case "quotation_received":
+        return {
+          need: "เลือก Supplier (Mark as Final) และสร้างใบเสนอราคาให้ลูกค้า",
+          ready: !!s && s.supSelectedCount > 0 && s.cusCount > 0,
+          nextIfReady: "proposal_submitted",
+        };
+      case "proposal_submitted":
+        return { need: "รอผลการเสนอราคาจากลูกค้า — ทีมขายกด ชนะ / แพ้ เอง", ready: false, nextIfReady: null };
+      case "won":
+        return { need: "กำหนดงวดงาน (Milestones) เพื่อเริ่มดำเนินโครงการ", ready: !!s && s.milestoneCount > 0, nextIfReady: "in_progress" };
+      case "in_progress":
+        return { need: "ปิดงวดงานทั้งหมดให้เป็นสถานะเสร็จสิ้น", ready: !!s && s.milestoneAllDone, nextIfReady: "completed" };
+      default:
+        return { need: "", ready: false, nextIfReady: null };
+    }
+  })();
+
+  const autoAdvancedRef = useRef<string | null>(null);
+  const advance = async (next: ProjectLifecycleStatus, silent = false) => {
     const { error } = await sb.from("projects").update({ status: next }).eq("id", id);
-    if (error) { toast.error(error.message); return; }
-    toast.success(`อัปเดตสถานะเป็น: ${LIFECYCLE_LABEL[next]}`);
+    if (error) { if (!silent) toast.error(error.message); return; }
+    if (!silent) toast.success(`อัปเดตสถานะเป็น: ${LIFECYCLE_LABEL[next]}`);
+    else toast.success(`ระบบตรวจพบข้อมูลครบ → เลื่อนไปยัง "${LIFECYCLE_LABEL[next]}" อัตโนมัติ`);
     qc.invalidateQueries({ queryKey: ["project", id] });
     qc.invalidateQueries({ queryKey: ["projects"] });
   };
+
+  // Auto-advance when signals meet the gate
+  useEffect(() => {
+    if (!canEditProject) return;
+    if (!gate.ready || !gate.nextIfReady) return;
+    const key = `${id}:${status}→${gate.nextIfReady}`;
+    if (autoAdvancedRef.current === key) return;
+    autoAdvancedRef.current = key;
+    void advance(gate.nextIfReady, true);
+     
+  }, [gate.ready, gate.nextIfReady, canEditProject, id, status]);
+
+  const showManualBranch = status === "proposal_submitted"; // Won / Lost only
 
   return (
     <div className="space-y-6">
@@ -90,7 +152,7 @@ function ProjectDetail() {
         <ArrowLeft className="mr-2 h-4 w-4" />กลับรายการโครงการ
       </Button>
 
-      {/* Header + Next-action banner */}
+      {/* Header + auto-detect status banner */}
       <div className="tile grid gap-5 p-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
         <div className="min-w-0 space-y-2">
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -108,35 +170,44 @@ function ProjectDetail() {
           </div>
         </div>
 
-        {canEditProject && nextOptions.length > 0 && (
+        {/* Right: auto-detect indicator OR Won/Lost manual branch */}
+        {showManualBranch && canEditProject ? (
           <div className="flex flex-col items-stretch gap-2 md:items-end">
-            <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              ขั้นต่อไป
-            </div>
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">ผลการเสนอราคา</div>
             <div className="flex flex-wrap gap-2 md:justify-end">
-              {nextOptions.map((n) => {
+              {nextStatuses(status).map((n) => {
                 const isWin = n === "won";
-                const isLose = n === "lost";
                 return (
                   <Button
                     key={n}
                     size="lg"
-                    variant={isLose ? "outline" : "default"}
-                    className={`rounded-full ${isWin ? "bg-success text-success-foreground hover:bg-success/90" : ""} ${isLose ? "border-destructive/40 text-destructive hover:bg-destructive/10" : ""}`}
+                    variant={isWin ? "default" : "outline"}
+                    className={`rounded-full ${isWin ? "bg-success text-success-foreground hover:bg-success/90" : "border-destructive/40 text-destructive hover:bg-destructive/10"}`}
                     onClick={() => advance(n)}
                   >
-                    {isWin && <Trophy className="mr-2 h-4 w-4" />}
-                    {isLose && <XCircle className="mr-2 h-4 w-4" />}
-                    {!isWin && !isLose && <Sparkles className="mr-2 h-4 w-4" />}
+                    {isWin ? <Trophy className="mr-2 h-4 w-4" /> : <XCircle className="mr-2 h-4 w-4" />}
                     {LIFECYCLE_LABEL[n]}
-                    {!isWin && !isLose && <ArrowRight className="ml-2 h-4 w-4" />}
                   </Button>
                 );
               })}
             </div>
           </div>
-        )}
+        ) : gate.nextIfReady ? (
+          <div className="flex max-w-sm flex-col items-stretch gap-1.5 rounded-xl border bg-muted/40 p-3 md:items-end md:text-right">
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              {gate.ready ? <CheckCircle2 className="h-3.5 w-3.5 text-success" /> : <CircleDashed className="h-3.5 w-3.5" />}
+              ระบบเลื่อนขั้นอัตโนมัติ
+            </div>
+            <div className="text-sm font-medium text-foreground">
+              {gate.ready ? `กำลังเลื่อนไป "${LIFECYCLE_LABEL[gate.nextIfReady]}"…` : `รอ: ${gate.need}`}
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              ถัดไป: <span className="font-medium text-foreground">{LIFECYCLE_LABEL[gate.nextIfReady]}</span>
+            </div>
+          </div>
+        ) : null}
       </div>
+
 
       {/* Stepper */}
       <div className="tile p-3">
