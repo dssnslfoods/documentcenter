@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDate, fmtCurrency } from "@/lib/format";
 import { ContractStatusBadge } from "@/components/status-badge";
+import { ContractNotesList } from "@/components/contract/notes-list";
 import type { ContractStatus } from "@/lib/types";
 
 type Milestone = { id: string; kind: string; name: string; due_date: string | null; amount: number | null; status: string | null; notes: string | null; sort_order: number };
