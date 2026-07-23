@@ -22,6 +22,7 @@ function Settings() {
   return (
     <div className="space-y-6">
       <PageHeader title="ตั้งค่าระบบ" description="จัดการ Master Data และการตั้งค่าองค์กร (สำหรับ Super Admin)" />
+      <SettingsNav />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((c) => {
           const inner = (
