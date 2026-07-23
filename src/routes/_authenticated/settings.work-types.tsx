@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { getSupabase } from "@/lib/supabase";
 import { useAdminGuard } from "@/hooks/use-admin-guard";
+import { nextCode } from "@/lib/next-code";
 
 export const Route = createFileRoute("/_authenticated/settings/work-types")({
   head: () => ({ meta: [{ title: "ประเภทงาน | Document Hub" }] }),
