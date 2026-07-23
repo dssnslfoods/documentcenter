@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   FileText, FileSignature, AlertTriangle, Clock, CheckCircle2, DollarSign,
-  ShoppingCart, Plus, ArrowRight,
+  Plus, ArrowRight,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
@@ -40,13 +40,12 @@ function Dashboard() {
       const in30 = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
       const today = new Date().toISOString().slice(0, 10);
 
-      const [docs, activeDocs, expiring, expired, quotPending, procInProg, valSum] = await Promise.all([
+      const [docs, activeDocs, expiring, expired, quotPending, valSum] = await Promise.all([
         sb.from("documents").select("id", { count: "exact", head: true }),
         sb.from("documents").select("id", { count: "exact", head: true }).eq("status", "active"),
         sb.from("contracts").select("id", { count: "exact", head: true }).eq("status", "active").lte("end_date", in30).gte("end_date", today),
         sb.from("contracts").select("id", { count: "exact", head: true }).lt("end_date", today).neq("status", "archived"),
         sb.from("quotations").select("id", { count: "exact", head: true }).in("status", ["submitted", "under_review", "negotiation"]),
-        sb.from("procurements").select("id", { count: "exact", head: true }).in("status", ["approved", "contracting", "in_progress"]),
         sb.from("contracts").select("value_amount").eq("status", "active"),
       ]);
 
@@ -58,7 +57,6 @@ function Dashboard() {
         expiring30: expiring.count ?? 0,
         expired: expired.count ?? 0,
         quotPending: quotPending.count ?? 0,
-        procInProgress: procInProg.count ?? 0,
         totalContractValue: totalValue,
       };
     },
@@ -192,7 +190,7 @@ function Dashboard() {
         <KpiCard icon={Clock} label="สัญญาใกล้หมดอายุ (30 วัน)" value={fmtNumber(kpi?.expiring30)} loading={isLoading} tone="warning" href="/contracts" />
         <KpiCard icon={AlertTriangle} label="สัญญาหมดอายุแล้ว" value={fmtNumber(kpi?.expired)} loading={isLoading} tone="destructive" href="/contracts" />
         <KpiCard icon={FileSignature} label="ใบเสนอราคารอพิจารณา" value={fmtNumber(kpi?.quotPending)} loading={isLoading} href="/quotations" />
-        <KpiCard icon={ShoppingCart} label="จัดจ้างกำลังดำเนินการ" value={fmtNumber(kpi?.procInProgress)} loading={isLoading} href="/procurements" />
+        <KpiCard icon={FolderKanban} label="โครงการทั้งหมด" value={fmtNumber(kpi?.totalDocs)} loading={isLoading} href="/projects" />
       </div>
 
       {/* Secondary KPI row */}

@@ -1,7 +1,7 @@
 import { type ReactNode, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
-  LayoutDashboard, FileText, FileSignature, FileSpreadsheet, ShoppingCart,
+  LayoutDashboard, FileText, FileSignature, FileSpreadsheet,
   Users, FolderKanban, Calendar, CheckSquare, Bell, BarChart3, History, Settings,
   Search, LogOut, User as UserIcon, Menu, X, ChevronDown, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
@@ -33,7 +33,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { to: "/projects", icon: FolderKanban, label: "โครงการ" },
       { to: "/quotations", icon: FileSpreadsheet, label: "ใบเสนอราคา" },
-      { to: "/procurements", icon: ShoppingCart, label: "จัดซื้อและจัดจ้าง" },
+      
       { to: "/partners", icon: Users, label: "คู่ค้าและลูกค้า" },
     ],
   },
