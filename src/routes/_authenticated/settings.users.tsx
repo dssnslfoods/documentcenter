@@ -3,10 +3,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSupabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/use-supabase";
-import { PageHeader } from "@/components/page-header";
-import { EmptyState } from "@/components/page-header";
+import { PageHeader, EmptyState } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -15,9 +15,13 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+} from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
-import { ShieldAlert, Users as UsersIcon, Search } from "lucide-react";
+import { ShieldAlert, UserPlus, Search, Copy } from "lucide-react";
+import { adminInviteUser } from "@/lib/admin-invite";
 
 export const Route = createFileRoute("/_authenticated/settings/users")({
   head: () => ({ meta: [{ title: "ผู้ใช้งานและสิทธิ์ | Document Hub" }] }),
@@ -35,6 +39,15 @@ const ROLES: { value: Role; label: string; tone: string }[] = [
 const roleLabel = (r: Role) => ROLES.find((x) => x.value === r)?.label ?? r;
 const roleTone = (r: Role) => ROLES.find((x) => x.value === r)?.tone ?? "bg-muted";
 
+function genPassword() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+  let s = "";
+  const arr = new Uint32Array(12);
+  crypto.getRandomValues(arr);
+  for (let i = 0; i < 12; i++) s += chars[arr[i] % chars.length];
+  return s + "!";
+}
+
 function UsersPage() {
   const sb = getSupabase();
   const qc = useQueryClient();
@@ -43,7 +56,14 @@ function UsersPage() {
   const [deptFilter, setDeptFilter] = useState<string>("all");
   const [roleFilter, setRoleFilter] = useState<string>("all");
 
-  // Check if current user is super_admin
+  // ---------- Invite dialog state ----------
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [invForm, setInvForm] = useState({
+    email: "", fullName: "", password: genPassword(),
+    role: "staff" as Role, departmentId: "none",
+  });
+  const [lastCreated, setLastCreated] = useState<{ email: string; password: string } | null>(null);
+
   const { data: myRoles } = useQuery({
     queryKey: ["my-roles", user?.id],
     enabled: !!user,
@@ -57,7 +77,7 @@ function UsersPage() {
   const { data: departments } = useQuery({
     queryKey: ["departments"],
     queryFn: async () => {
-      const { data } = await sb.from("departments").select("id, name").order("name");
+      const { data } = await sb.from("departments").select("id, name_th").order("name_th");
       return data ?? [];
     },
   });
@@ -68,7 +88,7 @@ function UsersPage() {
     queryFn: async () => {
       const { data: profiles, error } = await sb
         .from("profiles")
-        .select("id, email, full_name, department_id, is_active, created_at, departments(name)")
+        .select("id, email, full_name, department_id, is_active, created_at, departments(name_th)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       const ids = (profiles ?? []).map((p) => p.id);
@@ -81,7 +101,7 @@ function UsersPage() {
       });
       return (profiles ?? []).map((p) => ({
         ...p,
-        department_name: (p as any).departments?.name ?? null,
+        department_name: (p as unknown as { departments?: { name_th?: string } }).departments?.name_th ?? null,
         roles: roleMap.get(p.id) ?? [],
       }));
     },
@@ -101,7 +121,6 @@ function UsersPage() {
 
   const changeRole = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: Role }) => {
-      // Replace roles: delete existing then insert
       await sb.from("user_roles").delete().eq("user_id", userId);
       const { error } = await sb.from("user_roles").insert({ user_id: userId, role });
       if (error) throw error;
@@ -110,7 +129,7 @@ function UsersPage() {
       toast.success("อัปเดตบทบาทเรียบร้อย");
       qc.invalidateQueries({ queryKey: ["users-list"] });
     },
-    onError: (e: any) => toast.error(e.message ?? "เกิดข้อผิดพลาด"),
+    onError: (e: Error) => toast.error(e.message ?? "เกิดข้อผิดพลาด"),
   });
 
   const changeDept = useMutation({
@@ -122,7 +141,7 @@ function UsersPage() {
       toast.success("อัปเดตแผนกเรียบร้อย");
       qc.invalidateQueries({ queryKey: ["users-list"] });
     },
-    onError: (e: any) => toast.error(e.message ?? "เกิดข้อผิดพลาด"),
+    onError: (e: Error) => toast.error(e.message ?? "เกิดข้อผิดพลาด"),
   });
 
   const toggleActive = useMutation({
@@ -134,8 +153,51 @@ function UsersPage() {
       toast.success("อัปเดตสถานะเรียบร้อย");
       qc.invalidateQueries({ queryKey: ["users-list"] });
     },
-    onError: (e: any) => toast.error(e.message ?? "เกิดข้อผิดพลาด"),
+    onError: (e: Error) => toast.error(e.message ?? "เกิดข้อผิดพลาด"),
   });
+
+  const invite = useMutation({
+    mutationFn: async () => {
+      const email = invForm.email.trim().toLowerCase();
+      const pw = invForm.password;
+      if (!email || !pw) throw new Error("กรุณากรอกอีเมลและรหัสผ่าน");
+      if (pw.length < 8) throw new Error("รหัสผ่านต้องยาวอย่างน้อย 8 ตัวอักษร");
+      const res = await adminInviteUser({ email, password: pw, fullName: invForm.fullName || email });
+      // If user came back (no email confirmation), update role/dept immediately
+      if (res.userId) {
+        if (invForm.role && invForm.role !== "staff") {
+          await sb.from("user_roles").delete().eq("user_id", res.userId);
+          await sb.from("user_roles").insert({ user_id: res.userId, role: invForm.role });
+        }
+        if (invForm.departmentId !== "none") {
+          await sb.from("profiles").update({ department_id: invForm.departmentId }).eq("id", res.userId);
+        }
+        if (invForm.fullName) {
+          await sb.from("profiles").update({ full_name: invForm.fullName }).eq("id", res.userId);
+        }
+      }
+      return { email, password: pw, needsConfirmation: res.needsConfirmation };
+    },
+    onSuccess: (r) => {
+      setLastCreated({ email: r.email, password: r.password });
+      toast.success(
+        r.needsConfirmation
+          ? "สร้างบัญชีแล้ว — ผู้ใช้ต้องยืนยันอีเมลก่อนเข้าใช้งาน"
+          : "สร้างบัญชีเรียบร้อย"
+      );
+      setInvForm({ email: "", fullName: "", password: genPassword(), role: "staff", departmentId: "none" });
+      qc.invalidateQueries({ queryKey: ["users-list"] });
+    },
+    onError: (e: Error) => toast.error(e.message ?? "สร้างบัญชีไม่สำเร็จ"),
+  });
+
+  const copyCreds = async () => {
+    if (!lastCreated) return;
+    await navigator.clipboard.writeText(
+      `Email: ${lastCreated.email}\nPassword: ${lastCreated.password}`
+    );
+    toast.success("คัดลอกข้อมูลเข้าสู่ระบบแล้ว");
+  };
 
   if (!user) return null;
   if (myRoles && !isAdmin) {
@@ -155,36 +217,112 @@ function UsersPage() {
     <div className="space-y-6">
       <PageHeader
         title="ผู้ใช้งานและสิทธิ์"
-        description="จัดการบทบาทและแผนกของผู้ใช้งานในระบบ"
-      />
+        description="เพิ่ม/เชิญผู้ใช้ กำหนดบทบาทและแผนก สำหรับใช้งานร่วมกันในระบบ"
+        actions={
+          <Dialog open={inviteOpen} onOpenChange={(v) => { setInviteOpen(v); if (!v) setLastCreated(null); }}>
+            <DialogTrigger asChild>
+              <Button><UserPlus className="h-4 w-4 mr-1" /> เพิ่มผู้ใช้</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>สร้างบัญชีผู้ใช้ใหม่</DialogTitle>
+                <DialogDescription>
+                  ระบบจะสร้างบัญชีทันทีและกำหนดบทบาท/แผนกให้อัตโนมัติ จากนั้นแจ้งรหัสผ่านให้ผู้ใช้ไปเปลี่ยนภายหลัง
+                </DialogDescription>
+              </DialogHeader>
 
-      <Alert>
-        <UsersIcon className="h-4 w-4" />
-        <AlertTitle>วิธีเพิ่มผู้ใช้ใหม่</AlertTitle>
-        <AlertDescription>
-          ให้ผู้ใช้ใหม่ Sign up ที่หน้า <code>/auth</code> จากนั้นกลับมาที่หน้านี้เพื่อกำหนดบทบาทและแผนกให้ผู้ใช้ที่สร้างขึ้น
-          (ผู้ใช้ใหม่จะถูกกำหนดเป็นบทบาท <b>staff</b> โดยอัตโนมัติ)
-        </AlertDescription>
-      </Alert>
+              {lastCreated ? (
+                <div className="space-y-3">
+                  <Alert>
+                    <AlertTitle>สร้างบัญชีสำเร็จ</AlertTitle>
+                    <AlertDescription>
+                      คัดลอกและแจ้งข้อมูลด้านล่างให้ผู้ใช้ (เก็บเป็นความลับ)
+                    </AlertDescription>
+                  </Alert>
+                  <div className="rounded-md border bg-muted/40 p-3 font-mono text-sm">
+                    <div>Email: {lastCreated.email}</div>
+                    <div>Password: {lastCreated.password}</div>
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="outline" onClick={copyCreds}><Copy className="h-4 w-4 mr-1" /> คัดลอก</Button>
+                    <Button onClick={() => setLastCreated(null)}>เพิ่มอีกคน</Button>
+                    <Button variant="ghost" onClick={() => { setLastCreated(null); setInviteOpen(false); }}>ปิด</Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <Label>อีเมล *</Label>
+                    <Input type="email" value={invForm.email}
+                      onChange={(e) => setInvForm({ ...invForm, email: e.target.value })}
+                      placeholder="user@company.co.th" />
+                  </div>
+                  <div>
+                    <Label>ชื่อ-นามสกุล</Label>
+                    <Input value={invForm.fullName}
+                      onChange={(e) => setInvForm({ ...invForm, fullName: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>รหัสผ่านชั่วคราว *</Label>
+                    <div className="flex gap-2">
+                      <Input value={invForm.password}
+                        onChange={(e) => setInvForm({ ...invForm, password: e.target.value })} />
+                      <Button type="button" variant="outline"
+                        onClick={() => setInvForm({ ...invForm, password: genPassword() })}>
+                        สุ่มใหม่
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>บทบาท</Label>
+                      <Select value={invForm.role} onValueChange={(v) => setInvForm({ ...invForm, role: v as Role })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {ROLES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>แผนก</Label>
+                      <Select value={invForm.departmentId} onValueChange={(v) => setInvForm({ ...invForm, departmentId: v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">ไม่ระบุ</SelectItem>
+                          {(departments ?? []).map((d) => (
+                            <SelectItem key={d.id} value={d.id}>{d.name_th}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="ghost" onClick={() => setInviteOpen(false)}>ยกเลิก</Button>
+                    <Button onClick={() => invite.mutate()} disabled={invite.isPending}>
+                      สร้างบัญชี
+                    </Button>
+                  </DialogFooter>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+        }
+      />
 
       <Card>
         <CardContent className="p-4">
           <div className="grid gap-3 sm:grid-cols-[1fr_200px_200px]">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="ค้นหาชื่อหรืออีเมล..."
-                className="pl-9"
-              />
+              <Input value={q} onChange={(e) => setQ(e.target.value)}
+                placeholder="ค้นหาชื่อหรืออีเมล..." className="pl-9" />
             </div>
             <Select value={deptFilter} onValueChange={setDeptFilter}>
               <SelectTrigger><SelectValue placeholder="ทุกแผนก" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">ทุกแผนก</SelectItem>
                 {(departments ?? []).map((d) => (
-                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                  <SelectItem key={d.id} value={d.id}>{d.name_th}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -206,7 +344,7 @@ function UsersPage() {
           {isLoading ? (
             <div className="p-8 text-center text-sm text-muted-foreground">กำลังโหลด...</div>
           ) : filtered.length === 0 ? (
-            <EmptyState title="ไม่พบผู้ใช้งาน" description="ลองปรับตัวกรอง หรือเชิญผู้ใช้ใหม่ให้สมัครสมาชิก" />
+            <EmptyState title="ไม่พบผู้ใช้งาน" description="ลองปรับตัวกรอง หรือเพิ่มผู้ใช้ใหม่จากปุ่มด้านบน" />
           ) : (
             <Table>
               <TableHeader>
@@ -239,11 +377,9 @@ function UsersPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Select
-                        value={u.roles[0] ?? ""}
+                      <Select value={u.roles[0] ?? ""}
                         onValueChange={(v) => changeRole.mutate({ userId: u.id, role: v as Role })}
-                        disabled={u.id === user.id}
-                      >
+                        disabled={u.id === user.id}>
                         <SelectTrigger><SelectValue placeholder="เลือกบทบาท" /></SelectTrigger>
                         <SelectContent>
                           {ROLES.map((r) => (
@@ -253,28 +389,21 @@ function UsersPage() {
                       </Select>
                     </TableCell>
                     <TableCell>
-                      <Select
-                        value={u.department_id ?? "none"}
-                        onValueChange={(v) =>
-                          changeDept.mutate({ userId: u.id, deptId: v === "none" ? null : v })
-                        }
-                      >
+                      <Select value={u.department_id ?? "none"}
+                        onValueChange={(v) => changeDept.mutate({ userId: u.id, deptId: v === "none" ? null : v })}>
                         <SelectTrigger><SelectValue placeholder="เลือกแผนก" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">ไม่ระบุ</SelectItem>
                           {(departments ?? []).map((d) => (
-                            <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                            <SelectItem key={d.id} value={d.id}>{d.name_th}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </TableCell>
                     <TableCell>
-                      <Button
-                        size="sm"
-                        variant={u.is_active ? "outline" : "secondary"}
+                      <Button size="sm" variant={u.is_active ? "outline" : "secondary"}
                         onClick={() => toggleActive.mutate({ userId: u.id, active: !u.is_active })}
-                        disabled={u.id === user.id}
-                      >
+                        disabled={u.id === user.id}>
                         {u.is_active ? "ใช้งานอยู่" : "ปิดใช้งาน"}
                       </Button>
                     </TableCell>
