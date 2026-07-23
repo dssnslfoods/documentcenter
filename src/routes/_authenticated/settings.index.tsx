@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Building2, FolderTree, Settings as SettingsIcon, ClipboardList, Tag } from "lucide-react";
 
-export const Route = createFileRoute("/_authenticated/settings")({
+export const Route = createFileRoute("/_authenticated/settings/")({
   head: () => ({ meta: [{ title: "ตั้งค่าระบบ | Document Hub" }] }),
   component: Settings,
 });
