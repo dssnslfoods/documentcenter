@@ -1,14 +1,14 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Users, Building2, FolderTree, Tag, Settings as SettingsIcon, LayoutGrid } from "lucide-react";
 
-const items = [
+const items: { to: string; label: string; icon: typeof Users; exact?: boolean }[] = [
   { to: "/settings", label: "ภาพรวม", icon: LayoutGrid, exact: true },
   { to: "/settings/users", label: "ผู้ใช้งาน", icon: Users },
   { to: "/settings/departments", label: "แผนก", icon: Building2 },
   { to: "/settings/categories", label: "หมวดหมู่", icon: FolderTree },
   { to: "/settings/tags", label: "Tag", icon: Tag },
   { to: "/settings/general", label: "ทั่วไป", icon: SettingsIcon },
-] as const;
+];
 
 export function SettingsNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
