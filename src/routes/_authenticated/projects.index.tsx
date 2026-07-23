@@ -272,7 +272,7 @@ function dotColor(st: ProjectLifecycleStatus): string {
 }
 
 function ListView({
-  rows, isLoading, page, totalPages, count, pageSize, onPage,
+  rows, isLoading, page, totalPages, count, pageSize, onPage, sort, onSort,
 }: {
   rows: ProjectRow[];
   isLoading: boolean;
@@ -281,7 +281,13 @@ function ListView({
   count: number;
   pageSize: number;
   onPage: (p: number | ((prev: number) => number)) => void;
+  sort: { field: "created_at" | "status"; direction: "asc" | "desc" };
+  onSort: (field: "created_at" | "status") => void;
 }) {
+  const SortIcon = sort.field === "status"
+    ? (sort.direction === "asc" ? ArrowUp : ArrowDown)
+    : ArrowUpDown;
+
   return (
     <Card className="tile">
       <CardContent className="p-0">
@@ -297,7 +303,14 @@ function ListView({
                   <th className="px-4 py-3">รหัส</th>
                   <th className="px-4 py-3">ชื่อโครงการ</th>
                   <th className="px-4 py-3">ลูกค้า</th>
-                  <th className="px-4 py-3">สถานะ</th>
+                  <th className="px-4 py-3">
+                    <button
+                      onClick={() => onSort("status")}
+                      className="inline-flex items-center gap-1 font-medium hover:text-foreground"
+                    >
+                      สถานะ <SortIcon className="h-3 w-3" />
+                    </button>
+                  </th>
                   <th className="px-4 py-3">เริ่ม</th>
                   <th className="px-4 py-3">สิ้นสุด</th>
                   <th className="px-4 py-3 text-right">มูลค่าสัญญา</th>
