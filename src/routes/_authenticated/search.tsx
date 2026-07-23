@@ -65,12 +65,33 @@ function SmartSearch() {
     queryKey: ["search-contracts", term],
     enabled,
     queryFn: async () => {
-      const { data } = await getSupabase()
+      const sb = getSupabase();
+      // 1. direct matches on contract fields
+      const direct = await sb
         .from("contracts")
         .select("id, contract_no, title, status, end_date")
-        .or(`title.ilike.%${term}%,contract_no.ilike.%${term}%`)
+        .or(`title.ilike.%${term}%,contract_no.ilike.%${term}%,notes.ilike.%${term}%,key_terms.ilike.%${term}%,payment_terms.ilike.%${term}%`)
         .limit(20);
-      return data ?? [];
+      // 2. matches in freeform contract_notes → map back to contracts
+      const noteHits = await sb
+        .from("contract_notes")
+        .select("contract_id")
+        .or(`title.ilike.%${term}%,content.ilike.%${term}%`)
+        .limit(50);
+      const existingIds = new Set((direct.data ?? []).map((c) => c.id));
+      const extraIds = Array.from(
+        new Set((noteHits.data ?? []).map((n) => n.contract_id).filter((cid) => !existingIds.has(cid)))
+      );
+      let extras: NonNullable<typeof direct.data> = [];
+      if (extraIds.length > 0) {
+        const { data } = await sb
+          .from("contracts")
+          .select("id, contract_no, title, status, end_date")
+          .in("id", extraIds)
+          .limit(20);
+        extras = data ?? [];
+      }
+      return [...(direct.data ?? []), ...extras];
     },
   });
 
