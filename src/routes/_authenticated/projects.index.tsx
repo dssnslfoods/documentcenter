@@ -132,6 +132,26 @@ function ProjectsList() {
                 {Object.entries(LIFECYCLE_LABEL).map(([k, v]) => (
                   <SelectItem key={k} value={k}>{v}</SelectItem>
                 ))}
+            </SelectContent>
+            </Select>
+          )}
+          {view === "pipeline" && (
+            <Select
+              value={`${pipelineSort.field}:${pipelineSort.direction}`}
+              onValueChange={(v) => {
+                const [field, direction] = v.split(":") as [PipelineSortField, PipelineSortDir];
+                setPipelineSort({ field, direction });
+              }}
+            >
+              <SelectTrigger className="w-full rounded-full md:w-60">
+                <ArrowUpDown className="mr-2 h-4 w-4" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="updated_at:desc">อัปเดตล่าสุดก่อน</SelectItem>
+                <SelectItem value="updated_at:asc">อัปเดตเก่าสุดก่อน</SelectItem>
+                <SelectItem value="end_date:asc">ครบกำหนดใกล้สุดก่อน</SelectItem>
+                <SelectItem value="end_date:desc">ครบกำหนดไกลสุดก่อน</SelectItem>
               </SelectContent>
             </Select>
           )}
