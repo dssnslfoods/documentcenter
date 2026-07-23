@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Plus, Trash2, Tag as TagIcon } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/page-header";
+import { SettingsNav } from "@/components/settings-nav";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -77,6 +78,7 @@ function TagsPage() {
 
   return (
     <div className="space-y-6">
+      <SettingsNav />
       <PageHeader title="Tag และ Keyword" description="จัดการ tag สำหรับใช้กับเอกสารและโครงการ" />
 
       <Card>

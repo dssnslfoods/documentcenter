@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSupabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/use-supabase";
 import { PageHeader, EmptyState } from "@/components/page-header";
+import { SettingsNav } from "@/components/settings-nav";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -215,6 +216,7 @@ function UsersPage() {
 
   return (
     <div className="space-y-6">
+      <SettingsNav />
       <PageHeader
         title="ผู้ใช้งานและสิทธิ์"
         description="เพิ่ม/เชิญผู้ใช้ กำหนดบทบาทและแผนก สำหรับใช้งานร่วมกันในระบบ"

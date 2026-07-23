@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/page-header";
+import { SettingsNav } from "@/components/settings-nav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Building2, FolderTree, Settings as SettingsIcon, ClipboardList, Tag } from "lucide-react";
 
@@ -21,6 +22,7 @@ function Settings() {
   return (
     <div className="space-y-6">
       <PageHeader title="ตั้งค่าระบบ" description="จัดการ Master Data และการตั้งค่าองค์กร (สำหรับ Super Admin)" />
+      <SettingsNav />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((c) => {
           const inner = (

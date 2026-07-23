@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Plus, Trash2, Pencil, FolderTree } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/page-header";
+import { SettingsNav } from "@/components/settings-nav";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -103,6 +104,7 @@ function CategoriesPage() {
 
   return (
     <div className="space-y-6">
+      <SettingsNav />
       <PageHeader
         title="หมวดหมู่เอกสาร"
         description="กำหนดหมวดหมู่และรหัสนำหน้าที่ใช้ในการสร้างเลขเอกสาร"
