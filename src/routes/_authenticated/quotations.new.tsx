@@ -1,11 +1,11 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch, Link } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
-import { PageHeader } from "@/components/page-header";
+import { Loader2, FolderKanban } from "lucide-react";
+import { PageHeader, EmptyState } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getSupabase } from "@/lib/supabase";
 
 const schema = z.object({
+  project_id: z.string().uuid("กรุณาเลือกโครงการ"),
   title: z.string().trim().min(1, "กรุณากรอกหัวข้อ").max(200),
   type: z.enum(["incoming", "outgoing"]),
   partner_id: z.string().uuid("กรุณาเลือกคู่ค้า"),
@@ -30,15 +31,23 @@ const schema = z.object({
 });
 type FormValues = z.infer<typeof schema>;
 
+const searchSchema = z.object({ project: z.string().uuid().optional() });
+
 export const Route = createFileRoute("/_authenticated/quotations/new")({
   head: () => ({ meta: [{ title: "เพิ่มใบเสนอราคา | Document Hub" }] }),
+  validateSearch: searchSchema,
   component: NewQuotation,
 });
 
 function NewQuotation() {
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const search = useSearch({ from: "/_authenticated/quotations/new" });
 
+  const { data: projects, isLoading: loadingProjects } = useQuery({
+    queryKey: ["projects-selectable"],
+    queryFn: async () => (await getSupabase().from("projects").select("id, code, name, department_id").is("archived_at", null).order("created_at", { ascending: false })).data ?? [],
+  });
   const { data: depts } = useQuery({
     queryKey: ["departments"],
     queryFn: async () => (await getSupabase().from("departments").select("id, name_th").eq("is_active", true).order("name_th")).data ?? [],
@@ -50,13 +59,14 @@ function NewQuotation() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema) as never,
-    defaultValues: { type: "outgoing", currency: "THB", amount_before_tax: 0, discount: 0, tax: 0 },
+    defaultValues: { type: "outgoing", currency: "THB", amount_before_tax: 0, discount: 0, tax: 0, project_id: search.project ?? "" },
   });
 
   const amt = Number(form.watch("amount_before_tax")) || 0;
   const disc = Number(form.watch("discount")) || 0;
   const tax = Number(form.watch("tax")) || 0;
   const total = Math.max(0, amt - disc + tax);
+  const selectedProjectId = form.watch("project_id");
 
   const create = useMutation({
     mutationFn: async (values: FormValues) => {
@@ -66,6 +76,7 @@ function NewQuotation() {
       const payload = {
         title: values.title,
         type: values.type,
+        project_id: values.project_id,
         partner_id: values.partner_id,
         department_id: values.department_id || null,
         issue_date: values.issue_date || null,
@@ -92,10 +103,48 @@ function NewQuotation() {
     onError: (e: Error) => toast.error("ไม่สำเร็จ", { description: e.message }),
   });
 
+  // Workflow gate: must have projects first
+  if (!loadingProjects && (!projects || projects.length === 0)) {
+    return (
+      <div className="max-w-2xl">
+        <PageHeader title="เพิ่มใบเสนอราคา" description="ตาม workflow ต้องสร้างโครงการก่อน" />
+        <EmptyState
+          icon={FolderKanban}
+          title="ยังไม่มีโครงการในระบบ"
+          description="ใบเสนอราคาต้องผูกกับโครงการเสมอ กรุณาสร้างโครงการก่อน"
+          action={<Button asChild><Link to="/projects/new">สร้างโครงการ</Link></Button>}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl">
-      <PageHeader title="เพิ่มใบเสนอราคา" description="สร้างใบเสนอราคาใหม่ ระบบจะสร้างเลขที่อัตโนมัติ" />
+      <PageHeader title="เพิ่มใบเสนอราคา" description="ใบเสนอราคาผูกกับโครงการ — ระบบจะสร้างเลขที่อัตโนมัติ" />
       <form onSubmit={form.handleSubmit((v) => create.mutate(v))} className="space-y-6">
+        <Card>
+          <CardHeader><CardTitle>โครงการที่เกี่ยวข้อง</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            <Label>โครงการ *</Label>
+            <Select value={selectedProjectId || undefined} onValueChange={(v) => {
+              form.setValue("project_id", v, { shouldValidate: true });
+              const p = projects?.find((x: { id: string; department_id: string | null }) => x.id === v);
+              if (p?.department_id) form.setValue("department_id", p.department_id);
+            }}>
+              <SelectTrigger><SelectValue placeholder="เลือกโครงการ" /></SelectTrigger>
+              <SelectContent>
+                {projects?.map((p: { id: string; code: string | null; name: string }) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    <span className="font-mono text-xs text-muted-foreground mr-2">{p.code ?? "-"}</span>{p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {form.formState.errors.project_id && <p className="text-xs text-destructive">{form.formState.errors.project_id.message}</p>}
+            <p className="text-xs text-muted-foreground">ใบเสนอราคาทุกใบต้องระบุโครงการที่เกี่ยวข้อง เพื่อความสามารถในการติดตามและรายงาน</p>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader><CardTitle>ข้อมูลใบเสนอราคา</CardTitle></CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -116,7 +165,7 @@ function NewQuotation() {
             </div>
             <div className="space-y-2">
               <Label>คู่ค้า *</Label>
-              <Select onValueChange={(v) => form.setValue("partner_id", v)}>
+              <Select onValueChange={(v) => form.setValue("partner_id", v, { shouldValidate: true })}>
                 <SelectTrigger><SelectValue placeholder="เลือกคู่ค้า" /></SelectTrigger>
                 <SelectContent>{partners?.map((p: { id: string; name: string }) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
               </Select>
@@ -124,7 +173,7 @@ function NewQuotation() {
             </div>
             <div className="space-y-2">
               <Label>แผนก</Label>
-              <Select onValueChange={(v) => form.setValue("department_id", v)}>
+              <Select value={form.watch("department_id") || undefined} onValueChange={(v) => form.setValue("department_id", v)}>
                 <SelectTrigger><SelectValue placeholder="ไม่ระบุ" /></SelectTrigger>
                 <SelectContent>{depts?.map((d: { id: string; name_th: string }) => <SelectItem key={d.id} value={d.id}>{d.name_th}</SelectItem>)}</SelectContent>
               </Select>
