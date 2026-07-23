@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSupabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/use-supabase";
 import { PageHeader, EmptyState } from "@/components/page-header";
+import { SettingsNav } from "@/components/settings-nav";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
