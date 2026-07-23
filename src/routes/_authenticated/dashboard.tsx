@@ -190,7 +190,7 @@ function Dashboard() {
         <KpiCard icon={Clock} label="สัญญาใกล้หมดอายุ (30 วัน)" value={fmtNumber(kpi?.expiring30)} loading={isLoading} tone="warning" href="/contracts" />
         <KpiCard icon={AlertTriangle} label="สัญญาหมดอายุแล้ว" value={fmtNumber(kpi?.expired)} loading={isLoading} tone="destructive" href="/contracts" />
         <KpiCard icon={FileSignature} label="ใบเสนอราคารอพิจารณา" value={fmtNumber(kpi?.quotPending)} loading={isLoading} href="/quotations" />
-        <KpiCard icon={FolderKanban} label="โครงการทั้งหมด" value={fmtNumber(kpi?.totalDocs)} loading={isLoading} href="/projects" />
+        <KpiCard icon={CheckCircle2} label="งานรออนุมัติ" value="—" loading={false} href="/approvals" />
       </div>
 
       {/* Secondary KPI row */}
