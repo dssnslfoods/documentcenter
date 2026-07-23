@@ -33,7 +33,7 @@ function QuotationsList() {
     queryFn: async () => {
       const sb = getSupabase();
       let query = sb.from("quotations")
-        .select("id, quotation_no, title, type, issue_date, expiry_date, total_amount, currency, status, partners(name)", { count: "exact" })
+        .select("id, quotation_no, title, type, issue_date, expiry_date, total_amount, currency, status, project_id, partners(name), projects(id, code, name)", { count: "exact" })
         .is("archived_at", null)
         .order("created_at", { ascending: false })
         .range(page * pageSize, page * pageSize + pageSize - 1);
