@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarDays, FileSignature, ShoppingCart, FolderKanban, CalendarClock } from "lucide-react";
+import { CalendarDays, FileSignature, FolderKanban, CalendarClock, Flag } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
@@ -18,14 +18,14 @@ type Ev = {
   id: string;
   title: string;
   date: string;
-  kind: "contract_end" | "procurement_deadline" | "project_end" | "custom";
+  kind: "contract_end" | "project_milestone" | "project_end" | "custom";
   module: string;
   link: string;
 };
 
 const KIND_META: Record<Ev["kind"], { label: string; icon: typeof FileSignature; cls: string }> = {
   contract_end: { label: "สัญญาสิ้นสุด", icon: FileSignature, cls: "bg-warning/20 text-warning-foreground" },
-  procurement_deadline: { label: "จัดซื้อ ครบกำหนด", icon: ShoppingCart, cls: "bg-info/15 text-info" },
+  project_milestone: { label: "งวดงานโครงการ", icon: Flag, cls: "bg-info/15 text-info" },
   project_end: { label: "โครงการสิ้นสุด", icon: FolderKanban, cls: "bg-primary/15 text-primary" },
   custom: { label: "กำหนดการอื่น", icon: CalendarClock, cls: "bg-muted text-muted-foreground" },
 };
@@ -45,9 +45,9 @@ function CalendarPage() {
       const s = start.toISOString().slice(0, 10);
       const e = end.toISOString().slice(0, 10);
 
-      const [contracts, procs, projects, custom] = await Promise.all([
+      const [contracts, milestones, projects, custom] = await Promise.all([
         sb.from("contracts").select("id, contract_no, title, end_date").gte("end_date", s).lte("end_date", e).neq("status", "archived"),
-        sb.from("procurements").select("id, procurement_no, title, expected_delivery_date").gte("expected_delivery_date", s).lte("expected_delivery_date", e),
+        sb.from("project_milestones").select("id, project_id, description, due_date, projects(name, code)").gte("due_date", s).lte("due_date", e),
         sb.from("projects").select("id, name, end_date").gte("end_date", s).lte("end_date", e),
         sb.from("calendar_events").select("id, title, event_date, module, record_id").gte("event_date", s).lte("event_date", e),
       ]);
@@ -59,11 +59,12 @@ function CalendarPage() {
           kind: "contract_end", module: "contract", link: `/contracts/${c.id}`,
         });
       });
-      (procs.data ?? []).forEach((p: { id: string; procurement_no: string | null; title: string; expected_delivery_date: string | null }) => {
-        if (!p.expected_delivery_date) return;
+      (milestones.data ?? []).forEach((m: { id: string; project_id: string; description: string; due_date: string | null; projects: { name: string; code: string | null } | { name: string; code: string | null }[] | null }) => {
+        if (!m.due_date) return;
+        const proj = Array.isArray(m.projects) ? m.projects[0] : m.projects;
         list.push({
-          id: `p-${p.id}`, title: `${p.procurement_no ?? ""} · ${p.title}`, date: p.expected_delivery_date,
-          kind: "procurement_deadline", module: "procurement", link: `/procurements/${p.id}`,
+          id: `m-${m.id}`, title: `${proj?.code ?? ""} · ${m.description}`, date: m.due_date,
+          kind: "project_milestone", module: "project", link: `/projects/${m.project_id}`,
         });
       });
       (projects.data ?? []).forEach((pr: { id: string; name: string; end_date: string | null }) => {
@@ -105,7 +106,7 @@ function CalendarPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="ปฏิทินและกำหนดการ" description="ปฏิทินรวมทุกกำหนดการสำคัญ — สัญญา จัดซื้อ โครงการ และกิจกรรม" />
+      <PageHeader title="ปฏิทินและกำหนดการ" description="ปฏิทินรวมทุกกำหนดการสำคัญ — สัญญา งวดงานโครงการ และกิจกรรม" />
 
       <div className="grid gap-6 lg:grid-cols-[auto_1fr]">
         <Card>
