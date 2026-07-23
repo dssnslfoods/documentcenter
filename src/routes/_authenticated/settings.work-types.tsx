@@ -53,14 +53,17 @@ function WorkTypesPage() {
 
   const save = useMutation({
     mutationFn: async () => {
+      const code = editing
+        ? form.code.trim().toUpperCase()
+        : nextCode("WT", (rows ?? []).map((r) => r.code));
       const payload = {
-        code: form.code.trim().toUpperCase(),
+        code,
         name_th: form.name_th.trim(),
         name_en: form.name_en.trim() || null,
         is_active: form.is_active,
         sort_order: Number(form.sort_order) || 0,
       };
-      if (!payload.code || !payload.name_th) throw new Error("กรุณากรอกรหัสและชื่อประเภทงาน");
+      if (!payload.name_th) throw new Error("กรุณากรอกชื่อประเภทงาน");
       if (editing) {
         const { error } = await sb.from("work_types").update(payload).eq("id", editing.id);
         if (error) throw error;
