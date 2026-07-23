@@ -104,6 +104,7 @@ function DepartmentsPage() {
 
   return (
     <div className="space-y-6">
+      <SettingsNav />
       <PageHeader
         title="แผนก"
         description="จัดการแผนกและโครงสร้างองค์กร"

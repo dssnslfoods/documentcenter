@@ -78,6 +78,7 @@ function TagsPage() {
 
   return (
     <div className="space-y-6">
+      <SettingsNav />
       <PageHeader title="Tag และ Keyword" description="จัดการ tag สำหรับใช้กับเอกสารและโครงการ" />
 
       <Card>

@@ -104,6 +104,7 @@ function CategoriesPage() {
 
   return (
     <div className="space-y-6">
+      <SettingsNav />
       <PageHeader
         title="หมวดหมู่เอกสาร"
         description="กำหนดหมวดหมู่และรหัสนำหน้าที่ใช้ในการสร้างเลขเอกสาร"

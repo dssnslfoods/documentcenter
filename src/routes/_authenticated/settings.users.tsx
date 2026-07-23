@@ -216,6 +216,7 @@ function UsersPage() {
 
   return (
     <div className="space-y-6">
+      <SettingsNav />
       <PageHeader
         title="ผู้ใช้งานและสิทธิ์"
         description="เพิ่ม/เชิญผู้ใช้ กำหนดบทบาทและแผนก สำหรับใช้งานร่วมกันในระบบ"

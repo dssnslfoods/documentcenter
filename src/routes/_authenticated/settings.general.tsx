@@ -85,6 +85,7 @@ function GeneralPage() {
 
   return (
     <div className="space-y-6">
+      <SettingsNav />
       <PageHeader
         title="การตั้งค่าทั่วไป"
         description="ข้อมูลองค์กร รูปแบบเลขเอกสาร และนโยบายเก็บรักษาข้อมูล"
