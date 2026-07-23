@@ -19,7 +19,7 @@ export function SettingsNav() {
         return (
           <Link
             key={it.to}
-            to={it.to}
+            to={it.to as "/settings"}
             className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
               active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
