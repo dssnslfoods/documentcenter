@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, FolderKanban, Search, Filter, LayoutGrid, Rows3, ArrowRight } from "lucide-react";
+import { Plus, FolderKanban, Search, Filter, LayoutGrid, Rows3, ArrowRight, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,17 +43,35 @@ function ProjectsList() {
   const [status, setStatus] = useState("all");
   const [view, setView] = useState<"pipeline" | "list">("pipeline");
   const [page, setPage] = useState(0);
+  const [sort, setSort] = useState<{ field: "created_at" | "status"; direction: "asc" | "desc" }>({
+    field: "created_at",
+    direction: "desc",
+  });
   const pageSize = 20;
 
+  const handleSort = (field: "created_at" | "status") => {
+    setSort((prev) => {
+      if (prev.field === field) {
+        return { field, direction: prev.direction === "asc" ? "desc" : "asc" };
+      }
+      return { field, direction: "asc" };
+    });
+    setPage(0);
+  };
+
   const { data, isLoading } = useQuery({
-    queryKey: ["projects", q, status, view, page],
+    queryKey: ["projects", q, status, view, page, sort.field, sort.direction],
     queryFn: async () => {
       const sb = getSupabase();
       let query = sb
         .from("projects")
         .select("id, code, name, status, customer_name, project_type, contract_value, start_date, end_date, budget", { count: "exact" })
-        .is("archived_at", null)
-        .order("created_at", { ascending: false });
+        .is("archived_at", null);
+      if (sort.field === "status") {
+        query = query.order("status", { ascending: sort.direction === "asc" }).order("created_at", { ascending: false });
+      } else {
+        query = query.order("created_at", { ascending: false });
+      }
       if (view === "list") {
         query = query.range(page * pageSize, page * pageSize + pageSize - 1);
       } else {
@@ -66,6 +84,7 @@ function ProjectsList() {
       return { data: (data ?? []) as ProjectRow[], count: count ?? 0 };
     },
   });
+
 
   const totalPages = Math.ceil((data?.count ?? 0) / pageSize);
 
@@ -138,6 +157,8 @@ function ProjectsList() {
           count={data?.count ?? 0}
           pageSize={pageSize}
           onPage={setPage}
+          sort={sort}
+          onSort={handleSort}
         />
       )}
     </div>
@@ -251,7 +272,7 @@ function dotColor(st: ProjectLifecycleStatus): string {
 }
 
 function ListView({
-  rows, isLoading, page, totalPages, count, pageSize, onPage,
+  rows, isLoading, page, totalPages, count, pageSize, onPage, sort, onSort,
 }: {
   rows: ProjectRow[];
   isLoading: boolean;
@@ -260,7 +281,13 @@ function ListView({
   count: number;
   pageSize: number;
   onPage: (p: number | ((prev: number) => number)) => void;
+  sort: { field: "created_at" | "status"; direction: "asc" | "desc" };
+  onSort: (field: "created_at" | "status") => void;
 }) {
+  const SortIcon = sort.field === "status"
+    ? (sort.direction === "asc" ? ArrowUp : ArrowDown)
+    : ArrowUpDown;
+
   return (
     <Card className="tile">
       <CardContent className="p-0">
@@ -276,7 +303,14 @@ function ListView({
                   <th className="px-4 py-3">รหัส</th>
                   <th className="px-4 py-3">ชื่อโครงการ</th>
                   <th className="px-4 py-3">ลูกค้า</th>
-                  <th className="px-4 py-3">สถานะ</th>
+                  <th className="px-4 py-3">
+                    <button
+                      onClick={() => onSort("status")}
+                      className="inline-flex items-center gap-1 font-medium hover:text-foreground"
+                    >
+                      สถานะ <SortIcon className="h-3 w-3" />
+                    </button>
+                  </th>
                   <th className="px-4 py-3">เริ่ม</th>
                   <th className="px-4 py-3">สิ้นสุด</th>
                   <th className="px-4 py-3 text-right">มูลค่าสัญญา</th>
