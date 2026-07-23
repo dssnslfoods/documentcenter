@@ -82,6 +82,22 @@ function QuotationDetail() {
         <Card className="lg:col-span-2">
           <CardHeader><CardTitle>ข้อมูลใบเสนอราคา</CardTitle></CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
+            {(() => {
+              const projRaw = q.projects as unknown;
+              const proj = (Array.isArray(projRaw) ? projRaw[0] : projRaw) as { id: string; code: string | null; name: string } | null;
+              return (
+                <div className="sm:col-span-2">
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground"><FolderKanban className="h-3 w-3" />โครงการ</div>
+                  <div className="mt-1 text-sm">
+                    {proj ? (
+                      <Link to="/projects/$id" params={{ id: proj.id }} className="text-primary hover:underline">
+                        <span className="font-mono text-xs mr-2">{proj.code ?? "-"}</span>{proj.name}
+                      </Link>
+                    ) : <span className="text-muted-foreground">ไม่ได้ผูกกับโครงการ</span>}
+                  </div>
+                </div>
+              );
+            })()}
             <Field label="ประเภท" value={q.type === "incoming" ? "ขาเข้า" : "ขาออก"} />
             <Field icon={Building2} label="คู่ค้า" value={(q.partners as { name?: string } | null)?.name} />
             <Field label="แผนก" value={(q.departments as { name_th?: string } | null)?.name_th} />
