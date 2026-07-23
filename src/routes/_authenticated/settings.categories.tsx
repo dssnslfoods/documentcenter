@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { getSupabase } from "@/lib/supabase";
 import { useAdminGuard } from "@/hooks/use-admin-guard";
+import { nextCode } from "@/lib/next-code";
 
 export const Route = createFileRoute("/_authenticated/settings/categories")({
   head: () => ({ meta: [{ title: "หมวดหมู่เอกสาร | Document Hub" }] }),
@@ -52,14 +53,17 @@ function CategoriesPage() {
 
   const save = useMutation({
     mutationFn: async () => {
+      const code = editing
+        ? form.code.trim().toUpperCase()
+        : nextCode("CAT", (rows ?? []).map((r) => r.code));
       const p = {
-        code: form.code.trim().toUpperCase(),
+        code,
         name_th: form.name_th.trim(),
         name_en: form.name_en.trim() || null,
         prefix: form.prefix.trim().toUpperCase() || null,
         is_active: form.is_active,
       };
-      if (!p.code || !p.name_th) throw new Error("กรุณากรอกรหัสและชื่อ");
+      if (!p.name_th) throw new Error("กรุณากรอกชื่อ");
       if (editing) {
         const { error } = await sb.from("document_categories").update(p).eq("id", editing.id);
         if (error) throw error;
@@ -116,8 +120,13 @@ function CategoriesPage() {
             <DialogContent>
               <DialogHeader><DialogTitle>{editing ? "แก้ไขหมวดหมู่" : "เพิ่มหมวดหมู่"}</DialogTitle></DialogHeader>
               <div className="space-y-3">
-                <div><Label>รหัส *</Label>
-                  <Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="เช่น POLICY, MANUAL" />
+                <div><Label>รหัส {editing ? "" : "(สร้างอัตโนมัติ)"}</Label>
+                  <Input
+                    value={editing ? form.code : nextCode("CAT", (rows ?? []).map((r) => r.code))}
+                    onChange={(e) => setForm({ ...form, code: e.target.value })}
+                    readOnly={!editing}
+                    className={!editing ? "bg-muted font-mono" : "font-mono"}
+                  />
                 </div>
                 <div><Label>ชื่อ (ไทย) *</Label>
                   <Input value={form.name_th} onChange={(e) => setForm({ ...form, name_th: e.target.value })} />

@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { getSupabase } from "@/lib/supabase";
 import { useAdminGuard } from "@/hooks/use-admin-guard";
+import { nextCode } from "@/lib/next-code";
 
 export const Route = createFileRoute("/_authenticated/settings/work-types")({
   head: () => ({ meta: [{ title: "ประเภทงาน | Document Hub" }] }),
@@ -52,14 +53,17 @@ function WorkTypesPage() {
 
   const save = useMutation({
     mutationFn: async () => {
+      const code = editing
+        ? form.code.trim().toUpperCase()
+        : nextCode("WT", (rows ?? []).map((r) => r.code));
       const payload = {
-        code: form.code.trim().toUpperCase(),
+        code,
         name_th: form.name_th.trim(),
         name_en: form.name_en.trim() || null,
         is_active: form.is_active,
         sort_order: Number(form.sort_order) || 0,
       };
-      if (!payload.code || !payload.name_th) throw new Error("กรุณากรอกรหัสและชื่อประเภทงาน");
+      if (!payload.name_th) throw new Error("กรุณากรอกชื่อประเภทงาน");
       if (editing) {
         const { error } = await sb.from("work_types").update(payload).eq("id", editing.id);
         if (error) throw error;
@@ -118,8 +122,13 @@ function WorkTypesPage() {
             <DialogContent>
               <DialogHeader><DialogTitle>{editing ? "แก้ไขประเภทงาน" : "เพิ่มประเภทงานใหม่"}</DialogTitle></DialogHeader>
               <div className="space-y-3">
-                <div><Label>รหัส *</Label>
-                  <Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="เช่น INSTALL, CONSTRUCT" />
+                <div><Label>รหัส {editing ? "" : "(สร้างอัตโนมัติ)"}</Label>
+                  <Input
+                    value={editing ? form.code : nextCode("WT", (rows ?? []).map((r) => r.code))}
+                    onChange={(e) => setForm({ ...form, code: e.target.value })}
+                    readOnly={!editing}
+                    className={!editing ? "bg-muted font-mono" : "font-mono"}
+                  />
                 </div>
                 <div><Label>ชื่อ (ภาษาไทย) *</Label>
                   <Input value={form.name_th} onChange={(e) => setForm({ ...form, name_th: e.target.value })} />
