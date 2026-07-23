@@ -43,17 +43,35 @@ function ProjectsList() {
   const [status, setStatus] = useState("all");
   const [view, setView] = useState<"pipeline" | "list">("pipeline");
   const [page, setPage] = useState(0);
+  const [sort, setSort] = useState<{ field: "created_at" | "status"; direction: "asc" | "desc" }>({
+    field: "created_at",
+    direction: "desc",
+  });
   const pageSize = 20;
 
+  const handleSort = (field: "created_at" | "status") => {
+    setSort((prev) => {
+      if (prev.field === field) {
+        return { field, direction: prev.direction === "asc" ? "desc" : "asc" };
+      }
+      return { field, direction: "asc" };
+    });
+    setPage(0);
+  };
+
   const { data, isLoading } = useQuery({
-    queryKey: ["projects", q, status, view, page],
+    queryKey: ["projects", q, status, view, page, sort.field, sort.direction],
     queryFn: async () => {
       const sb = getSupabase();
       let query = sb
         .from("projects")
         .select("id, code, name, status, customer_name, project_type, contract_value, start_date, end_date, budget", { count: "exact" })
-        .is("archived_at", null)
-        .order("created_at", { ascending: false });
+        .is("archived_at", null);
+      if (sort.field === "status") {
+        query = query.order("status", { ascending: sort.direction === "asc" }).order("created_at", { ascending: false });
+      } else {
+        query = query.order("created_at", { ascending: false });
+      }
       if (view === "list") {
         query = query.range(page * pageSize, page * pageSize + pageSize - 1);
       } else {
@@ -66,6 +84,7 @@ function ProjectsList() {
       return { data: (data ?? []) as ProjectRow[], count: count ?? 0 };
     },
   });
+
 
   const totalPages = Math.ceil((data?.count ?? 0) / pageSize);
 
