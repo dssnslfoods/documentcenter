@@ -157,6 +157,8 @@ function ProjectsList() {
           count={data?.count ?? 0}
           pageSize={pageSize}
           onPage={setPage}
+          sort={sort}
+          onSort={handleSort}
         />
       )}
     </div>
