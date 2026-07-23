@@ -66,14 +66,6 @@ function ProjectDetail() {
     },
   });
 
-  if (isLoading || permsLoading) {
-    return <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
-  }
-  if (!p) return <div className="py-16 text-center text-muted-foreground">ไม่พบโครงการ</div>;
-
-  const isAdmin = perms?.isAdmin ?? false;
-  const canEditProject = isAdmin || (perms?.canEditProject ?? false);
-  const status = (p.status ?? "draft") as ProjectLifecycleStatus;
   // ---------- Auto-detect readiness for next lifecycle stage from data ----------
   const { data: signals } = useQuery({
     queryKey: ["project-signals", id],
@@ -83,7 +75,7 @@ function ProjectDetail() {
         sb.from("supplier_quotations").select("id", { count: "exact", head: true }).eq("project_id", id),
         sb.from("supplier_quotations").select("id", { count: "exact", head: true }).eq("project_id", id).eq("is_selected", true),
         sb.from("customer_quotations").select("id", { count: "exact", head: true }).eq("project_id", id),
-        sb.from("project_milestones").select("status"). eq("project_id", id),
+        sb.from("project_milestones").select("status").eq("project_id", id),
       ]);
       const mlist = (ms.data ?? []) as { status: string }[];
       return {
@@ -96,6 +88,13 @@ function ProjectDetail() {
       };
     },
   });
+  const autoAdvancedRef = useRef<string | null>(null);
+
+  const isAdmin = perms?.isAdmin ?? false;
+  const canEditProject = isAdmin || (perms?.canEditProject ?? false);
+  const status = (p?.status ?? "draft") as ProjectLifecycleStatus;
+
+
 
   // Determine what data-driven step is currently pending
   type Gate = { need: string; ready: boolean; nextIfReady: ProjectLifecycleStatus | null };
@@ -123,7 +122,7 @@ function ProjectDetail() {
     }
   })();
 
-  const autoAdvancedRef = useRef<string | null>(null);
+  // (autoAdvancedRef declared above)
   const advance = async (next: ProjectLifecycleStatus, silent = false) => {
     const { error } = await sb.from("projects").update({ status: next }).eq("id", id);
     if (error) { if (!silent) toast.error(error.message); return; }
@@ -143,6 +142,11 @@ function ProjectDetail() {
     void advance(gate.nextIfReady, true);
      
   }, [gate.ready, gate.nextIfReady, canEditProject, id, status]);
+
+  if (isLoading || permsLoading) {
+    return <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
+  }
+  if (!p) return <div className="py-16 text-center text-muted-foreground">ไม่พบโครงการ</div>;
 
   const showManualBranch = status === "proposal_submitted"; // Won / Lost only
 
