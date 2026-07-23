@@ -239,5 +239,3 @@ function SectionCard({ title, description, children }: { title: string; descript
   );
 }
 
-// Suppress unused Link import (keep for future in-tab nav)
-void Link;
