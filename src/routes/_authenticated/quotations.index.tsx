@@ -111,7 +111,8 @@ function QuotationsList() {
                 </thead>
                 <tbody>
                   {data.data.map((r) => {
-                    const proj = r.projects as { id: string; code: string | null; name: string } | null;
+                    const projRaw = r.projects as unknown;
+                    const proj = (Array.isArray(projRaw) ? projRaw[0] : projRaw) as { id: string; code: string | null; name: string } | null;
                     return (
                     <tr key={r.id} className="border-b last:border-0 hover:bg-muted/40">
                       <td className="px-4 py-3 font-mono text-xs">
