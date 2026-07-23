@@ -36,7 +36,11 @@ type ProjectRow = {
   start_date: string | null;
   end_date: string | null;
   budget: number | null;
+  updated_at: string | null;
 };
+
+type PipelineSortField = "updated_at" | "end_date";
+type PipelineSortDir = "asc" | "desc";
 
 function ProjectsList() {
   const [q, setQ] = useState("");
@@ -45,6 +49,10 @@ function ProjectsList() {
   const [page, setPage] = useState(0);
   const [sort, setSort] = useState<{ field: "created_at" | "status"; direction: "asc" | "desc" }>({
     field: "created_at",
+    direction: "desc",
+  });
+  const [pipelineSort, setPipelineSort] = useState<{ field: PipelineSortField; direction: PipelineSortDir }>({
+    field: "updated_at",
     direction: "desc",
   });
   const pageSize = 20;
@@ -60,14 +68,16 @@ function ProjectsList() {
   };
 
   const { data, isLoading } = useQuery({
-    queryKey: ["projects", q, status, view, page, sort.field, sort.direction],
+    queryKey: ["projects", q, status, view, page, sort.field, sort.direction, pipelineSort.field, pipelineSort.direction],
     queryFn: async () => {
       const sb = getSupabase();
       let query = sb
         .from("projects")
-        .select("id, code, name, status, customer_name, project_type, contract_value, start_date, end_date, budget", { count: "exact" })
+        .select("id, code, name, status, customer_name, project_type, contract_value, start_date, end_date, budget, updated_at", { count: "exact" })
         .is("archived_at", null);
-      if (sort.field === "status") {
+      if (view === "pipeline") {
+        query = query.order(pipelineSort.field, { ascending: pipelineSort.direction === "asc", nullsFirst: false });
+      } else if (sort.field === "status") {
         query = query.order("status", { ascending: sort.direction === "asc" }).order("created_at", { ascending: false });
       } else {
         query = query.order("created_at", { ascending: false });
@@ -122,6 +132,26 @@ function ProjectsList() {
                 {Object.entries(LIFECYCLE_LABEL).map(([k, v]) => (
                   <SelectItem key={k} value={k}>{v}</SelectItem>
                 ))}
+            </SelectContent>
+            </Select>
+          )}
+          {view === "pipeline" && (
+            <Select
+              value={`${pipelineSort.field}:${pipelineSort.direction}`}
+              onValueChange={(v) => {
+                const [field, direction] = v.split(":") as [PipelineSortField, PipelineSortDir];
+                setPipelineSort({ field, direction });
+              }}
+            >
+              <SelectTrigger className="w-full rounded-full md:w-60">
+                <ArrowUpDown className="mr-2 h-4 w-4" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="updated_at:desc">อัปเดตล่าสุดก่อน</SelectItem>
+                <SelectItem value="updated_at:asc">อัปเดตเก่าสุดก่อน</SelectItem>
+                <SelectItem value="end_date:asc">ครบกำหนดใกล้สุดก่อน</SelectItem>
+                <SelectItem value="end_date:desc">ครบกำหนดไกลสุดก่อน</SelectItem>
               </SelectContent>
             </Select>
           )}
