@@ -1,7 +1,7 @@
 import { useState, type ChangeEvent } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Trash2, Upload, Download, Plus, Loader2, Package } from "lucide-react";
+import { Trash2, Download, Plus, Loader2, Package, CheckCircle2, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,8 @@ type Row = {
   received_date: string | null;
   notes: string | null;
   file_urls: string[];
+  version: number;
+  is_selected: boolean;
   partners?: { name: string } | null;
 };
 
@@ -52,9 +54,10 @@ export function SupplierQuotationsTab({
     queryFn: async () => {
       const { data, error } = await sb
         .from("supplier_quotations")
-        .select("id, supplier_id, supplier_name, quotation_amount, received_date, notes, file_urls, partners(name)")
+        .select("id, supplier_id, supplier_name, quotation_amount, received_date, notes, file_urls, version, is_selected, partners(name)")
         .eq("project_id", projectId)
-        .order("received_date", { ascending: false, nullsFirst: false });
+        .order("supplier_id", { ascending: true })
+        .order("version", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as Row[];
     },
@@ -72,15 +75,55 @@ export function SupplierQuotationsTab({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Set this row as the final selected vendor quotation. Clear others first.
+  const selectFinal = useMutation({
+    mutationFn: async (id: string) => {
+      const { error: e1 } = await sb
+        .from("supplier_quotations")
+        .update({ is_selected: false })
+        .eq("project_id", projectId);
+      if (e1) throw e1;
+      const { error: e2 } = await sb
+        .from("supplier_quotations")
+        .update({ is_selected: true })
+        .eq("id", id);
+      if (e2) throw e2;
+    },
+    onSuccess: () => {
+      toast.success("เลือกเป็น Final version แล้ว");
+      qc.invalidateQueries({ queryKey: ["supplier-quotations", projectId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const openFile = async (path: string) => {
     const url = await getProjectFileUrl(path);
     if (url) window.open(url, "_blank");
   };
 
   const cheapest = rows && rows.length ? Math.min(...rows.filter((r) => r.quotation_amount != null).map((r) => Number(r.quotation_amount))) : null;
+  const selected = rows?.find((r) => r.is_selected);
 
   return (
     <div className="space-y-4">
+      {selected && (
+        <div className="tile flex flex-wrap items-center justify-between gap-3 border-success/40 bg-success/5 p-4">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="h-5 w-5 text-success" />
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-widest text-success">Final vendor · เวอร์ชันที่เลือก</div>
+              <div className="text-sm font-medium">
+                {selected.partners?.name || selected.supplier_name || "-"}
+                <span className="ml-2 text-xs text-muted-foreground">v{selected.version}</span>
+              </div>
+            </div>
+          </div>
+          {canSeePrice && (
+            <div className="text-lg font-semibold tabular-nums">{fmtCurrency(selected.quotation_amount, "THB")}</div>
+          )}
+        </div>
+      )}
+
       {canEdit && (
         <div className="flex justify-end">
           <Dialog open={open} onOpenChange={setOpen}>
@@ -90,6 +133,7 @@ export function SupplierQuotationsTab({
             <AddDialog
               projectId={projectId}
               partners={partners ?? []}
+              existing={rows ?? []}
               onClose={() => setOpen(false)}
               onSaved={() => {
                 setOpen(false);
@@ -110,14 +154,20 @@ export function SupplierQuotationsTab({
             const isCheap = cheapest != null && Number(r.quotation_amount) === cheapest;
             const supplierLabel = r.partners?.name || r.supplier_name || "-";
             return (
-              <Card key={r.id} className={isCheap ? "ring-1 ring-success/40" : ""}>
+              <Card key={r.id} className={r.is_selected ? "ring-2 ring-success" : isCheap ? "ring-1 ring-primary/40" : ""}>
                 <CardContent className="space-y-3 p-4">
                   <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="font-medium">{supplierLabel}</div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{supplierLabel}</span>
+                        <Badge variant="outline" className="text-[10px]">v{r.version}</Badge>
+                      </div>
                       <div className="text-xs text-muted-foreground">{fmtDate(r.received_date)}</div>
                     </div>
-                    {isCheap && <Badge className="bg-success/15 text-success">ราคาต่ำสุด</Badge>}
+                    <div className="flex flex-col items-end gap-1">
+                      {r.is_selected && <Badge className="bg-success/15 text-success">Final</Badge>}
+                      {isCheap && !r.is_selected && <Badge className="bg-primary/10 text-primary">ราคาต่ำสุด</Badge>}
+                    </div>
                   </div>
                   <div className="text-lg font-semibold tabular-nums">
                     {canSeePrice ? fmtCurrency(r.quotation_amount, "THB") : "฿ ••••••"}
@@ -133,7 +183,19 @@ export function SupplierQuotationsTab({
                     </div>
                   )}
                   {canEdit && (
-                    <div className="flex justify-end">
+                    <div className="flex items-center justify-between gap-2 border-t pt-2">
+                      {!r.is_selected ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => selectFinal.mutate(r.id)}
+                          disabled={selectFinal.isPending}
+                        >
+                          <Star className="mr-1 h-3.5 w-3.5" />เลือกเป็น Final
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-success">✓ เวอร์ชันที่เลือกสำหรับโครงการ</span>
+                      )}
                       <Button
                         size="sm"
                         variant="ghost"
@@ -157,11 +219,13 @@ export function SupplierQuotationsTab({
 function AddDialog({
   projectId,
   partners,
+  existing,
   onClose,
   onSaved,
 }: {
   projectId: string;
   partners: { id: string; name: string }[];
+  existing: Row[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -173,6 +237,16 @@ function AddDialog({
   const [notes, setNotes] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Suggest next version number for the chosen supplier
+  const nextVersion = (() => {
+    if (!supplierId && !supplierName) return 1;
+    const matches = existing.filter((r) =>
+      supplierId ? r.supplier_id === supplierId : r.supplier_name === supplierName
+    );
+    if (matches.length === 0) return 1;
+    return Math.max(...matches.map((r) => r.version ?? 1)) + 1;
+  })();
 
   const submit = async () => {
     setSaving(true);
@@ -186,6 +260,7 @@ function AddDialog({
         quotation_amount: amount ? Number(amount) : null,
         received_date: date || null,
         notes: notes || null,
+        version: nextVersion,
         file_urls,
       });
       if (error) throw error;
@@ -215,6 +290,11 @@ function AddDialog({
           <Label>หรือ พิมพ์ชื่อ Supplier</Label>
           <Input value={supplierName} onChange={(e) => setSupplierName(e.target.value)} placeholder="ชื่อ Supplier" />
         </div>
+        {(supplierId || supplierName) && (
+          <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            จะบันทึกเป็น <span className="font-semibold text-foreground">เวอร์ชัน {nextVersion}</span> ของ Supplier รายนี้
+          </div>
+        )}
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label>ยอดเงิน (บาท)</Label>
