@@ -120,8 +120,13 @@ function DepartmentsPage() {
             <DialogContent>
               <DialogHeader><DialogTitle>{editing ? "แก้ไขแผนก" : "เพิ่มแผนกใหม่"}</DialogTitle></DialogHeader>
               <div className="space-y-3">
-                <div><Label>รหัสแผนก *</Label>
-                  <Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="เช่น HR, FIN, IT" />
+                <div><Label>รหัสแผนก {editing ? "" : "(สร้างอัตโนมัติ)"}</Label>
+                  <Input
+                    value={editing ? form.code : nextCode("DEPT", (rows ?? []).map((r) => r.code))}
+                    onChange={(e) => setForm({ ...form, code: e.target.value })}
+                    readOnly={!editing}
+                    className={!editing ? "bg-muted font-mono" : "font-mono"}
+                  />
                 </div>
                 <div><Label>ชื่อ (ภาษาไทย) *</Label>
                   <Input value={form.name_th} onChange={(e) => setForm({ ...form, name_th: e.target.value })} />
