@@ -1,7 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Calendar, Building2 } from "lucide-react";
+import { ArrowLeft, Loader2, Calendar, Building2, FolderKanban } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,7 +44,7 @@ function QuotationDetail() {
     queryKey: ["quotation", id],
     queryFn: async () => {
       const { data, error } = await getSupabase().from("quotations")
-        .select("*, partners(name), departments(name_th)").eq("id", id).single();
+        .select("*, partners(name), departments(name_th), projects(id, code, name)").eq("id", id).single();
       if (error) throw error;
       return data;
     },
@@ -82,6 +82,22 @@ function QuotationDetail() {
         <Card className="lg:col-span-2">
           <CardHeader><CardTitle>ข้อมูลใบเสนอราคา</CardTitle></CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
+            {(() => {
+              const projRaw = q.projects as unknown;
+              const proj = (Array.isArray(projRaw) ? projRaw[0] : projRaw) as { id: string; code: string | null; name: string } | null;
+              return (
+                <div className="sm:col-span-2">
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground"><FolderKanban className="h-3 w-3" />โครงการ</div>
+                  <div className="mt-1 text-sm">
+                    {proj ? (
+                      <Link to="/projects/$id" params={{ id: proj.id }} className="text-primary hover:underline">
+                        <span className="font-mono text-xs mr-2">{proj.code ?? "-"}</span>{proj.name}
+                      </Link>
+                    ) : <span className="text-muted-foreground">ไม่ได้ผูกกับโครงการ</span>}
+                  </div>
+                </div>
+              );
+            })()}
             <Field label="ประเภท" value={q.type === "incoming" ? "ขาเข้า" : "ขาออก"} />
             <Field icon={Building2} label="คู่ค้า" value={(q.partners as { name?: string } | null)?.name} />
             <Field label="แผนก" value={(q.departments as { name_th?: string } | null)?.name_th} />

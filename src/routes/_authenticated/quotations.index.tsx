@@ -33,7 +33,7 @@ function QuotationsList() {
     queryFn: async () => {
       const sb = getSupabase();
       let query = sb.from("quotations")
-        .select("id, quotation_no, title, type, issue_date, expiry_date, total_amount, currency, status, partners(name)", { count: "exact" })
+        .select("id, quotation_no, title, type, issue_date, expiry_date, total_amount, currency, status, project_id, partners(name), projects(id, code, name)", { count: "exact" })
         .is("archived_at", null)
         .order("created_at", { ascending: false })
         .range(page * pageSize, page * pageSize + pageSize - 1);
@@ -100,6 +100,7 @@ function QuotationsList() {
                   <tr>
                     <th className="px-4 py-3">เลขที่</th>
                     <th className="px-4 py-3">หัวข้อ</th>
+                    <th className="px-4 py-3">โครงการ</th>
                     <th className="px-4 py-3">ประเภท</th>
                     <th className="px-4 py-3">คู่ค้า</th>
                     <th className="px-4 py-3">ออกวันที่</th>
@@ -109,12 +110,22 @@ function QuotationsList() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.data.map((r) => (
+                  {data.data.map((r) => {
+                    const projRaw = r.projects as unknown;
+                    const proj = (Array.isArray(projRaw) ? projRaw[0] : projRaw) as { id: string; code: string | null; name: string } | null;
+                    return (
                     <tr key={r.id} className="border-b last:border-0 hover:bg-muted/40">
                       <td className="px-4 py-3 font-mono text-xs">
                         <Link to="/quotations/$id" params={{ id: r.id }} className="text-primary hover:underline">{r.quotation_no}</Link>
                       </td>
                       <td className="px-4 py-3 font-medium">{r.title}</td>
+                      <td className="px-4 py-3 text-xs">
+                        {proj ? (
+                          <Link to="/projects/$id" params={{ id: proj.id }} className="text-primary hover:underline">
+                            <span className="font-mono">{proj.code ?? "-"}</span> <span className="text-muted-foreground">{proj.name}</span>
+                          </Link>
+                        ) : <span className="text-muted-foreground">—</span>}
+                      </td>
                       <td className="px-4 py-3 text-muted-foreground">{r.type === "incoming" ? "ขาเข้า" : "ขาออก"}</td>
                       <td className="px-4 py-3 text-muted-foreground">{(r.partners as { name?: string } | null)?.name ?? "-"}</td>
                       <td className="px-4 py-3 text-muted-foreground">{fmtDate(r.issue_date)}</td>
@@ -122,7 +133,8 @@ function QuotationsList() {
                       <td className="px-4 py-3"><QuotationStatusBadge status={r.status} /></td>
                       <td className="px-4 py-3 text-right font-mono tabular-nums">{fmtCurrency(r.total_amount, r.currency ?? "THB")}</td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
