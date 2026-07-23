@@ -122,8 +122,13 @@ function WorkTypesPage() {
             <DialogContent>
               <DialogHeader><DialogTitle>{editing ? "แก้ไขประเภทงาน" : "เพิ่มประเภทงานใหม่"}</DialogTitle></DialogHeader>
               <div className="space-y-3">
-                <div><Label>รหัส *</Label>
-                  <Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="เช่น INSTALL, CONSTRUCT" />
+                <div><Label>รหัส {editing ? "" : "(สร้างอัตโนมัติ)"}</Label>
+                  <Input
+                    value={editing ? form.code : nextCode("WT", (rows ?? []).map((r) => r.code))}
+                    onChange={(e) => setForm({ ...form, code: e.target.value })}
+                    readOnly={!editing}
+                    className={!editing ? "bg-muted font-mono" : "font-mono"}
+                  />
                 </div>
                 <div><Label>ชื่อ (ภาษาไทย) *</Label>
                   <Input value={form.name_th} onChange={(e) => setForm({ ...form, name_th: e.target.value })} />
