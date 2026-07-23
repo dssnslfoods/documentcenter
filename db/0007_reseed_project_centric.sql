@@ -11,26 +11,24 @@
 --      project-centric workflow (8 lifecycle stages).
 -- =====================================================================
 
--- ---------- 1) Wipe transactional data ----------
-truncate table
-  public.project_milestones,
-  public.customer_quotations,
-  public.supplier_quotations,
-  public.project_documents,
-  public.project_member_permissions,
-  public.project_members,
-  public.notifications,
-  public.contract_attachments,
-  public.contract_milestones,
-  public.approvals,
-  public.document_versions,
-  public.audit_logs,
-  public.documents,
-  public.contracts,
-  public.quotations,
-  public.procurements,
-  public.projects
-restart identity cascade;
+-- ---------- 1) Wipe transactional data (only tables that exist) ----------
+do $$
+declare
+  tbls text[] := array[
+    'project_milestones','customer_quotations','supplier_quotations',
+    'project_documents','project_member_permissions','project_members',
+    'notifications','contract_attachments','contract_milestones',
+    'approvals','document_versions','audit_logs',
+    'documents','contracts','quotations','procurements','projects'
+  ];
+  t text;
+begin
+  foreach t in array tbls loop
+    if exists (select 1 from information_schema.tables where table_schema='public' and table_name=t) then
+      execute format('truncate table public.%I restart identity cascade', t);
+    end if;
+  end loop;
+end $$;
 
 -- Make sure reference partners exist (idempotent — will no-op if seeded before)
 insert into public.partners(code, name, type, tax_id, email, phone, business_type, status) values
