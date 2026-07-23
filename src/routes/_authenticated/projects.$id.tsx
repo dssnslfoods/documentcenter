@@ -9,6 +9,7 @@ import { getSupabase } from "@/lib/supabase";
 import { LifecycleStepper } from "@/components/project/lifecycle-stepper";
 import { OverviewTab } from "@/components/project/overview-tab";
 import { ProjectDocumentsList } from "@/components/project/documents-list";
+import { ProjectSpecNotesList } from "@/components/project/spec-notes-list";
 import { SupplierQuotationsTab } from "@/components/project/supplier-quotations-tab";
 import { CustomerQuotationsTab } from "@/components/project/customer-quotations-tab";
 import { MilestonesTab } from "@/components/project/milestones-tab";
@@ -70,8 +71,9 @@ function ProjectDetail() {
   const { data: signals } = useQuery({
     queryKey: ["project-signals", id],
     queryFn: async () => {
-      const [rfq, sup, supSel, cus, ms] = await Promise.all([
+      const [rfq, rfqNote, sup, supSel, cus, ms] = await Promise.all([
         sb.from("project_documents").select("id", { count: "exact", head: true }).eq("project_id", id).eq("document_type", "rfq_spec"),
+        sb.from("project_spec_notes").select("id", { count: "exact", head: true }).eq("project_id", id).eq("note_type", "rfq_spec"),
         sb.from("supplier_quotations").select("id", { count: "exact", head: true }).eq("project_id", id),
         sb.from("supplier_quotations").select("id", { count: "exact", head: true }).eq("project_id", id).eq("is_selected", true),
         sb.from("customer_quotations").select("id", { count: "exact", head: true }).eq("project_id", id),
@@ -79,7 +81,7 @@ function ProjectDetail() {
       ]);
       const mlist = (ms.data ?? []) as { status: string }[];
       return {
-        rfqCount: rfq.count ?? 0,
+        rfqCount: (rfq.count ?? 0) + (rfqNote.count ?? 0),
         supCount: sup.count ?? 0,
         supSelectedCount: supSel.count ?? 0,
         cusCount: cus.count ?? 0,
@@ -241,10 +243,26 @@ function ProjectDetail() {
         <TabsContent value="rfq" className="mt-5 space-y-4">
           {perms?.canSeeSpec ? (
             <>
-              <SectionCard title="RFQ / Specification" description="เอกสารข้อกำหนดที่ส่งให้ Supplier">
+              <SectionCard title="RFQ / Specification (ข้อความ)" description="กรอก spec แบบข้อความอิสระ สะดวกในการ copy ส่งให้ supplier">
+                <ProjectSpecNotesList
+                  projectId={id}
+                  type="rfq_spec"
+                  emptyLabel="ยังไม่มีบันทึก spec แบบข้อความ"
+                  canEdit={isAdmin || (perms?.canUpload ?? false)}
+                />
+              </SectionCard>
+              <SectionCard title="RFQ / Specification (ไฟล์แนบ)" description="เอกสารข้อกำหนดที่ส่งให้ Supplier">
                 <ProjectDocumentsList projectId={id} type="rfq_spec" emptyLabel="ยังไม่มีไฟล์ RFQ / Spec" />
               </SectionCard>
-              <SectionCard title="TOR / Scope of Work" description="รายละเอียดขอบเขตงาน">
+              <SectionCard title="TOR / Scope of Work (ข้อความ)" description="รายละเอียดขอบเขตงานแบบข้อความ">
+                <ProjectSpecNotesList
+                  projectId={id}
+                  type="tor"
+                  emptyLabel="ยังไม่มีบันทึก TOR แบบข้อความ"
+                  canEdit={isAdmin || (perms?.canUpload ?? false)}
+                />
+              </SectionCard>
+              <SectionCard title="TOR / Scope of Work (ไฟล์แนบ)" description="ไฟล์ขอบเขตงาน">
                 <ProjectDocumentsList projectId={id} type="tor" emptyLabel="ยังไม่มีไฟล์ TOR" />
               </SectionCard>
             </>
