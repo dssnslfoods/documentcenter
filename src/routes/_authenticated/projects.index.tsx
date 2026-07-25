@@ -242,7 +242,7 @@ function PipelineView({ rows, isLoading }: { rows: ProjectRow[]; isLoading: bool
             <div className="mb-2 flex items-center justify-between px-1">
               <div className="flex items-center gap-2">
                 <span className={`h-1.5 w-1.5 rounded-full ${dotColor(st)}`} />
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{col.short}</span>
+                <span className="text-xs font-semibold tracking-wide text-muted-foreground">{col.label}</span>
               </div>
               <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">{items.length}</span>
             </div>
