@@ -217,7 +217,7 @@ export function TimelineTab({
                   <div className="min-w-0 flex-1" style={{ paddingLeft: depth * 12 }}>
                     <div className="truncate text-xs font-medium">{task.name}</div>
                     <div className="truncate text-[10px] text-muted-foreground">
-                      {members?.find((m) => m.id === task.assignee_id)?.name ?? "ไม่ระบุผู้รับผิดชอบ"}
+                      {task.assignee_label || members?.find((m) => m.id === task.assignee_id)?.name || "ไม่ระบุผู้รับผิดชอบ"}
                     </div>
                   </div>
                   {canEdit && (
