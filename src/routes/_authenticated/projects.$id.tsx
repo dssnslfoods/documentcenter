@@ -176,7 +176,8 @@ function ProjectDetail() {
             <span className="font-mono uppercase tracking-wider">{p.code}</span>
             <span>·</span>
             <Badge variant="outline" className={STATUS_TONE[status]}>{LIFECYCLE_LABEL[status]}</Badge>
-            {p.customer_name && <><span>·</span><span className="truncate">ลูกค้า {p.customer_name}</span></>}
+            {isInhouse && <Badge variant="outline" className="bg-success/10 text-success">ผลิตภายใน</Badge>}
+
           </div>
           <h1 className="text-2xl font-semibold tracking-tight">{p.name}</h1>
           <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
