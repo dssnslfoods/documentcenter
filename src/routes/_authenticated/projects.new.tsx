@@ -157,10 +157,14 @@ function NewProject() {
     },
     onSuccess: (row) => {
       qc.invalidateQueries({ queryKey: ["projects"] });
-      toast.success("เพิ่มโครงการสำเร็จ");
+      toast.success(isDraft ? "บันทึกร่างโครงการแล้ว" : "เพิ่มโครงการสำเร็จ");
       navigate({ to: "/projects/$id", params: { id: row.id } });
     },
-    onError: (e: Error) => toast.error("เพิ่มโครงการไม่สำเร็จ", { description: e.message }),
+    onError: (e: Error) => {
+      setIsDraft(false);
+      toast.error(isDraft ? "บันทึกร่างไม่สำเร็จ" : "เพิ่มโครงการไม่สำเร็จ", { description: e.message });
+    },
+
   });
 
   return (
