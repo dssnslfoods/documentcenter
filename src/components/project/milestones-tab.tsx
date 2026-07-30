@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, Loader2, Trash2, CircleDot, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { Plus, Loader2, Trash2, Pencil, CircleDot, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -52,6 +52,7 @@ export function MilestonesTab({
   const sb = getSupabase();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
 
   const { data: rows, isLoading } = useQuery({
     queryKey: ["milestones", projectId],
@@ -117,7 +118,7 @@ export function MilestonesTab({
             <DialogTrigger asChild>
               <Button size="sm"><Plus className="mr-2 h-4 w-4" />เพิ่มงวด</Button>
             </DialogTrigger>
-            <AddDialog
+            <MilestoneDialog
               projectId={projectId}
               nextNumber={(rows?.length ?? 0) + 1}
               onClose={() => setOpen(false)}
@@ -190,6 +191,26 @@ export function MilestonesTab({
                             ))}
                           </SelectContent>
                         </Select>
+                        <Dialog
+                          open={editing === r.id}
+                          onOpenChange={(o) => setEditing(o ? r.id : null)}
+                        >
+                          <DialogTrigger asChild>
+                            <Button size="sm" variant="ghost" title="แก้ไขงวด">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <MilestoneDialog
+                            projectId={projectId}
+                            nextNumber={r.milestone_number}
+                            row={r}
+                            onClose={() => setEditing(null)}
+                            onSaved={() => {
+                              setEditing(null);
+                              qc.invalidateQueries({ queryKey: ["milestones", projectId] });
+                            }}
+                          />
+                        </Dialog>
                         <Button
                           size="sm"
                           variant="ghost"
@@ -198,6 +219,7 @@ export function MilestonesTab({
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
+
                       </div>
                     )}
                   </div>
@@ -222,40 +244,48 @@ function SummaryCard({ label, value, tone }: { label: string; value: string; ton
   );
 }
 
-function AddDialog({
+function MilestoneDialog({
   projectId,
   nextNumber,
+  row,
   onClose,
   onSaved,
 }: {
   projectId: string;
   nextNumber: number;
+  row?: Row;
   onClose: () => void;
   onSaved: () => void;
 }) {
   const sb = getSupabase();
-  const [description, setDescription] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [payType, setPayType] = useState<PayType>("percentage");
-  const [payValue, setPayValue] = useState("");
-  const [notes, setNotes] = useState("");
+  const isEdit = !!row;
+  const [description, setDescription] = useState(row?.description ?? "");
+  const [dueDate, setDueDate] = useState(row?.due_date ?? "");
+  const [payType, setPayType] = useState<PayType>(row?.payment_type ?? "percentage");
+  const [payValue, setPayValue] = useState(row ? String(row.payment_value ?? "") : "");
+  const [notes, setNotes] = useState(row?.notes ?? "");
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
     if (!description) return toast.error("กรุณาระบุรายละเอียดงวด");
     setSaving(true);
     try {
-      const { error } = await sb.from("project_milestones").insert({
-        project_id: projectId,
-        milestone_number: nextNumber,
+      const payload = {
         description,
         due_date: dueDate || null,
         payment_type: payType,
         payment_value: payValue ? Number(payValue) : 0,
         notes: notes || null,
-      });
+      };
+      const { error } = isEdit
+        ? await sb.from("project_milestones").update(payload).eq("id", row!.id)
+        : await sb.from("project_milestones").insert({
+            project_id: projectId,
+            milestone_number: nextNumber,
+            ...payload,
+          });
       if (error) throw error;
-      toast.success("เพิ่มงวดเรียบร้อย");
+      toast.success(isEdit ? "แก้ไขเรียบร้อย" : "เพิ่มงวดเรียบร้อย");
       onSaved();
     } catch (e) {
       toast.error((e as Error).message);
@@ -266,7 +296,11 @@ function AddDialog({
 
   return (
     <DialogContent className="max-w-lg">
-      <DialogHeader><DialogTitle>เพิ่มงวดงาน #{nextNumber}</DialogTitle></DialogHeader>
+      <DialogHeader>
+        <DialogTitle>
+          {isEdit ? `แก้ไขงวดงาน #${row!.milestone_number}` : `เพิ่มงวดงาน #${nextNumber}`}
+        </DialogTitle>
+      </DialogHeader>
       <div className="space-y-3">
         <div>
           <Label>รายละเอียดงวด <span className="text-destructive">*</span></Label>
@@ -306,3 +340,4 @@ function AddDialog({
     </DialogContent>
   );
 }
+
