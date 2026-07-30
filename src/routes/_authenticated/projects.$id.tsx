@@ -16,6 +16,8 @@ import { FinalCustomerQuotation } from "@/components/project/final-customer-quot
 import { MilestonesTab } from "@/components/project/milestones-tab";
 import { TimelineTab } from "@/components/project/timeline-tab";
 import { TeamTab } from "@/components/project/team-tab";
+import { ProjectHistoryTab } from "@/components/project/history-tab";
+
 import { useProjectPermissions } from "@/hooks/use-project-permissions";
 import {
   LIFECYCLE_LABEL, STATUS_TONE, nextStatuses,
@@ -49,7 +51,9 @@ const TAB_ORDER = [
   { value: "timeline", label: "6 · แผนงาน (Timeline)" },
   { value: "milestones", label: "7 · งวดงาน" },
   { value: "team", label: "8 · ทีมและสิทธิ์" },
+  { value: "history", label: "9 · ประวัติการแก้ไข" },
 ] as const;
+
 
 
 function ProjectDetail() {
@@ -367,6 +371,11 @@ function ProjectDetail() {
         <TabsContent value="team" className="mt-5">
           <TeamTab projectId={id} isAdmin={isAdmin} />
         </TabsContent>
+
+        <TabsContent value="history" className="mt-5">
+          <ProjectHistoryTab projectId={id} />
+        </TabsContent>
+
       </Tabs>
     </div>
   );
