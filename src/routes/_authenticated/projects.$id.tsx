@@ -245,7 +245,20 @@ function ProjectDetail() {
       <Tabs defaultValue="overview" className="w-full">
         <div className="overflow-x-auto">
           <TabsList className="inline-flex h-auto flex-nowrap gap-1 rounded-full bg-muted p-1">
-            {TAB_ORDER.filter((t) => !(isInhouse && (t.value === "rfq" || t.value === "supplier"))).map((t) => (
+            {TAB_ORDER.filter((t) => !(isInhouse && (t.value === "rfq" || t.value === "supplier")))
+              .filter((t) => {
+                if (perms?.isAdmin) return true;
+                switch (t.value) {
+                  case "overview": return perms?.canSeeOverview ?? false;
+                  case "rfq": return perms?.canSeeSpec ?? false;
+                  case "supplier": return perms?.canSeeSupplier ?? false;
+                  case "customer": return perms?.canSeeCustomer ?? false;
+                  case "contract": return perms?.canSeeContract ?? false;
+                  case "milestones": return perms?.canSeeMilestones ?? false;
+                  default: return true;
+                }
+              })
+              .map((t) => (
               <TabsTrigger
                 key={t.value}
                 value={t.value}
