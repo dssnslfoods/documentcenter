@@ -159,35 +159,130 @@ export function TimelineTab({
   }, [tasks]);
 
   const exportExcel = async () => {
-    if (!rows.length) { toast.error("ยังไม่มีงานให้ส่งออก"); return; }
-    const XLSX = await import("xlsx");
+    if (!rows.length || !range) { toast.error("ยังไม่มีงานให้ส่งออก"); return; }
+    const ExcelJS = (await import("exceljs")).default;
     const nameOf = (t: Task) =>
       t.assignee_label || members?.find((m) => m.id === t.assignee_id)?.name || "-";
     const msOf = (t: Task) => {
       const m = milestones?.find((x) => x.id === t.milestone_id);
       return m ? `งวด ${m.milestone_number} · ${m.description}` : "-";
     };
-    const data = rows.map(({ task, depth }, i) => ({
-      "ลำดับ": i + 1,
-      "ประเภท": depth === 0 ? "งานหลัก" : "งานย่อย",
-      "ชื่องาน": (depth ? "    " : "") + task.name,
-      "รายละเอียด": task.description || "-",
-      "วันเริ่ม": fmtDate(task.start_date),
-      "วันสิ้นสุด": fmtDate(task.end_date),
-      "จำนวนวัน": diffDays(toDate(task.end_date), toDate(task.start_date)) + 1,
-      "สถานะ": STATUS_META[task.status].label,
-      "ความคืบหน้า (%)": task.progress ?? 0,
-      "ผู้รับผิดชอบ": nameOf(task),
-      "งวดงาน": msOf(task),
-    }));
-    const ws = XLSX.utils.json_to_sheet(data);
-    ws["!cols"] = [{ wch: 6 }, { wch: 10 }, { wch: 36 }, { wch: 40 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 20 }, { wch: 28 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "แผนงาน");
+    const STATUS_XLS: Record<TaskStatus, string> = {
+      not_started: "FFB0B7C3",
+      in_progress: "FF2563EB",
+      done: "FF16A34A",
+      blocked: "FFDC2626",
+    };
+
+    // ---- Gantt columns (per day, or per week when the plan is long) ----
+    const byWeek = range.days > 90;
+    const step = byWeek ? 7 : 1;
+    const slots: { start: Date; end: Date; label: string; group: string }[] = [];
+    for (let i = 0; i < range.days; i += step) {
+      const s = addDays(range.start, i);
+      const e = addDays(s, step - 1);
+      slots.push({
+        start: s,
+        end: e,
+        label: byWeek ? String(s.getDate()) : String(s.getDate()),
+        group: `${TH_MONTH[s.getMonth()]} ${String((s.getFullYear() + 543) % 100).padStart(2, "0")}`,
+      });
+    }
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("แผนงาน", { views: [{ state: "frozen", xSplit: 7, ySplit: 2 }] });
+    ws.properties.defaultRowHeight = 18;
+
+    const headers = ["ลำดับ", "ชื่องาน", "วันเริ่ม", "วันสิ้นสุด", "จำนวนวัน", "สถานะ", "ผู้รับผิดชอบ"];
+    const FIXED = headers.length;
+
+    // Row 1: month groups over the gantt area
+    const r1 = ws.getRow(1);
+    const r2 = ws.getRow(2);
+    headers.forEach((h, i) => {
+      r2.getCell(i + 1).value = h;
+    });
+    ws.mergeCells(1, 1, 1, FIXED);
+    r1.getCell(1).value = `แผนการดำเนินงาน — ${projectName || "โครงการ"}`;
+    slots.forEach((s, i) => {
+      r2.getCell(FIXED + 1 + i).value = s.label;
+    });
+    let gs = 0;
+    for (let i = 1; i <= slots.length; i++) {
+      if (i === slots.length || slots[i].group !== slots[gs].group) {
+        ws.mergeCells(1, FIXED + 1 + gs, 1, FIXED + i);
+        r1.getCell(FIXED + 1 + gs).value = slots[gs].group;
+        gs = i;
+      }
+    }
+    [r1, r2].forEach((r) => {
+      r.font = { name: "Arial", bold: true, size: 10, color: { argb: "FF1F2937" } };
+      r.alignment = { horizontal: "center", vertical: "middle" };
+      r.eachCell((c) => {
+        c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEFF3F9" } };
+        c.border = { top: { style: "thin", color: { argb: "FFD5DCE6" } }, left: { style: "thin", color: { argb: "FFD5DCE6" } }, bottom: { style: "thin", color: { argb: "FFD5DCE6" } }, right: { style: "thin", color: { argb: "FFD5DCE6" } } };
+      });
+    });
+    r1.height = 20;
+
+    const today = new Date(toISO(new Date()) + "T00:00:00");
+
+    rows.forEach(({ task, depth }, i) => {
+      const row = ws.getRow(3 + i);
+      const s = toDate(task.start_date);
+      const e = toDate(task.end_date);
+      row.getCell(1).value = i + 1;
+      row.getCell(2).value = (depth ? "    ↳ " : "") + task.name;
+      row.getCell(3).value = fmtDate(task.start_date);
+      row.getCell(4).value = fmtDate(task.end_date);
+      row.getCell(5).value = diffDays(e, s) + 1;
+      row.getCell(6).value = `${STATUS_META[task.status].label} · ${task.progress ?? 0}%`;
+      row.getCell(7).value = nameOf(task);
+      row.getCell(2).note = [task.description || "", msOf(task)].filter(Boolean).join("\n");
+      row.font = { name: "Arial", size: 10, bold: depth === 0 };
+
+      slots.forEach((sl, k) => {
+        const cell = row.getCell(FIXED + 1 + k);
+        const overlap = sl.end >= s && sl.start <= e;
+        cell.border = { left: { style: "hair", color: { argb: "FFE3E8EF" } }, right: { style: "hair", color: { argb: "FFE3E8EF" } }, bottom: { style: "hair", color: { argb: "FFE3E8EF" } } };
+        if (overlap) {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: STATUS_XLS[task.status] } };
+        } else if (today >= sl.start && today <= sl.end) {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFF3C4" } };
+        }
+      });
+      row.eachCell({ includeEmpty: false }, (c, n) => {
+        if (n <= FIXED) c.border = { bottom: { style: "hair", color: { argb: "FFE3E8EF" } } };
+      });
+    });
+
+    ws.columns.forEach((c, i) => {
+      c.width = i < FIXED ? [6, 40, 13, 13, 10, 22, 20][i] : byWeek ? 3.2 : 3.6;
+    });
+
+    // Legend
+    const lr = ws.getRow(rows.length + 5);
+    lr.getCell(1).value = "คำอธิบายสี:";
+    lr.getCell(1).font = { name: "Arial", size: 10, bold: true };
+    (Object.keys(STATUS_XLS) as TaskStatus[]).forEach((k, i) => {
+      const c = lr.getCell(2 + i);
+      c.value = STATUS_META[k].label;
+      c.font = { name: "Arial", size: 10, color: { argb: "FFFFFFFF" } };
+      c.alignment = { horizontal: "center" };
+      c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: STATUS_XLS[k] } };
+    });
+
+    const buf = await wb.xlsx.writeBuffer();
     const safe = (projectName || "project").replace(/[\\/:*?"<>|]/g, "-").slice(0, 60);
-    XLSX.writeFile(wb, `แผนงาน-${safe}-${toISO(new Date())}.xlsx`);
-    toast.success("ส่งออกไฟล์ Excel เรียบร้อย");
+    const url = URL.createObjectURL(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `แผนงาน-${safe}-${toISO(new Date())}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("ส่งออก Excel พร้อม Gantt chart เรียบร้อย");
   };
+
 
 
   if (isLoading) {
