@@ -149,8 +149,20 @@ export function TimelineTab({
 
   const px = ZOOM_PX[zoom];
 
+  // งานใหม่: เริ่มวันถัดจากวันสิ้นสุดของงานล่าสุด (ถ้ายังไม่มีงาน = วันนี้)
+  const nextStart = useMemo(() => {
+    const list = tasks ?? [];
+    if (list.length === 0) return toISO(new Date());
+    const lastEnd = list.reduce((max, t) => {
+      const d = toDate(t.end_date);
+      return d > max ? d : max;
+    }, toDate(list[0].end_date));
+    return toISO(addDays(lastEnd, 1));
+  }, [tasks]);
+
   const openNew = () => { setEditing(null); setDialogOpen(true); };
   const openEdit = (t: Task) => { setEditing(t); setDialogOpen(true); };
+
 
   const overall = useMemo(() => {
     const list = tasks ?? [];
@@ -380,11 +392,12 @@ export function TimelineTab({
       )}
 
       <TaskDialog
-        key={editing?.id ?? "new"}
+        key={editing?.id ?? `new-${nextStart}`}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         projectId={projectId}
         task={editing}
+        defaultStart={nextStart}
         parents={(tasks ?? []).filter((t) => !t.parent_id && t.id !== editing?.id)}
         members={members ?? []}
         milestones={milestones ?? []}
@@ -463,7 +476,7 @@ function GanttRow({
 }
 
 function TaskDialog({
-  open, onOpenChange, projectId, task, parents, members, milestones,
+  open, onOpenChange, projectId, task, parents, members, milestones, defaultStart,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -472,15 +485,18 @@ function TaskDialog({
   parents: Task[];
   members: { id: string; name: string }[];
   milestones: { id: string; milestone_number: number; description: string }[];
+  defaultStart: string;
 }) {
   const sb = getSupabase();
   const qc = useQueryClient();
-  const today = toISO(new Date());
+  const baseStart = defaultStart || toISO(new Date());
+  const baseEnd = toISO(addDays(toDate(baseStart), 1));
 
   const [name, setName] = useState(task?.name ?? "");
   const [description, setDescription] = useState(task?.description ?? "");
-  const [start, setStart] = useState(task?.start_date ?? today);
-  const [end, setEnd] = useState(task?.end_date ?? today);
+  const [start, setStart] = useState(task?.start_date ?? baseStart);
+  const [end, setEnd] = useState(task?.end_date ?? baseEnd);
+
   const [progress, setProgress] = useState(String(task?.progress ?? 0));
   const [status, setStatus] = useState<TaskStatus>(task?.status ?? "not_started");
   const [parentId, setParentId] = useState(task?.parent_id ?? "none");
@@ -538,7 +554,15 @@ function TaskDialog({
           </div>
           <div className="space-y-1.5">
             <Label>วันเริ่ม</Label>
-            <Input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
+            <Input
+              type="date"
+              value={start}
+              onChange={(e) => {
+                const v = e.target.value;
+                setStart(v);
+                if (v && (!end || toDate(end) < toDate(v))) setEnd(toISO(addDays(toDate(v), 1)));
+              }}
+            />
           </div>
           <div className="space-y-1.5">
             <Label>วันสิ้นสุด</Label>
