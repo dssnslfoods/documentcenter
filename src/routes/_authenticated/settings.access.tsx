@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Fragment } from "react";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -107,8 +108,8 @@ function AccessSettings() {
                 </thead>
                 <tbody>
                   {groups.map((g) => (
-                    <>
-                      <tr key={g} className="bg-muted/20">
+                    <Fragment key={g}>
+                      <tr className="bg-muted/20">
                         <td colSpan={ROLES.length + 1} className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{g}</td>
                       </tr>
                       {PAGES.filter((p) => p.group === g).map((p) => (
@@ -129,7 +130,7 @@ function AccessSettings() {
                           })}
                         </tr>
                       ))}
-                    </>
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
