@@ -18,11 +18,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getSupabase } from "@/lib/supabase";
 import { nextCode } from "@/lib/next-code";
+import { PartnerFormDialog, usePartners } from "@/components/partner-form-dialog";
 
 const schema = z.object({
   name: z.string().trim().min(1, "กรุณากรอกชื่อโครงการ").max(200),
   description: z.string().optional(),
-  customer_name: z.string().trim().optional(),
+  customer_name: z.string().trim().max(200).optional(),
+  customer_id: z.string().uuid().optional(),
   project_type: z.string().trim().min(1, "กรุณาเลือกประเภทงาน"),
   start_date: z.string().optional().or(z.literal("")),
   end_date: z.string().optional().or(z.literal("")),
@@ -48,6 +50,8 @@ function NewProject() {
   const qc = useQueryClient();
 
   const [wtOpen, setWtOpen] = useState(false);
+  const [partnerOpen, setPartnerOpen] = useState(false);
+  const { data: customers } = usePartners("customer");
   const [wtName, setWtName] = useState("");
 
   const { data: workTypes } = useQuery({
@@ -119,6 +123,7 @@ function NewProject() {
         name: values.name,
         description: values.description || null,
         customer_name: values.customer_name || null,
+        customer_id: values.customer_id || null,
         project_type: values.project_type || null,
         start_date: values.start_date || null,
         end_date: values.end_date || null,
@@ -160,7 +165,37 @@ function NewProject() {
             </div>
             <div className="space-y-2">
               <Label>ลูกค้า</Label>
-              <Input placeholder="ชื่อลูกค้า/หน่วยงาน" {...form.register("customer_name")} />
+              <div className="flex gap-2">
+                <Select
+                  value={form.watch("customer_id") || undefined}
+                  onValueChange={(v) => {
+                    const c = (customers ?? []).find((x) => x.id === v);
+                    form.setValue("customer_id", v);
+                    form.setValue("customer_name", c?.name ?? "");
+                  }}
+                >
+                  <SelectTrigger className="flex-1"><SelectValue placeholder="เลือกลูกค้าจากฐานข้อมูล" /></SelectTrigger>
+                  <SelectContent>
+                    {(customers ?? []).map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        <span className="mr-2 font-mono text-xs text-muted-foreground">{c.code}</span>{c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button type="button" variant="outline" size="icon" onClick={() => setPartnerOpen(true)} aria-label="เพิ่มลูกค้าใหม่">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              <PartnerFormDialog
+                open={partnerOpen}
+                onOpenChange={setPartnerOpen}
+                defaultType="customer"
+                onSaved={(row) => {
+                  form.setValue("customer_id", row.id);
+                  form.setValue("customer_name", row.name);
+                }}
+              />
             </div>
             <div className="space-y-2">
               <Label>ประเภทงาน *</Label>
