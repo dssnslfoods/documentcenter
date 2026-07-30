@@ -182,8 +182,6 @@ export function PermissionEditorDialog({
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const activeGroup = TAB_GROUPS.find((g) => g.value === active) ?? TAB_GROUPS[0];
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
