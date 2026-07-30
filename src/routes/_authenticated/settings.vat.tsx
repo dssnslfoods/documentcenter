@@ -60,30 +60,45 @@ function VatPage() {
 
   const save = useMutation({
     mutationFn: async () => {
-      const code = editing ? form.code.trim().toUpperCase() : nextCode("VAT", (rows ?? []).map((r) => r.code));
       const rate = Number(form.rate);
       if (!(rate >= 0 && rate <= 100)) throw new Error("อัตรา VAT ต้องอยู่ระหว่าง 0-100");
-      const payload = {
-        code,
+      const basePayload = {
         label: form.label.trim() || `VAT ${rate}%`,
         rate,
         is_default: form.is_default,
         is_active: form.is_active,
         sort_order: Number(form.sort_order) || 0,
       };
+
+      let code: string;
       if (editing) {
-        const { error } = await sb.from("vat_rates").update(payload).eq("id", editing.id);
+        code = form.code.trim().toUpperCase();
+        const { error } = await sb.from("vat_rates").update({ ...basePayload, code }).eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await sb.from("vat_rates").insert(payload);
-        if (error) throw error;
+        // Always derive the code from fresh DB rows; retry if another row grabbed it.
+        const { data: fresh, error: readErr } = await sb.from("vat_rates").select("code");
+        if (readErr) throw readErr;
+        const taken = (fresh ?? []).map((r: { code: string }) => r.code);
+        code = nextCode("VAT", taken);
+        let inserted = false;
+        for (let i = 0; i < 5 && !inserted; i++) {
+          const { error } = await sb.from("vat_rates").insert({ ...basePayload, code });
+          if (!error) { inserted = true; break; }
+          if (error.code !== "23505") throw error;
+          taken.push(code);
+          code = nextCode("VAT", taken);
+        }
+        if (!inserted) throw new Error("ไม่สามารถสร้างรหัส VAT ที่ไม่ซ้ำได้ กรุณาลองใหม่");
       }
-      if (payload.is_default) {
+
+      if (basePayload.is_default) {
         const q = sb.from("vat_rates").update({ is_default: false }).eq("is_default", true);
         if (editing) await q.neq("id", editing.id);
         else await q.neq("code", code);
       }
     },
+
     onSuccess: () => {
       toast.success(editing ? "อัปเดตแล้ว" : "เพิ่มอัตรา VAT แล้ว");
       setOpen(false); setEditing(null);
