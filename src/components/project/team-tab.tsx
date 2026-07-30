@@ -198,7 +198,9 @@ export function TeamTab({
               users={availableUsers}
               templates={templates ?? []}
               onCancel={() => setOpen(false)}
-              onAdd={(userId, templateId) => add.mutate({ userId, templateId })}
+              onAdd={(userId, templateId, roleTitle, responsibilities) =>
+                add.mutate({ userId, templateId, roleTitle, responsibilities })
+              }
               saving={add.isPending}
             />
           </Dialog>
