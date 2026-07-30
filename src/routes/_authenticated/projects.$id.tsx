@@ -235,7 +235,7 @@ function ProjectDetail() {
       <Tabs defaultValue="overview" className="w-full">
         <div className="overflow-x-auto">
           <TabsList className="inline-flex h-auto flex-nowrap gap-1 rounded-full bg-muted p-1">
-            {TAB_ORDER.map((t) => (
+            {TAB_ORDER.filter((t) => !(isInhouse && (t.value === "rfq" || t.value === "supplier"))).map((t) => (
               <TabsTrigger
                 key={t.value}
                 value={t.value}
