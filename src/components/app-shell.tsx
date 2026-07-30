@@ -14,43 +14,45 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-supabase";
+import { useCanAccess } from "@/hooks/use-page-access";
+import type { PageKey } from "@/lib/pages";
 
 // Sidebar organized by workflow order: daily work → sales pipeline → post-sale docs → governance
-type NavItem = { to: string; icon: React.ComponentType<{ className?: string }>; label: string };
+type NavItem = { to: string; icon: React.ComponentType<{ className?: string }>; label: string; key: PageKey };
 type NavSection = { label: string; items: NavItem[] };
 
 const NAV_SECTIONS: NavSection[] = [
   {
     label: "งานประจำวัน",
     items: [
-      { to: "/dashboard", icon: LayoutDashboard, label: "ภาพรวม" },
-      { to: "/calendar", icon: Calendar, label: "ปฏิทิน" },
-      { to: "/notifications", icon: Bell, label: "การแจ้งเตือน" },
+      { to: "/dashboard", icon: LayoutDashboard, label: "ภาพรวม", key: "dashboard" },
+      { to: "/calendar", icon: Calendar, label: "ปฏิทิน", key: "calendar" },
+      { to: "/notifications", icon: Bell, label: "การแจ้งเตือน", key: "notifications" },
     ],
   },
   {
     label: "งานขายและโครงการ",
     items: [
-      { to: "/projects", icon: FolderKanban, label: "โครงการ" },
-      { to: "/quotations", icon: FileSpreadsheet, label: "ใบเสนอราคา" },
+      { to: "/projects", icon: FolderKanban, label: "โครงการ", key: "projects" },
+      { to: "/quotations", icon: FileSpreadsheet, label: "ใบเสนอราคา", key: "quotations" },
       
-      { to: "/partners", icon: Users, label: "คู่ค้าและลูกค้า" },
+      { to: "/partners", icon: Users, label: "คู่ค้าและลูกค้า", key: "partners" },
     ],
   },
   {
     label: "เอกสารและสัญญา",
     items: [
-      { to: "/documents", icon: FileText, label: "คลังเอกสาร" },
-      { to: "/contracts", icon: FileSignature, label: "สัญญา" },
+      { to: "/documents", icon: FileText, label: "คลังเอกสาร", key: "documents" },
+      { to: "/contracts", icon: FileSignature, label: "สัญญา", key: "contracts" },
     ],
   },
   {
     label: "กำกับและควบคุม",
     items: [
       
-      { to: "/reports", icon: BarChart3, label: "รายงาน" },
-      { to: "/audit-log", icon: History, label: "Audit Log" },
-      { to: "/settings", icon: Settings, label: "ตั้งค่าระบบ" },
+      { to: "/reports", icon: BarChart3, label: "รายงาน", key: "reports" },
+      { to: "/audit-log", icon: History, label: "Audit Log", key: "audit-log" },
+      { to: "/settings", icon: Settings, label: "ตั้งค่าระบบ", key: "settings" },
     ],
   },
 ];
@@ -79,6 +81,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const profile = useProfileName(user?.id);
+  const { can } = useCanAccess();
   const displayName =
     profile?.full_name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "ผู้ใช้งาน";
 
@@ -102,6 +105,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           displayName={displayName}
           email={user?.email}
           position={profile?.position ?? null}
+          can={can}
         />
       </aside>
 
@@ -124,6 +128,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               displayName={displayName}
               email={user?.email}
               position={profile?.position ?? null}
+              can={can}
             />
 
           </aside>
@@ -224,14 +229,18 @@ function NotificationBell({ userId }: { userId: string | undefined }) {
 }
 
 function SidebarContent({
-  collapsed, pathname, displayName, email, position,
+  collapsed, pathname, displayName, email, position, can,
 }: {
   collapsed: boolean;
   pathname: string;
   displayName: string;
   email?: string;
   position?: string | null;
+  can: (key: PageKey) => boolean;
 }) {
+  const sections = NAV_SECTIONS
+    .map((s) => ({ ...s, items: s.items.filter((i) => can(i.key)) }))
+    .filter((s) => s.items.length > 0);
   return (
     <>
       <div className="flex h-16 items-center gap-2.5 border-b border-sidebar-border px-4">
@@ -246,7 +255,7 @@ function SidebarContent({
         )}
       </div>
       <nav className="flex-1 space-y-4 overflow-y-auto p-2 py-4">
-        {NAV_SECTIONS.map((section) => (
+        {sections.map((section) => (
           <div key={section.label} className="space-y-0.5">
             {!collapsed && (
               <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
