@@ -1,10 +1,11 @@
+import { useState } from "react";
 import { createFileRoute, useNavigate, useSearch, Link } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, FolderKanban } from "lucide-react";
+import { Loader2, FolderKanban, Plus } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getSupabase } from "@/lib/supabase";
+import { PartnerFormDialog } from "@/components/partner-form-dialog";
 
 const schema = z.object({
   project_id: z.string().uuid("กรุณาเลือกโครงการ"),
@@ -52,9 +54,10 @@ function NewQuotation() {
     queryKey: ["departments"],
     queryFn: async () => (await getSupabase().from("departments").select("id, name_th").eq("is_active", true).order("name_th")).data ?? [],
   });
+  const [partnerOpen, setPartnerOpen] = useState(false);
   const { data: partners } = useQuery({
-    queryKey: ["partners-active"],
-    queryFn: async () => (await getSupabase().from("partners").select("id, name").eq("status", "active").order("name")).data ?? [],
+    queryKey: ["partners-active", "all"],
+    queryFn: async () => (await getSupabase().from("partners").select("id, code, name").eq("status", "active").order("name")).data ?? [],
   });
 
   const form = useForm<FormValues>({
@@ -164,11 +167,25 @@ function NewQuotation() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>คู่ค้า *</Label>
-              <Select onValueChange={(v) => form.setValue("partner_id", v, { shouldValidate: true })}>
-                <SelectTrigger><SelectValue placeholder="เลือกคู่ค้า" /></SelectTrigger>
-                <SelectContent>{partners?.map((p: { id: string; name: string }) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-              </Select>
+              <Label>คู่ค้า / ลูกค้า *</Label>
+              <div className="flex gap-2">
+                <Select value={form.watch("partner_id") || undefined} onValueChange={(v) => form.setValue("partner_id", v, { shouldValidate: true })}>
+                  <SelectTrigger className="flex-1"><SelectValue placeholder="เลือกจากฐานข้อมูลคู่ค้า" /></SelectTrigger>
+                  <SelectContent>{partners?.map((p: { id: string; code: string; name: string }) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      <span className="mr-2 font-mono text-xs text-muted-foreground">{p.code}</span>{p.name}
+                    </SelectItem>
+                  ))}</SelectContent>
+                </Select>
+                <Button type="button" variant="outline" size="icon" onClick={() => setPartnerOpen(true)} aria-label="เพิ่มคู่ค้าใหม่">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              <PartnerFormDialog
+                open={partnerOpen}
+                onOpenChange={setPartnerOpen}
+                onSaved={(row) => form.setValue("partner_id", row.id, { shouldValidate: true })}
+              />
               {form.formState.errors.partner_id && <p className="text-xs text-destructive">{form.formState.errors.partner_id.message}</p>}
             </div>
             <div className="space-y-2">
