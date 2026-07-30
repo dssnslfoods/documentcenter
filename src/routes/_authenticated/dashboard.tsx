@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { getSupabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/use-supabase";
 import { fmtCurrency, fmtDate, fmtNumber } from "@/lib/format";
 import { ContractStatusBadge } from "@/components/status-badge";
 import { Link } from "@tanstack/react-router";
@@ -33,6 +34,39 @@ const CHART_COLORS = [
 ];
 
 function Dashboard() {
+  const { user } = useAuth();
+
+  const { data: myProjects } = useQuery({
+    queryKey: ["my-projects", user?.id],
+    queryFn: async () => {
+      const sb = getSupabase();
+      const empty = { in_progress: [] as any[], completed: [] as any[] };
+      if (!user) return empty;
+      const { data: memberships } = await sb
+        .from("project_members")
+        .select("project_id")
+        .eq("user_id", user.id);
+      const ids = Array.from(new Set((memberships ?? []).map((m: any) => m.project_id)));
+      // include projects the user owns even if membership row is missing
+      const { data: owned } = await sb.from("projects").select("id").eq("owner_id", user.id);
+      (owned ?? []).forEach((p: any) => { if (!ids.includes(p.id)) ids.push(p.id); });
+      if (ids.length === 0) return empty;
+      const { data } = await sb
+        .from("projects")
+        .select("id, code, name, status, updated_at, customer_name")
+        .in("id", ids)
+        .in("status", ["in_progress", "completed"])
+        .is("archived_at", null)
+        .order("updated_at", { ascending: false });
+      return {
+        in_progress: (data ?? []).filter((p: any) => p.status === "in_progress"),
+        completed: (data ?? []).filter((p: any) => p.status === "completed"),
+      };
+    },
+    enabled: !!user,
+  });
+
+
   const { data: kpi, isLoading } = useQuery({
     queryKey: ["dashboard-kpi"],
     queryFn: async () => {
@@ -201,6 +235,22 @@ function Dashboard() {
         <KpiCard icon={CheckCircle2} label="งานรออนุมัติ" value="—" loading={false} href="/approvals" />
       </div>
 
+      {/* โครงการที่ฉันมีส่วนร่วม */}
+      <Card className="tile">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <div>
+            <CardTitle className="text-base">โครงการที่ฉันมีส่วนร่วม</CardTitle>
+            <p className="mt-1 text-xs text-muted-foreground">เฉพาะโครงการที่ดำเนินการอยู่และเสร็จสิ้นแล้ว</p>
+          </div>
+          <Link to="/projects" className="text-xs text-primary hover:underline">ดูโครงการทั้งหมด →</Link>
+        </CardHeader>
+        <CardContent className="grid gap-6 md:grid-cols-2">
+          <MyProjectGroup title="ดำเนินโครงการ" tone="primary" items={myProjects?.in_progress ?? []} />
+          <MyProjectGroup title="เสร็จสิ้นแล้ว" tone="success" items={myProjects?.completed ?? []} />
+        </CardContent>
+      </Card>
+
+
       {/* Analytics */}
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="tile lg:col-span-2">
@@ -330,4 +380,41 @@ function KpiCard({
     return <Link to={href} className="tile tile-interactive block">{inner}</Link>;
   }
   return <div className="tile">{inner}</div>;
+}
+
+function MyProjectGroup({ title, tone, items }: { title: string; tone: "primary" | "success"; items: any[] }) {
+  const dot = tone === "success" ? "bg-success" : "bg-primary";
+  return (
+    <div>
+      <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
+        <span className={`h-2 w-2 rounded-full ${dot}`} />
+        {title}
+        <span className="text-xs font-normal text-muted-foreground">({items.length})</span>
+      </div>
+      {items.length === 0 ? (
+        <p className="rounded-lg border border-dashed px-3 py-6 text-center text-xs text-muted-foreground">
+          ยังไม่มีโครงการในกลุ่มนี้
+        </p>
+      ) : (
+        <div className="space-y-1.5">
+          {items.map((p) => (
+            <Link
+              key={p.id}
+              to="/projects/$id"
+              params={{ id: p.id }}
+              className="group flex items-center justify-between gap-3 rounded-lg border px-3 py-2 transition-colors hover:bg-muted/50"
+            >
+              <div className="min-w-0">
+                <div className="truncate text-sm font-medium">{p.name}</div>
+                <div className="truncate text-xs text-muted-foreground">
+                  {p.code}{p.customer_name ? ` · ${p.customer_name}` : ""}
+                </div>
+              </div>
+              <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }

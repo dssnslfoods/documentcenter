@@ -55,12 +55,32 @@ const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
+function useProfileName(userId: string | undefined) {
+  const { data } = useQuery({
+    queryKey: ["sidebar-profile", userId],
+    queryFn: async () => {
+      if (!userId) return null;
+      const { data } = await getSupabase()
+        .from("profiles")
+        .select("full_name, position")
+        .eq("id", userId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!userId,
+  });
+  return data;
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const { user } = useAuth();
+  const profile = useProfileName(user?.id);
+  const displayName =
+    profile?.full_name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "ผู้ใช้งาน";
 
   const signOut = async () => {
     await getSupabase().auth.signOut();
@@ -76,8 +96,15 @@ export function AppShell({ children }: { children: ReactNode }) {
           collapsed ? "w-[68px]" : "w-64"
         }`}
       >
-        <SidebarContent collapsed={collapsed} pathname={pathname} />
+        <SidebarContent
+          collapsed={collapsed}
+          pathname={pathname}
+          displayName={displayName}
+          email={user?.email}
+          position={profile?.position ?? null}
+        />
       </aside>
+
 
       {/* Mobile sidebar */}
       {mobileOpen && (
@@ -91,7 +118,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               <X className="h-4 w-4" />
             </button>
-            <SidebarContent collapsed={false} pathname={pathname} />
+            <SidebarContent
+              collapsed={false}
+              pathname={pathname}
+              displayName={displayName}
+              email={user?.email}
+              position={profile?.position ?? null}
+            />
+
           </aside>
         </div>
       )}
@@ -189,7 +223,15 @@ function NotificationBell({ userId }: { userId: string | undefined }) {
   );
 }
 
-function SidebarContent({ collapsed, pathname }: { collapsed: boolean; pathname: string }) {
+function SidebarContent({
+  collapsed, pathname, displayName, email, position,
+}: {
+  collapsed: boolean;
+  pathname: string;
+  displayName: string;
+  email?: string;
+  position?: string | null;
+}) {
   return (
     <>
       <div className="flex h-16 items-center gap-2.5 border-b border-sidebar-border px-4">
@@ -236,11 +278,27 @@ function SidebarContent({ collapsed, pathname }: { collapsed: boolean; pathname:
           </div>
         ))}
       </nav>
-      {!collapsed && (
-        <div className="border-t border-sidebar-border p-3 text-[10px] text-muted-foreground">
-          v0.2 · Cloud White
-        </div>
-      )}
+      <div className="border-t border-sidebar-border p-3">
+        <Link
+          to="/profile"
+          className={`flex items-center gap-2.5 rounded-md p-2 transition-colors hover:bg-sidebar-accent ${collapsed ? "justify-center" : ""}`}
+          title={collapsed ? displayName : undefined}
+        >
+          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+            {displayName.charAt(0).toUpperCase()}
+          </div>
+          {!collapsed && (
+            <div className="min-w-0">
+              <div className="truncate text-sm font-medium">{displayName}</div>
+              <div className="truncate text-[10px] text-muted-foreground">{position || email}</div>
+            </div>
+          )}
+        </Link>
+        {!collapsed && (
+          <div className="px-2 pt-2 text-[10px] text-muted-foreground">v0.2 · Cloud White</div>
+        )}
+      </div>
+
     </>
   );
 }
