@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/page-header";
 import { SettingsNav } from "@/components/settings-nav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Building2, FolderTree, Settings as SettingsIcon, ClipboardList, Tag, Briefcase , Percent } from "lucide-react";
+import { Users, Building2, FolderTree, Settings as SettingsIcon, Tag, Briefcase , Percent } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/settings/")({
   head: () => ({ meta: [{ title: "ตั้งค่าระบบ | Document Hub" }] }),
