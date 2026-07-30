@@ -16,6 +16,8 @@ import { FinalCustomerQuotation } from "@/components/project/final-customer-quot
 import { MilestonesTab } from "@/components/project/milestones-tab";
 import { TimelineTab } from "@/components/project/timeline-tab";
 import { TeamTab } from "@/components/project/team-tab";
+import { ProjectHistoryTab } from "@/components/project/history-tab";
+
 import { useProjectPermissions } from "@/hooks/use-project-permissions";
 import {
   LIFECYCLE_LABEL, STATUS_TONE, nextStatuses,
