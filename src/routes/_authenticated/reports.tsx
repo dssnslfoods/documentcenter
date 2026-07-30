@@ -134,6 +134,32 @@ function ReportsPage() {
         <KpiCard label="โครงการ" value={fmtNumber(data.totalProjects)} sub={`งบรวม ${fmtCurrency(data.totalProjectBudget)}`} />
       </div>
 
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard label="ชนะงาน" value={fmtNumber(data.won)} sub="รวมที่ดำเนินการ/ปิดโครงการแล้ว" />
+        <KpiCard label="แพ้งาน" value={fmtNumber(data.lost)} />
+        <KpiCard label="ตัดสินผลแล้ว" value={fmtNumber(data.decided)} sub="ชนะ + แพ้" />
+        <KpiCard label="อัตราชนะงาน" value={`${data.winRate}%`} sub="Win rate" />
+      </div>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">สถิติชนะงาน / แพ้งาน รายเดือน (12 เดือน)</CardTitle></CardHeader>
+        <CardContent className="h-72">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data.winLossMonths}>
+              <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+              <Tooltip />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="won" name="ชนะงาน" stackId="wl" fill={COLORS[3]} radius={[0, 0, 0, 0]} />
+              <Bar dataKey="lost" name="แพ้งาน" stackId="wl" fill={COLORS[4]} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+
+
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader><CardTitle className="text-base">สัญญาและโครงการรายเดือน (12 เดือน)</CardTitle></CardHeader>
