@@ -102,7 +102,9 @@ function NewProject() {
   const vatRateId = form.watch("vat_rate_id");
   const contractValueRaw = form.watch("contract_value");
   const defaultVat = (vatRates ?? []).find((v: { is_default: boolean }) => v.is_default);
-  const selectedVat = (vatRates ?? []).find((v: { id: string }) => v.id === vatRateId) ?? defaultVat;
+  const selectedVat = vatRateId === "none"
+    ? undefined
+    : ((vatRates ?? []).find((v: { id: string }) => v.id === vatRateId) ?? defaultVat);
   const netAmount = Number(contractValueRaw) || 0;
   const vatPercent = selectedVat ? Number(selectedVat.rate) : 0;
   const vatAmount = Math.round(netAmount * vatPercent) / 100;
