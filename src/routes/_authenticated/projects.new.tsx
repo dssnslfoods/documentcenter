@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, Save } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { getSupabase } from "@/lib/supabase";
 import { nextCode } from "@/lib/next-code";
 import { PartnerFormDialog, usePartners } from "@/components/partner-form-dialog";
+
+const AUTOSAVE_KEY = "dochub:new-project-autosave";
 
 const schema = z.object({
   name: z.string().trim().min(1, "กรุณากรอกชื่อโครงการ").max(200),
@@ -115,6 +117,69 @@ function NewProject() {
   const grossAmount = Math.round((netAmount + vatAmount) * 100) / 100;
 
   const [isDraft, setIsDraft] = useState(false);
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [restored, setRestored] = useState(false);
+  const hydrated = useRef(false);
+
+  // Restore autosaved form data (once, on mount)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(AUTOSAVE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { values?: FormValues; at?: string };
+        if (parsed.values && Object.values(parsed.values).some((v) => v !== "" && v != null && v !== false)) {
+          form.reset(parsed.values);
+          setSavedAt(parsed.at ? new Date(parsed.at) : null);
+          setRestored(true);
+        }
+      }
+    } catch {
+      /* ignore corrupt autosave */
+    }
+    hydrated.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Autosave on change (debounced)
+  useEffect(() => {
+    const sub = form.watch((values) => {
+      if (!hydrated.current) return;
+      window.clearTimeout(saveTimer.current);
+      saveTimer.current = window.setTimeout(() => {
+        const at = new Date();
+        try {
+          localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ values, at: at.toISOString() }));
+          setSavedAt(at);
+        } catch {
+          /* storage full or unavailable */
+        }
+      }, 700);
+    });
+    return () => {
+      sub.unsubscribe();
+      window.clearTimeout(saveTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const saveTimer = useRef<number | undefined>(undefined);
+
+  const clearAutosave = () => {
+    try {
+      localStorage.removeItem(AUTOSAVE_KEY);
+    } catch {
+      /* ignore */
+    }
+    setSavedAt(null);
+    setRestored(false);
+  };
+
+  const discardAutosave = () => {
+    window.clearTimeout(saveTimer.current);
+    form.reset({});
+    clearAutosave();
+    toast.success("ล้างข้อมูลที่บันทึกอัตโนมัติแล้ว");
+  };
 
   const saveDraft = () => {
     const values = form.getValues();
@@ -125,6 +190,7 @@ function NewProject() {
     setIsDraft(true);
     create.mutate(values);
   };
+
 
   const create = useMutation({
     mutationFn: async (values: FormValues) => {
@@ -156,6 +222,8 @@ function NewProject() {
       return data;
     },
     onSuccess: (row) => {
+      window.clearTimeout(saveTimer.current);
+      clearAutosave();
       qc.invalidateQueries({ queryKey: ["projects"] });
       toast.success(isDraft ? "บันทึกร่างโครงการแล้ว" : "เพิ่มโครงการสำเร็จ");
       navigate({ to: "/projects/$id", params: { id: row.id } });
@@ -170,7 +238,25 @@ function NewProject() {
   return (
     <div className="max-w-3xl">
       <PageHeader title="เพิ่มโครงการใหม่" description="รหัสจะถูกสร้างอัตโนมัติ (PRJ-YYYY-NNNN) — โครงการจะเริ่มที่สถานะ 'ร่าง'" />
+
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-muted/30 px-3 py-2 text-xs">
+        <span className="flex items-center gap-2 text-muted-foreground">
+          <Save className="h-3.5 w-3.5" />
+          {restored
+            ? "กู้คืนข้อมูลที่กรอกค้างไว้แล้ว — ระบบบันทึกอัตโนมัติในเครื่องของคุณ"
+            : savedAt
+              ? `บันทึกอัตโนมัติเมื่อ ${savedAt.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`
+              : "ระบบจะบันทึกสิ่งที่กรอกอัตโนมัติ เพื่อไม่ให้ข้อมูลหายระหว่างกรอก"}
+        </span>
+        {(savedAt || restored) && (
+          <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={discardAutosave}>
+            ล้างข้อมูลที่บันทึกไว้
+          </Button>
+        )}
+      </div>
+
       <form onSubmit={form.handleSubmit((v) => { setIsDraft(false); create.mutate(v); })} className="space-y-6">
+
         <Card>
           <CardHeader><CardTitle>ข้อมูลโครงการ</CardTitle></CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
