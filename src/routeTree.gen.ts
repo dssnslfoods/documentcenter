@@ -41,9 +41,7 @@ import { Route as AuthenticatedQuotationsNewRouteImport } from './routes/_authen
 import { Route as AuthenticatedQuotationsIdRouteImport } from './routes/_authenticated/quotations.$id'
 import { Route as AuthenticatedProjectsNewRouteImport } from './routes/_authenticated/projects.new'
 import { Route as AuthenticatedProjectsIdRouteImport } from './routes/_authenticated/projects.$id'
-import { Route as AuthenticatedDocumentsNewRouteImport } from './routes/_authenticated/documents.new'
 import { Route as AuthenticatedDocumentsIdRouteImport } from './routes/_authenticated/documents.$id'
-import { Route as AuthenticatedContractsNewRouteImport } from './routes/_authenticated/contracts.new'
 import { Route as AuthenticatedContractsIdRouteImport } from './routes/_authenticated/contracts.$id'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
@@ -226,22 +224,10 @@ const AuthenticatedProjectsIdRoute = AuthenticatedProjectsIdRouteImport.update({
   path: '/projects/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedDocumentsNewRoute =
-  AuthenticatedDocumentsNewRouteImport.update({
-    id: '/documents/new',
-    path: '/documents/new',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedDocumentsIdRoute =
   AuthenticatedDocumentsIdRouteImport.update({
     id: '/documents/$id',
     path: '/documents/$id',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedContractsNewRoute =
-  AuthenticatedContractsNewRouteImport.update({
-    id: '/contracts/new',
-    path: '/contracts/new',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedContractsIdRoute =
@@ -280,9 +266,7 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/contracts/$id': typeof AuthenticatedContractsIdRoute
-  '/contracts/new': typeof AuthenticatedContractsNewRoute
   '/documents/$id': typeof AuthenticatedDocumentsIdRoute
-  '/documents/new': typeof AuthenticatedDocumentsNewRoute
   '/projects/$id': typeof AuthenticatedProjectsIdRoute
   '/projects/new': typeof AuthenticatedProjectsNewRoute
   '/quotations/$id': typeof AuthenticatedQuotationsIdRoute
@@ -319,9 +303,7 @@ export interface FileRoutesByTo {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/contracts/$id': typeof AuthenticatedContractsIdRoute
-  '/contracts/new': typeof AuthenticatedContractsNewRoute
   '/documents/$id': typeof AuthenticatedDocumentsIdRoute
-  '/documents/new': typeof AuthenticatedDocumentsNewRoute
   '/projects/$id': typeof AuthenticatedProjectsIdRoute
   '/projects/new': typeof AuthenticatedProjectsNewRoute
   '/quotations/$id': typeof AuthenticatedQuotationsIdRoute
@@ -360,9 +342,7 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/contracts/$id': typeof AuthenticatedContractsIdRoute
-  '/_authenticated/contracts/new': typeof AuthenticatedContractsNewRoute
   '/_authenticated/documents/$id': typeof AuthenticatedDocumentsIdRoute
-  '/_authenticated/documents/new': typeof AuthenticatedDocumentsNewRoute
   '/_authenticated/projects/$id': typeof AuthenticatedProjectsIdRoute
   '/_authenticated/projects/new': typeof AuthenticatedProjectsNewRoute
   '/_authenticated/quotations/$id': typeof AuthenticatedQuotationsIdRoute
@@ -401,9 +381,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/contracts/$id'
-    | '/contracts/new'
     | '/documents/$id'
-    | '/documents/new'
     | '/projects/$id'
     | '/projects/new'
     | '/quotations/$id'
@@ -440,9 +418,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/contracts/$id'
-    | '/contracts/new'
     | '/documents/$id'
-    | '/documents/new'
     | '/projects/$id'
     | '/projects/new'
     | '/quotations/$id'
@@ -480,9 +456,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/contracts/$id'
-    | '/_authenticated/contracts/new'
     | '/_authenticated/documents/$id'
-    | '/_authenticated/documents/new'
     | '/_authenticated/projects/$id'
     | '/_authenticated/projects/new'
     | '/_authenticated/quotations/$id'
@@ -740,25 +714,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProjectsIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/documents/new': {
-      id: '/_authenticated/documents/new'
-      path: '/documents/new'
-      fullPath: '/documents/new'
-      preLoaderRoute: typeof AuthenticatedDocumentsNewRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/documents/$id': {
       id: '/_authenticated/documents/$id'
       path: '/documents/$id'
       fullPath: '/documents/$id'
       preLoaderRoute: typeof AuthenticatedDocumentsIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/contracts/new': {
-      id: '/_authenticated/contracts/new'
-      path: '/contracts/new'
-      fullPath: '/contracts/new'
-      preLoaderRoute: typeof AuthenticatedContractsNewRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/contracts/$id': {
@@ -795,9 +755,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
   AuthenticatedSearchRoute: typeof AuthenticatedSearchRoute
   AuthenticatedContractsIdRoute: typeof AuthenticatedContractsIdRoute
-  AuthenticatedContractsNewRoute: typeof AuthenticatedContractsNewRoute
   AuthenticatedDocumentsIdRoute: typeof AuthenticatedDocumentsIdRoute
-  AuthenticatedDocumentsNewRoute: typeof AuthenticatedDocumentsNewRoute
   AuthenticatedProjectsIdRoute: typeof AuthenticatedProjectsIdRoute
   AuthenticatedProjectsNewRoute: typeof AuthenticatedProjectsNewRoute
   AuthenticatedQuotationsIdRoute: typeof AuthenticatedQuotationsIdRoute
@@ -827,9 +785,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,
   AuthenticatedSearchRoute: AuthenticatedSearchRoute,
   AuthenticatedContractsIdRoute: AuthenticatedContractsIdRoute,
-  AuthenticatedContractsNewRoute: AuthenticatedContractsNewRoute,
   AuthenticatedDocumentsIdRoute: AuthenticatedDocumentsIdRoute,
-  AuthenticatedDocumentsNewRoute: AuthenticatedDocumentsNewRoute,
   AuthenticatedProjectsIdRoute: AuthenticatedProjectsIdRoute,
   AuthenticatedProjectsNewRoute: AuthenticatedProjectsNewRoute,
   AuthenticatedQuotationsIdRoute: AuthenticatedQuotationsIdRoute,
