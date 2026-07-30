@@ -12,6 +12,7 @@ import { ProjectDocumentsList } from "@/components/project/documents-list";
 import { ProjectSpecNotesList } from "@/components/project/spec-notes-list";
 import { SupplierQuotationsTab } from "@/components/project/supplier-quotations-tab";
 import { CustomerQuotationsTab } from "@/components/project/customer-quotations-tab";
+import { FinalCustomerQuotation } from "@/components/project/final-customer-quotation";
 import { MilestonesTab } from "@/components/project/milestones-tab";
 import { TeamTab } from "@/components/project/team-tab";
 import { useProjectPermissions } from "@/hooks/use-project-permissions";
