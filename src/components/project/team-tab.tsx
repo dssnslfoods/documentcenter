@@ -96,6 +96,8 @@ export function TeamTab({
       return rows.map((m) => ({
         id: m.id,
         user_id: m.user_id,
+        role_title: (m as { role_title?: string | null }).role_title ?? null,
+        responsibilities: (m as { responsibilities?: string | null }).responsibilities ?? null,
         profiles: pMap.get(m.user_id) ?? null,
         perm_count: counts.get(m.id) ?? 0,
         is_owner: !!ownerId && m.user_id === ownerId,
