@@ -218,6 +218,9 @@ export function TimelineTab({
               </button>
             ))}
           </div>
+          <Button size="sm" variant="outline" onClick={exportExcel}>
+            <FileSpreadsheet className="mr-2 h-4 w-4" />ส่งออก Excel
+          </Button>
           {canEdit && (
             <Button size="sm" onClick={openNew}><Plus className="mr-2 h-4 w-4" />เพิ่มงาน</Button>
           )}
