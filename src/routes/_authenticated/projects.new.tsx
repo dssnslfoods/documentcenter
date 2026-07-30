@@ -115,6 +115,69 @@ function NewProject() {
   const grossAmount = Math.round((netAmount + vatAmount) * 100) / 100;
 
   const [isDraft, setIsDraft] = useState(false);
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [restored, setRestored] = useState(false);
+  const hydrated = useRef(false);
+
+  // Restore autosaved form data (once, on mount)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(AUTOSAVE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { values?: FormValues; at?: string };
+        if (parsed.values && Object.values(parsed.values).some((v) => v !== "" && v != null && v !== false)) {
+          form.reset(parsed.values);
+          setSavedAt(parsed.at ? new Date(parsed.at) : null);
+          setRestored(true);
+        }
+      }
+    } catch {
+      /* ignore corrupt autosave */
+    }
+    hydrated.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Autosave on change (debounced)
+  useEffect(() => {
+    const sub = form.watch((values) => {
+      if (!hydrated.current) return;
+      window.clearTimeout(saveTimer.current);
+      saveTimer.current = window.setTimeout(() => {
+        const at = new Date();
+        try {
+          localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ values, at: at.toISOString() }));
+          setSavedAt(at);
+        } catch {
+          /* storage full or unavailable */
+        }
+      }, 700);
+    });
+    return () => {
+      sub.unsubscribe();
+      window.clearTimeout(saveTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const saveTimer = useRef<number | undefined>(undefined);
+
+  const clearAutosave = () => {
+    try {
+      localStorage.removeItem(AUTOSAVE_KEY);
+    } catch {
+      /* ignore */
+    }
+    setSavedAt(null);
+    setRestored(false);
+  };
+
+  const discardAutosave = () => {
+    window.clearTimeout(saveTimer.current);
+    form.reset({});
+    clearAutosave();
+    toast.success("ล้างข้อมูลที่บันทึกอัตโนมัติแล้ว");
+  };
 
   const saveDraft = () => {
     const values = form.getValues();
@@ -125,6 +188,7 @@ function NewProject() {
     setIsDraft(true);
     create.mutate(values);
   };
+
 
   const create = useMutation({
     mutationFn: async (values: FormValues) => {
