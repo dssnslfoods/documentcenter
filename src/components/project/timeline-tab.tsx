@@ -444,9 +444,34 @@ function TaskDialog({
               <SelectContent>
                 <SelectItem value="none">— ไม่ระบุ —</SelectItem>
                 {members.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                <SelectItem value="external">+ เพิ่มผู้รับผิดชอบภายนอก (ลูกค้า/คู่ค้า)</SelectItem>
               </SelectContent>
             </Select>
+            {assignee === "external" && (
+              <div className="space-y-1.5 pt-1">
+                <Input
+                  value={assigneeLabel}
+                  onChange={(e) => setAssigneeLabel(e.target.value)}
+                  placeholder="เช่น ลูกค้า / คู่ค้า / ผู้รับเหมา"
+                />
+                <div className="flex flex-wrap gap-1.5">
+                  {["ลูกค้า", "คู่ค้า", "ผู้รับเหมา", "ที่ปรึกษา"].map((p) => (
+                    <Button
+                      key={p}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 rounded-full px-3 text-xs"
+                      onClick={() => setAssigneeLabel(p)}
+                    >
+                      {p}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
+
           <div className="space-y-1.5">
             <Label>ผูกกับงวดงาน</Label>
             <Select value={milestoneId} onValueChange={setMilestoneId}>
