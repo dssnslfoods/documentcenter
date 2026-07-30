@@ -103,7 +103,7 @@ export function OverviewTab({
               <p className="whitespace-pre-wrap text-sm">{project.description}</p>
             </div>
           )}
-          <EditProjectDialog project={project} open={editOpen} onOpenChange={setEditOpen} />
+          <EditProjectDialog project={project} open={editOpen} onOpenChange={setEditOpen} canEditPrice={canSeePrice} />
           {project.status === "lost" && project.lost_reason && (
             <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
               <div className="text-xs font-semibold text-destructive">เหตุผลที่แพ้งาน</div>

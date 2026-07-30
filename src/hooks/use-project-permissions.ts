@@ -38,6 +38,7 @@ export const PERMISSION_LABEL: Record<PermissionKey, string> = {
 
 export type ProjectPermissions = {
   isAdmin: boolean;
+  isManager: boolean;
   isMember: boolean;
   keys: Set<PermissionKey>;
   has: (k: PermissionKey) => boolean;
@@ -69,7 +70,10 @@ export function useProjectPermissions(projectId: string | undefined): {
     queryFn: async (): Promise<ProjectPermissions> => {
       const uid = user!.id;
       const { data: roles } = await sb.from("user_roles").select("role").eq("user_id", uid);
-      const isAdmin = (roles ?? []).some((r) => r.role === "super_admin");
+      const roleList = (roles ?? []).map((r) => r.role as string);
+      const isAdmin = roleList.includes("super_admin");
+      // Manager-level roles get full project access/editing by default.
+      const isManager = isAdmin || roleList.includes("management") || roleList.includes("dept_manager");
 
       const { data: mem } = await sb
         .from("project_members")
@@ -89,25 +93,37 @@ export function useProjectPermissions(projectId: string | undefined): {
         });
       }
 
-      const has = (k: PermissionKey) => isAdmin || keys.has(k);
+      const has = (k: PermissionKey) => isAdmin || isManager || keys.has(k);
+      // Price visibility is never auto-granted to managers: admins can hide it
+      // per member via the "ซ่อนราคา" permissions.
+      const priceSet = (priceKey: PermissionKey, noPriceKey: PermissionKey) => {
+        if (isAdmin) return true;
+        if (keys.has(priceKey)) return true;
+        if (keys.has(noPriceKey)) return false;
+        return isManager;
+      };
+      const seeCustomerPrice = priceSet("view_customer_quotation", "view_customer_quotation_no_price");
+      const seeSupplierPrice = priceSet("view_supplier_quotation", "view_supplier_quotation_no_price");
+      const seeMilestonePayment = priceSet("view_milestones", "view_milestones_no_payment");
       const seeSupplier = has("view_supplier_quotation") || has("view_supplier_quotation_no_price");
       const seeCustomer = has("view_customer_quotation") || has("view_customer_quotation_no_price");
       const seeMilestones = has("view_milestones") || has("view_milestones_no_payment");
 
       return {
         isAdmin,
+        isManager,
         isMember: !!mem,
         keys,
         has,
         canSeeOverview: isAdmin || has("view_project_info") || !!mem,
         canSeeSpec: has("view_spec_scope") || has("view_all_documents"),
         canSeeSupplier: seeSupplier,
-        canSeeSupplierPrice: isAdmin || has("view_supplier_quotation"),
+        canSeeSupplierPrice: seeSupplierPrice,
         canSeeCustomer: seeCustomer,
-        canSeeCustomerPrice: isAdmin || has("view_customer_quotation"),
+        canSeeCustomerPrice: seeCustomerPrice,
         canSeeContract: has("view_contract") || has("view_all_documents"),
         canSeeMilestones: seeMilestones,
-        canSeeMilestonePayment: isAdmin || has("view_milestones"),
+        canSeeMilestonePayment: seeMilestonePayment,
         canEditProject: has("edit_project"),
         canEditMilestones: has("edit_milestones"),
         canUpload: has("upload_documents"),
