@@ -33,6 +33,39 @@ const CHART_COLORS = [
 ];
 
 function Dashboard() {
+  const { user } = useAuth();
+
+  const { data: myProjects } = useQuery({
+    queryKey: ["my-projects", user?.id],
+    queryFn: async () => {
+      const sb = getSupabase();
+      const empty = { in_progress: [] as any[], completed: [] as any[] };
+      if (!user) return empty;
+      const { data: memberships } = await sb
+        .from("project_members")
+        .select("project_id")
+        .eq("user_id", user.id);
+      const ids = Array.from(new Set((memberships ?? []).map((m: any) => m.project_id)));
+      // include projects the user owns even if membership row is missing
+      const { data: owned } = await sb.from("projects").select("id").eq("owner_id", user.id);
+      (owned ?? []).forEach((p: any) => { if (!ids.includes(p.id)) ids.push(p.id); });
+      if (ids.length === 0) return empty;
+      const { data } = await sb
+        .from("projects")
+        .select("id, code, name, status, updated_at, customer_name, partners(name)")
+        .in("id", ids)
+        .in("status", ["in_progress", "completed"])
+        .is("archived_at", null)
+        .order("updated_at", { ascending: false });
+      return {
+        in_progress: (data ?? []).filter((p: any) => p.status === "in_progress"),
+        completed: (data ?? []).filter((p: any) => p.status === "completed"),
+      };
+    },
+    enabled: !!user,
+  });
+
+
   const { data: kpi, isLoading } = useQuery({
     queryKey: ["dashboard-kpi"],
     queryFn: async () => {
