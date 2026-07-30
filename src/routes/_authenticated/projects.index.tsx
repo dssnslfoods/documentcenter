@@ -195,10 +195,9 @@ function ProjectsList() {
   );
 }
 
+// ชนะงาน/แพ้งาน ไม่แสดงเป็นคอลัมน์ใน pipeline — ดูสถิติได้ที่หน้ารายงาน
 const PIPELINE_COLUMNS: { key: ProjectLifecycleStatus; label: string; short: string }[] = [
   ...LIFECYCLE_PHASES.slice(0, 4).map((p) => ({ key: p.key, label: p.label, short: p.short })),
-  { key: "won", label: "ชนะงาน", short: "Won" },
-  { key: "lost", label: "แพ้งาน", short: "Lost" },
   { key: "in_progress", label: "ดำเนินโครงการ", short: "Execution" },
   { key: "completed", label: "ปิดโครงการ", short: "Closed" },
 ];
@@ -226,14 +225,18 @@ function PipelineView({ rows, isLoading }: { rows: ProjectRow[]; isLoading: bool
 
   const grouped = new Map<string, ProjectRow[]>();
   PIPELINE_COLUMNS.forEach((c) => grouped.set(c.key, []));
+  let lostCount = 0;
   rows.forEach((r) => {
-    const k = (r.status ?? "draft") as ProjectLifecycleStatus;
+    let k = (r.status ?? "draft") as ProjectLifecycleStatus;
+    if (k === "lost") { lostCount += 1; return; }        // ดูสถิติที่หน้ารายงาน
+    if (k === "won") k = "in_progress";                   // ชนะงาน = เข้าสู่การดำเนินโครงการ
     if (!grouped.has(k)) grouped.set(k, []);
     grouped.get(k)!.push(r);
   });
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       {PIPELINE_COLUMNS.map((col) => {
         const items = grouped.get(col.key) ?? [];
         const st = col.key;
@@ -279,6 +282,13 @@ function PipelineView({ rows, isLoading }: { rows: ProjectRow[]; isLoading: bool
           </div>
         );
       })}
+      </div>
+      {lostCount > 0 && (
+        <div className="flex items-center justify-between rounded-xl border border-dashed px-4 py-3 text-xs text-muted-foreground">
+          <span>มีโครงการที่แพ้งาน {lostCount} รายการ (ไม่แสดงใน pipeline)</span>
+          <Link to="/reports" className="font-medium text-primary hover:underline">ดูสถิติแพ้/ชนะในรายงาน →</Link>
+        </div>
+      )}
     </div>
   );
 }

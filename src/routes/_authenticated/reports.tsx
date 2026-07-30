@@ -79,6 +79,23 @@ function ReportsPage() {
         totalProjectBudget += p.budget ?? 0;
       });
 
+      // Win / Loss statistics
+      const won = (projects.data ?? []).filter((p: { status: string }) =>
+        ["won", "in_progress", "completed"].includes(p.status)).length;
+      const lost = projStatus["lost"] ?? 0;
+      const decided = won + lost;
+      const winRate = decided > 0 ? Math.round((won / decided) * 100) : 0;
+
+      // Win/Loss by month (12 months)
+      const wl = months.map((m) => ({ label: m.label, key: m.key, won: 0, lost: 0 }));
+      const wlMap = new Map(wl.map((m) => [m.key, m]));
+      (projects.data ?? []).forEach((p: { status: string; created_at: string }) => {
+        const m = wlMap.get((p.created_at ?? "").slice(0, 7));
+        if (!m) return;
+        if (["won", "in_progress", "completed"].includes(p.status)) m.won += 1;
+        else if (p.status === "lost") m.lost += 1;
+      });
+
       return {
         contractStatus: Object.entries(contractStatus).map(([k, v]) => ({ name: CONTRACT_STATUS_LABELS[k] ?? k, value: v })),
         totalContractValue,
@@ -89,6 +106,8 @@ function ReportsPage() {
         months,
         docsByCat,
         projStatus: Object.entries(projStatus).map(([k, v]) => ({ name: k, value: v })),
+        won, lost, decided, winRate,
+        winLossMonths: wl,
       };
     },
   });
@@ -114,6 +133,32 @@ function ReportsPage() {
         <KpiCard label="เอกสารในระบบ" value={fmtNumber(data.totalDocs)} sub="ทุกหมวดหมู่" />
         <KpiCard label="โครงการ" value={fmtNumber(data.totalProjects)} sub={`งบรวม ${fmtCurrency(data.totalProjectBudget)}`} />
       </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard label="ชนะงาน" value={fmtNumber(data.won)} sub="รวมที่ดำเนินการ/ปิดโครงการแล้ว" />
+        <KpiCard label="แพ้งาน" value={fmtNumber(data.lost)} />
+        <KpiCard label="ตัดสินผลแล้ว" value={fmtNumber(data.decided)} sub="ชนะ + แพ้" />
+        <KpiCard label="อัตราชนะงาน" value={`${data.winRate}%`} sub="Win rate" />
+      </div>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">สถิติชนะงาน / แพ้งาน รายเดือน (12 เดือน)</CardTitle></CardHeader>
+        <CardContent className="h-72">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data.winLossMonths}>
+              <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+              <Tooltip />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="won" name="ชนะงาน" stackId="wl" fill={COLORS[3]} radius={[0, 0, 0, 0]} />
+              <Bar dataKey="lost" name="แพ้งาน" stackId="wl" fill={COLORS[4]} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
