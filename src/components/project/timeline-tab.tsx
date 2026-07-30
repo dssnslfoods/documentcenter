@@ -352,7 +352,10 @@ function TaskDialog({
   const [progress, setProgress] = useState(String(task?.progress ?? 0));
   const [status, setStatus] = useState<TaskStatus>(task?.status ?? "not_started");
   const [parentId, setParentId] = useState(task?.parent_id ?? "none");
-  const [assignee, setAssignee] = useState(task?.assignee_id ?? "none");
+  const [assignee, setAssignee] = useState(
+    task?.assignee_label ? "external" : task?.assignee_id ?? "none",
+  );
+  const [assigneeLabel, setAssigneeLabel] = useState(task?.assignee_label ?? "");
   const [milestoneId, setMilestoneId] = useState(task?.milestone_id ?? "none");
   const [sortOrder, setSortOrder] = useState(String(task?.sort_order ?? 0));
 
