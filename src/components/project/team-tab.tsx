@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { UserPlus, Trash2, Loader2, Users, ShieldCheck } from "lucide-react";
+import { UserPlus, Trash2, Loader2, Users, ShieldCheck, Pencil } from "lucide-react";
 import { PermissionEditorDialog } from "@/components/project/permission-editor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -15,10 +17,13 @@ import { getSupabase } from "@/lib/supabase";
 type Member = {
   id: string;
   user_id: string;
+  role_title: string | null;
+  responsibilities: string | null;
   profiles?: { full_name: string | null; email: string | null } | null;
   perm_count: number;
   is_owner?: boolean;
 };
+
 
 const FULL_PERMS = [
   "view_project_info", "view_spec_scope", "view_supplier_quotation", "view_customer_quotation",
