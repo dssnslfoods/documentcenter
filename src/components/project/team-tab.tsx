@@ -42,6 +42,7 @@ export function TeamTab({
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editMember, setEditMember] = useState<{ id: string; label: string } | null>(null);
+  const [editRole, setEditRole] = useState<Member | null>(null);
 
   const { data: members, isLoading, error } = useQuery({
     queryKey: ["project-members", projectId],
