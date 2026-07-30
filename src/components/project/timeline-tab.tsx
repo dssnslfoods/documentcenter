@@ -28,6 +28,7 @@ type Task = {
   parent_id: string | null;
   milestone_id: string | null;
   assignee_id: string | null;
+  assignee_label?: string | null;
   name: string;
   description: string | null;
   start_date: string;
