@@ -52,6 +52,7 @@ export function MilestonesTab({
   const sb = getSupabase();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
 
   const { data: rows, isLoading } = useQuery({
     queryKey: ["milestones", projectId],
