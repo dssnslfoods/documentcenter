@@ -36,6 +36,7 @@ type Row = {
   postponed_to_date: string | null;
   status_reason: string | null;
   notes: string | null;
+  deliverable_details: string | null;
 };
 
 export function MilestonesTab({
