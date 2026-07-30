@@ -224,7 +224,6 @@ function Dashboard() {
         <KpiCard icon={Clock} label="สัญญาใกล้หมดอายุ (30 วัน)" value={fmtNumber(kpi?.expiring30)} loading={isLoading} tone="warning" href="/contracts" />
         <KpiCard icon={AlertTriangle} label="สัญญาหมดอายุแล้ว" value={fmtNumber(kpi?.expired)} loading={isLoading} tone="destructive" href="/contracts" />
         <KpiCard icon={FileSignature} label="ใบเสนอราคารอพิจารณา" value={fmtNumber(kpi?.quotPending)} loading={isLoading} href="/quotations" />
-        <KpiCard icon={CheckCircle2} label="งานรออนุมัติ" value="—" loading={false} href="/approvals" />
       </div>
 
       {/* Secondary KPI row */}
@@ -232,7 +231,7 @@ function Dashboard() {
         <KpiCard icon={FileText} label="เอกสารทั้งหมด" value={fmtNumber(kpi?.totalDocs)} loading={isLoading} href="/documents" />
         <KpiCard icon={CheckCircle2} label="เอกสารกำลังใช้งาน" value={fmtNumber(kpi?.activeDocs)} loading={isLoading} tone="success" href="/documents" />
         <KpiCard icon={DollarSign} label="มูลค่าสัญญาที่ใช้งาน" value={fmtCurrency(kpi?.totalContractValue)} loading={isLoading} tone="accent" href="/contracts" />
-        <KpiCard icon={CheckCircle2} label="งานรออนุมัติ" value="—" loading={false} href="/approvals" />
+        
       </div>
 
       {/* โครงการที่ฉันมีส่วนร่วม */}
