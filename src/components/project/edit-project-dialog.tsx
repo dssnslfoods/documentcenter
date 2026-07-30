@@ -1,0 +1,225 @@
+import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Loader2, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { getSupabase } from "@/lib/supabase";
+import { PartnerFormDialog, usePartners } from "@/components/partner-form-dialog";
+
+export type EditableProject = {
+  id: string;
+  name: string;
+  description: string | null;
+  customer_name: string | null;
+  customer_id?: string | null;
+  project_type: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  contract_value: number | null;
+  vat_rate?: number | null;
+  is_inhouse?: boolean | null;
+};
+
+export function EditProjectDialog({
+  project,
+  open,
+  onOpenChange,
+}: {
+  project: EditableProject;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const sb = getSupabase();
+  const qc = useQueryClient();
+  const { data: customers } = usePartners("customer");
+  const [partnerOpen, setPartnerOpen] = useState(false);
+
+  const { data: workTypes } = useQuery({
+    queryKey: ["work-types"],
+    queryFn: async () =>
+      (await sb.from("work_types").select("id, code, name_th").eq("is_active", true).order("sort_order").order("name_th")).data ?? [],
+  });
+  const { data: vatRates } = useQuery({
+    queryKey: ["vat-rates"],
+    queryFn: async () =>
+      (await sb.from("vat_rates").select("id, label, rate, is_default").eq("is_active", true).order("sort_order").order("rate")).data ?? [],
+  });
+
+  const [name, setName] = useState(project.name ?? "");
+  const [description, setDescription] = useState(project.description ?? "");
+  const [customerId, setCustomerId] = useState(project.customer_id ?? "");
+  const [customerName, setCustomerName] = useState(project.customer_name ?? "");
+  const [projectType, setProjectType] = useState(project.project_type ?? "");
+  const [startDate, setStartDate] = useState(project.start_date ?? "");
+  const [endDate, setEndDate] = useState(project.end_date ?? "");
+  const [contractValue, setContractValue] = useState(
+    project.contract_value == null ? "" : String(project.contract_value),
+  );
+  const [vatPercentStr, setVatPercentStr] = useState(
+    project.vat_rate == null ? "none" : String(Number(project.vat_rate)),
+  );
+  const [isInhouse, setIsInhouse] = useState(!!project.is_inhouse);
+
+  // Re-sync the form whenever a different project (or fresh data) is opened.
+  useEffect(() => {
+    if (!open) return;
+    setName(project.name ?? "");
+    setDescription(project.description ?? "");
+    setCustomerId(project.customer_id ?? "");
+    setCustomerName(project.customer_name ?? "");
+    setProjectType(project.project_type ?? "");
+    setStartDate(project.start_date ?? "");
+    setEndDate(project.end_date ?? "");
+    setContractValue(project.contract_value == null ? "" : String(project.contract_value));
+    setVatPercentStr(project.vat_rate == null ? "none" : String(Number(project.vat_rate)));
+    setIsInhouse(!!project.is_inhouse);
+  }, [open, project]);
+
+  const net = Number(contractValue) || 0;
+  const vatPercent = vatPercentStr === "none" ? 0 : Number(vatPercentStr) || 0;
+  const vatAmount = Math.round(net * vatPercent) / 100;
+  const gross = Math.round((net + vatAmount) * 100) / 100;
+
+  const save = useMutation({
+    mutationFn: async () => {
+      if (!name.trim()) throw new Error("กรุณากรอกชื่อโครงการ");
+      if (startDate && endDate && new Date(endDate) < new Date(startDate))
+        throw new Error("วันสิ้นสุดต้องไม่น้อยกว่าวันเริ่ม");
+      const hasValue = contractValue !== "";
+      const patch: Record<string, unknown> = {
+        name: name.trim(),
+        description: description || null,
+        customer_id: customerId || null,
+        customer_name: customerName || null,
+        project_type: projectType || null,
+        start_date: startDate || null,
+        end_date: endDate || null,
+        contract_value: hasValue ? net : null,
+        budget: hasValue ? net : null,
+        vat_rate: vatPercentStr === "none" ? null : vatPercent,
+        vat_amount: hasValue ? vatAmount : null,
+        contract_value_incl_vat: hasValue ? gross : null,
+        is_inhouse: isInhouse,
+      };
+      const { error } = await sb.from("projects").update(patch).eq("id", project.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["project", project.id] });
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      toast.success("บันทึกรายละเอียดโครงการแล้ว");
+      onOpenChange(false);
+    },
+    onError: (e: Error) => toast.error("บันทึกไม่สำเร็จ", { description: e.message }),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader><DialogTitle>แก้ไขรายละเอียดโครงการ</DialogTitle></DialogHeader>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2 space-y-2">
+            <Label>ชื่อโครงการ *</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+
+          <div className="space-y-2">
+            <Label>ลูกค้า</Label>
+            <div className="flex gap-2">
+              <Select
+                value={customerId || undefined}
+                onValueChange={(v) => {
+                  setCustomerId(v);
+                  setCustomerName((customers ?? []).find((c) => c.id === v)?.name ?? "");
+                }}
+              >
+                <SelectTrigger className="flex-1"><SelectValue placeholder={customerName || "เลือกลูกค้า"} /></SelectTrigger>
+                <SelectContent>
+                  {(customers ?? []).map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      <span className="mr-2 font-mono text-xs text-muted-foreground">{c.code}</span>{c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button type="button" variant="outline" size="icon" aria-label="เพิ่มลูกค้าใหม่" onClick={() => setPartnerOpen(true)}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            <PartnerFormDialog
+              open={partnerOpen}
+              onOpenChange={setPartnerOpen}
+              defaultType="customer"
+              onSaved={(row) => { setCustomerId(row.id); setCustomerName(row.name); }}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>ประเภทงาน</Label>
+            <Select value={projectType || undefined} onValueChange={setProjectType}>
+              <SelectTrigger><SelectValue placeholder="เลือกประเภทงาน" /></SelectTrigger>
+              <SelectContent>
+                {(workTypes ?? []).map((w: { id: string; name_th: string }) => (
+                  <SelectItem key={w.id} value={w.name_th}>{w.name_th}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2"><Label>วันเริ่ม</Label><Input type="date" value={startDate ?? ""} onChange={(e) => setStartDate(e.target.value)} /></div>
+          <div className="space-y-2"><Label>วันสิ้นสุด</Label><Input type="date" value={endDate ?? ""} onChange={(e) => setEndDate(e.target.value)} /></div>
+
+          <div className="space-y-2">
+            <Label>มูลค่าสัญญา ก่อน VAT (บาท)</Label>
+            <Input type="number" step="0.01" min="0" value={contractValue} onChange={(e) => setContractValue(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>อัตรา VAT</Label>
+            <Select value={vatPercentStr} onValueChange={setVatPercentStr}>
+              <SelectTrigger><SelectValue placeholder="เลือกอัตรา VAT" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">ไม่มี VAT (0%)</SelectItem>
+                {(vatRates ?? []).map((v: { id: string; label: string; rate: number }) => (
+                  <SelectItem key={v.id} value={String(Number(v.rate))}>{v.label} ({Number(v.rate).toFixed(2)}%)</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="sm:col-span-2 rounded-lg border bg-muted/40 p-3 text-sm">
+            <div className="flex justify-between"><span className="text-muted-foreground">มูลค่าก่อน VAT</span><span className="tabular-nums">{net.toLocaleString("th-TH", { minimumFractionDigits: 2 })} บาท</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">VAT {vatPercent.toFixed(2)}%</span><span className="tabular-nums">{vatAmount.toLocaleString("th-TH", { minimumFractionDigits: 2 })} บาท</span></div>
+            <div className="mt-1 flex justify-between border-t pt-1 font-semibold"><span>รวมทั้งสิ้น</span><span className="tabular-nums">{gross.toLocaleString("th-TH", { minimumFractionDigits: 2 })} บาท</span></div>
+          </div>
+
+          <div className="sm:col-span-2 flex items-start gap-3 rounded-xl border bg-muted/30 p-3">
+            <Checkbox id="edit_is_inhouse" checked={isInhouse} onCheckedChange={(c) => setIsInhouse(c === true)} className="mt-0.5" />
+            <div className="space-y-0.5">
+              <Label htmlFor="edit_is_inhouse" className="cursor-pointer">งานผลิตภายใน (ไม่ใช้ Supplier / Outsource)</Label>
+              <p className="text-xs text-muted-foreground">เมื่อเลือก ระบบจะข้ามขั้นตอน RFQ / Spec และใบเสนอราคา Supplier</p>
+            </div>
+          </div>
+
+          <div className="sm:col-span-2 space-y-2">
+            <Label>รายละเอียด</Label>
+            <Textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>ยกเลิก</Button>
+          <Button disabled={save.isPending} onClick={() => save.mutate()}>
+            {save.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}บันทึก
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
