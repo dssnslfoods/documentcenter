@@ -98,10 +98,20 @@ function ProjectDetail() {
 
 
 
+  const isInhouse = !!(p as { is_inhouse?: boolean } | undefined)?.is_inhouse;
+
   // Determine what data-driven step is currently pending
   type Gate = { need: string; ready: boolean; nextIfReady: ProjectLifecycleStatus | null };
   const gate: Gate = (() => {
     const s = signals;
+    if (isInhouse && (status === "draft" || status === "rfq_sent" || status === "quotation_received")) {
+      // งานผลิตภายใน: ข้าม RFQ + ใบเสนอราคา Supplier
+      return {
+        need: "สร้างใบเสนอราคาให้ลูกค้า (งานผลิตภายใน ไม่ต้องมี RFQ / Supplier)",
+        ready: !!s && s.cusCount > 0,
+        nextIfReady: "proposal_submitted",
+      };
+    }
     switch (status) {
       case "draft":
         return { need: "อัปโหลดเอกสาร RFQ / Spec ในแท็บ RFQ", ready: !!s && s.rfqCount > 0, nextIfReady: "rfq_sent" };
@@ -123,6 +133,7 @@ function ProjectDetail() {
         return { need: "", ready: false, nextIfReady: null };
     }
   })();
+
 
   // (autoAdvancedRef declared above)
   const advance = async (next: ProjectLifecycleStatus, silent = false) => {
