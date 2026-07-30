@@ -223,7 +223,15 @@ function NotificationBell({ userId }: { userId: string | undefined }) {
   );
 }
 
-function SidebarContent({ collapsed, pathname }: { collapsed: boolean; pathname: string }) {
+function SidebarContent({
+  collapsed, pathname, displayName, email, position,
+}: {
+  collapsed: boolean;
+  pathname: string;
+  displayName: string;
+  email?: string;
+  position?: string | null;
+}) {
   return (
     <>
       <div className="flex h-16 items-center gap-2.5 border-b border-sidebar-border px-4">
