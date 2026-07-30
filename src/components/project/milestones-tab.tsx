@@ -222,40 +222,48 @@ function SummaryCard({ label, value, tone }: { label: string; value: string; ton
   );
 }
 
-function AddDialog({
+function MilestoneDialog({
   projectId,
   nextNumber,
+  row,
   onClose,
   onSaved,
 }: {
   projectId: string;
   nextNumber: number;
+  row?: Row;
   onClose: () => void;
   onSaved: () => void;
 }) {
   const sb = getSupabase();
-  const [description, setDescription] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [payType, setPayType] = useState<PayType>("percentage");
-  const [payValue, setPayValue] = useState("");
-  const [notes, setNotes] = useState("");
+  const isEdit = !!row;
+  const [description, setDescription] = useState(row?.description ?? "");
+  const [dueDate, setDueDate] = useState(row?.due_date ?? "");
+  const [payType, setPayType] = useState<PayType>(row?.payment_type ?? "percentage");
+  const [payValue, setPayValue] = useState(row ? String(row.payment_value ?? "") : "");
+  const [notes, setNotes] = useState(row?.notes ?? "");
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
     if (!description) return toast.error("กรุณาระบุรายละเอียดงวด");
     setSaving(true);
     try {
-      const { error } = await sb.from("project_milestones").insert({
-        project_id: projectId,
-        milestone_number: nextNumber,
+      const payload = {
         description,
         due_date: dueDate || null,
         payment_type: payType,
         payment_value: payValue ? Number(payValue) : 0,
         notes: notes || null,
-      });
+      };
+      const { error } = isEdit
+        ? await sb.from("project_milestones").update(payload).eq("id", row!.id)
+        : await sb.from("project_milestones").insert({
+            project_id: projectId,
+            milestone_number: nextNumber,
+            ...payload,
+          });
       if (error) throw error;
-      toast.success("เพิ่มงวดเรียบร้อย");
+      toast.success(isEdit ? "แก้ไขเรียบร้อย" : "เพิ่มงวดเรียบร้อย");
       onSaved();
     } catch (e) {
       toast.error((e as Error).message);
@@ -266,7 +274,11 @@ function AddDialog({
 
   return (
     <DialogContent className="max-w-lg">
-      <DialogHeader><DialogTitle>เพิ่มงวดงาน #{nextNumber}</DialogTitle></DialogHeader>
+      <DialogHeader>
+        <DialogTitle>
+          {isEdit ? `แก้ไขงวดงาน #${row!.milestone_number}` : `เพิ่มงวดงาน #${nextNumber}`}
+        </DialogTitle>
+      </DialogHeader>
       <div className="space-y-3">
         <div>
           <Label>รายละเอียดงวด <span className="text-destructive">*</span></Label>
@@ -306,3 +318,4 @@ function AddDialog({
     </DialogContent>
   );
 }
+
