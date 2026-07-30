@@ -13,6 +13,8 @@ import { EmptyState } from "@/components/page-header";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDate, fmtCurrency } from "@/lib/format";
 import { uploadProjectFile, getProjectFileUrl } from "@/lib/project-files";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useVatRates, calcVat, pickVatRate, fmtNum } from "@/lib/vat";
 
 type Row = {
   id: string;
@@ -21,6 +23,9 @@ type Row = {
   notes: string | null;
   file_url: string | null;
   is_final: boolean;
+  vat_rate: number | null;
+  vat_amount: number | null;
+  amount_incl_vat: number | null;
 };
 
 export function CustomerQuotationsTab({
@@ -41,7 +46,7 @@ export function CustomerQuotationsTab({
     queryFn: async () => {
       const { data, error } = await sb
         .from("customer_quotations")
-        .select("id, quotation_amount, submitted_date, notes, file_url, is_final")
+        .select("id, quotation_amount, submitted_date, notes, file_url, is_final, vat_rate, vat_amount, amount_incl_vat")
         .eq("project_id", projectId)
         .order("submitted_date", { ascending: false, nullsFirst: false });
       if (error) throw error;
@@ -118,8 +123,16 @@ export function CustomerQuotationsTab({
                   <div className="text-xs text-muted-foreground">ส่งเมื่อ {fmtDate(r.submitted_date)}</div>
                   {r.notes && <p className="mt-1 text-sm">{r.notes}</p>}
                 </div>
-                <div className="text-lg font-semibold tabular-nums">
-                  {canSeePrice ? fmtCurrency(r.quotation_amount, "THB") : "฿ ••••••"}
+                <div className="text-right">
+                  <div className="text-lg font-semibold tabular-nums">
+                    {canSeePrice ? fmtCurrency(r.quotation_amount, "THB") : "฿ ••••••"}
+                  </div>
+                  {canSeePrice && (
+                    <div className="text-xs text-muted-foreground tabular-nums">
+                      ก่อน VAT · VAT {Number(r.vat_rate ?? 0).toFixed(2)}% ={" "}
+                      {fmtCurrency(r.amount_incl_vat ?? r.quotation_amount, "THB")} (สุทธิ)
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-1">
                   {r.file_url && (
@@ -166,6 +179,10 @@ function AddDialog({
   const [date, setDate] = useState("");
   const [notes, setNotes] = useState("");
   const [isFinal, setIsFinal] = useState(false);
+  const [vatRateId, setVatRateId] = useState<string | undefined>(undefined);
+  const { data: vatRates } = useVatRates();
+  const selectedVat = pickVatRate(vatRates, vatRateId);
+  const { pct, vatAmount, total } = calcVat(Number(amount) || 0, selectedVat ? Number(selectedVat.rate) : 0);
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -180,6 +197,9 @@ function AddDialog({
       const { error } = await sb.from("customer_quotations").insert({
         project_id: projectId,
         quotation_amount: amount ? Number(amount) : null,
+        vat_rate: selectedVat ? Number(selectedVat.rate) : 0,
+        vat_amount: amount ? vatAmount : null,
+        amount_incl_vat: amount ? total : null,
         submitted_date: date || null,
         notes: notes || null,
         file_url: path,
@@ -201,12 +221,31 @@ function AddDialog({
       <div className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <Label>ยอดเสนอ (บาท)</Label>
+            <Label>ยอดเสนอก่อน VAT (บาท)</Label>
             <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
           </div>
           <div>
             <Label>วันที่ส่ง</Label>
             <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <Label>อัตรา VAT</Label>
+            <Select value={vatRateId ?? selectedVat?.id ?? "none"} onValueChange={setVatRateId}>
+              <SelectTrigger><SelectValue placeholder="ไม่คิด VAT" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">ไม่คิด VAT (0%)</SelectItem>
+                {(vatRates ?? []).map((v) => (
+                  <SelectItem key={v.id} value={v.id}>{v.label} ({Number(v.rate).toFixed(2)}%)</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs">
+            <div className="flex justify-between"><span className="text-muted-foreground">ก่อน VAT</span><span className="tabular-nums">{fmtNum(Number(amount) || 0)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">VAT {pct.toFixed(2)}%</span><span className="tabular-nums">{fmtNum(vatAmount)}</span></div>
+            <div className="mt-1 flex justify-between border-t pt-1 font-semibold"><span>ยอดสุทธิ</span><span className="tabular-nums">{fmtNum(total)}</span></div>
           </div>
         </div>
         <div>
