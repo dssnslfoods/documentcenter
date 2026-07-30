@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/page-header";
 import { SettingsNav } from "@/components/settings-nav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Building2, FolderTree, Settings as SettingsIcon, ClipboardList, Tag, Briefcase } from "lucide-react";
+import { Users, Building2, FolderTree, Settings as SettingsIcon, ClipboardList, Tag, Briefcase , Percent } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/settings/")({
   head: () => ({ meta: [{ title: "ตั้งค่าระบบ | Document Hub" }] }),
@@ -14,6 +14,7 @@ const cards = [
   { icon: Building2, title: "แผนก", desc: "จัดการแผนกและโครงสร้างองค์กร", to: "/settings/departments" as const },
   { icon: Briefcase, title: "ประเภทงาน", desc: "จัดการประเภทงานสำหรับโครงการ", to: "/settings/work-types" as const },
   { icon: FolderTree, title: "หมวดหมู่เอกสาร", desc: "จัดการหมวดหมู่และรหัสนำหน้าเอกสาร", to: "/settings/categories" as const },
+  { icon: Percent, title: "อัตรา VAT", desc: "กำหนดอัตราภาษีมูลค่าเพิ่มสำหรับคำนวณมูลค่าสัญญา", to: "/settings/vat" as const },
   { icon: Tag, title: "Tag และ Keyword", desc: "จัดการ tag สำหรับเอกสารและโครงการ", to: "/settings/tags" as const },
   { icon: ClipboardList, title: "Workflow", desc: "Workflow Templates" },
   { icon: SettingsIcon, title: "การตั้งค่าทั่วไป", desc: "ชื่อองค์กร, รูปแบบเลขเอกสาร, Retention", to: "/settings/general" as const },

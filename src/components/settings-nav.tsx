@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Users, Building2, FolderTree, Tag, Settings as SettingsIcon, LayoutGrid, Briefcase } from "lucide-react";
+import { Users, Building2, FolderTree, Tag, Settings as SettingsIcon, LayoutGrid, Briefcase, Percent } from "lucide-react";
 
 const items: { to: string; label: string; icon: typeof Users; exact?: boolean }[] = [
   { to: "/settings", label: "ภาพรวม", icon: LayoutGrid, exact: true },
@@ -7,6 +7,7 @@ const items: { to: string; label: string; icon: typeof Users; exact?: boolean }[
   { to: "/settings/departments", label: "แผนก", icon: Building2 },
   { to: "/settings/work-types", label: "ประเภทงาน", icon: Briefcase },
   { to: "/settings/categories", label: "หมวดหมู่", icon: FolderTree },
+  { to: "/settings/vat", label: "VAT", icon: Percent },
   { to: "/settings/tags", label: "Tag", icon: Tag },
   { to: "/settings/general", label: "ทั่วไป", icon: SettingsIcon },
 ];

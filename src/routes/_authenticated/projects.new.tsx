@@ -29,6 +29,7 @@ const schema = z.object({
   contract_value: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
   budget: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
   is_inhouse: z.boolean().optional(),
+  vat_rate_id: z.string().optional(),
 
 }).refine(
   (v) => !v.start_date || !v.end_date || new Date(v.end_date) >= new Date(v.start_date),
@@ -52,6 +53,17 @@ function NewProject() {
   const { data: workTypes } = useQuery({
     queryKey: ["work-types"],
     queryFn: async () => (await getSupabase().from("work_types").select("id, code, name_th").eq("is_active", true).order("sort_order").order("name_th")).data ?? [],
+  });
+
+  const { data: vatRates } = useQuery({
+    queryKey: ["vat-rates"],
+    queryFn: async () =>
+      (await getSupabase()
+        .from("vat_rates")
+        .select("id, label, rate, is_default")
+        .eq("is_active", true)
+        .order("sort_order")
+        .order("rate")).data ?? [],
   });
 
   const addWorkType = useMutation({
@@ -87,6 +99,17 @@ function NewProject() {
     defaultValues: {},
   });
 
+  const vatRateId = form.watch("vat_rate_id");
+  const contractValueRaw = form.watch("contract_value");
+  const defaultVat = (vatRates ?? []).find((v: { is_default: boolean }) => v.is_default);
+  const selectedVat = vatRateId === "none"
+    ? undefined
+    : ((vatRates ?? []).find((v: { id: string }) => v.id === vatRateId) ?? defaultVat);
+  const netAmount = Number(contractValueRaw) || 0;
+  const vatPercent = selectedVat ? Number(selectedVat.rate) : 0;
+  const vatAmount = Math.round(netAmount * vatPercent) / 100;
+  const grossAmount = Math.round((netAmount + vatAmount) * 100) / 100;
+
   const create = useMutation({
     mutationFn: async (values: FormValues) => {
       const sb = getSupabase();
@@ -102,6 +125,9 @@ function NewProject() {
         contract_value: values.contract_value === "" || values.contract_value == null ? null : Number(values.contract_value),
         budget: values.contract_value === "" || values.contract_value == null ? null : Number(values.contract_value),
         is_inhouse: !!values.is_inhouse,
+        vat_rate: selectedVat ? Number(selectedVat.rate) : null,
+        vat_amount: values.contract_value === "" || values.contract_value == null ? null : vatAmount,
+        contract_value_incl_vat: values.contract_value === "" || values.contract_value == null ? null : grossAmount,
 
         status: "draft",
 
@@ -189,7 +215,28 @@ function NewProject() {
               <Input type="date" {...form.register("end_date")} />
               {form.formState.errors.end_date && <p className="text-xs text-destructive">{form.formState.errors.end_date.message}</p>}
             </div>
-            <div className="space-y-2"><Label>มูลค่าสัญญา (บาท)</Label><Input type="number" step="0.01" min="0" {...form.register("contract_value")} /></div>
+            <div className="space-y-2">
+              <Label>มูลค่าสัญญา ก่อน VAT (บาท)</Label>
+              <Input type="number" step="0.01" min="0" {...form.register("contract_value")} />
+            </div>
+            <div className="space-y-2">
+              <Label>อัตรา VAT</Label>
+              <Select value={vatRateId ?? selectedVat?.id ?? "none"} onValueChange={(v) => form.setValue("vat_rate_id", v)}>
+                <SelectTrigger><SelectValue placeholder="เลือกอัตรา VAT" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">ไม่มี VAT (0%)</SelectItem>
+                  {(vatRates ?? []).map((v: { id: string; label: string; rate: number }) => (
+                    <SelectItem key={v.id} value={v.id}>{v.label} ({Number(v.rate).toFixed(2)}%)</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="sm:col-span-3 rounded-lg border bg-muted/40 p-3 text-sm">
+              <div className="flex justify-between"><span className="text-muted-foreground">มูลค่าก่อน VAT</span><span className="tabular-nums">{netAmount.toLocaleString("th-TH", { minimumFractionDigits: 2 })} บาท</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">VAT {vatPercent.toFixed(2)}%</span><span className="tabular-nums">{vatAmount.toLocaleString("th-TH", { minimumFractionDigits: 2 })} บาท</span></div>
+              <div className="mt-1 flex justify-between border-t pt-1 font-semibold"><span>รวมทั้งสิ้น</span><span className="tabular-nums">{grossAmount.toLocaleString("th-TH", { minimumFractionDigits: 2 })} บาท</span></div>
+              <p className="mt-2 text-xs text-muted-foreground">ระบบจะบันทึกอัตรา VAT ที่เลือก ณ ตอนนี้ไว้กับโครงการ — การแก้ไขอัตรา VAT ในตั้งค่าระบบภายหลังจะไม่มีผลย้อนหลัง</p>
+            </div>
 
           </CardContent>
         </Card>
