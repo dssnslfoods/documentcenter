@@ -26,6 +26,8 @@ const schema = z.object({
   end_date: z.string().optional().or(z.literal("")),
   contract_value: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
   budget: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
+  is_inhouse: z.boolean().optional(),
+
 }).refine(
   (v) => !v.start_date || !v.end_date || new Date(v.end_date) >= new Date(v.start_date),
   { path: ["end_date"], message: "วันสิ้นสุดต้องไม่น้อยกว่าวันเริ่ม" },
