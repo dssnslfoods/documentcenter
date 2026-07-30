@@ -281,6 +281,13 @@ function PipelineView({ rows, isLoading }: { rows: ProjectRow[]; isLoading: bool
           </div>
         );
       })}
+      </div>
+      {lostCount > 0 && (
+        <div className="flex items-center justify-between rounded-xl border border-dashed px-4 py-3 text-xs text-muted-foreground">
+          <span>มีโครงการที่แพ้งาน {lostCount} รายการ (ไม่แสดงใน pipeline)</span>
+          <Link to="/reports" className="font-medium text-primary hover:underline">ดูสถิติแพ้/ชนะในรายงาน →</Link>
+        </div>
+      )}
     </div>
   );
 }
