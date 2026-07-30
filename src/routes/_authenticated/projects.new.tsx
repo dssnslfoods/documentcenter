@@ -114,6 +114,18 @@ function NewProject() {
   const vatAmount = Math.round(netAmount * vatPercent) / 100;
   const grossAmount = Math.round((netAmount + vatAmount) * 100) / 100;
 
+  const [isDraft, setIsDraft] = useState(false);
+
+  const saveDraft = () => {
+    const values = form.getValues();
+    if (!values.name?.trim()) {
+      form.setError("name", { message: "กรุณากรอกชื่อโครงการอย่างน้อย 1 ช่อง เพื่อบันทึกร่าง" });
+      return;
+    }
+    setIsDraft(true);
+    create.mutate(values);
+  };
+
   const create = useMutation({
     mutationFn: async (values: FormValues) => {
       const sb = getSupabase();
@@ -145,16 +157,20 @@ function NewProject() {
     },
     onSuccess: (row) => {
       qc.invalidateQueries({ queryKey: ["projects"] });
-      toast.success("เพิ่มโครงการสำเร็จ");
+      toast.success(isDraft ? "บันทึกร่างโครงการแล้ว" : "เพิ่มโครงการสำเร็จ");
       navigate({ to: "/projects/$id", params: { id: row.id } });
     },
-    onError: (e: Error) => toast.error("เพิ่มโครงการไม่สำเร็จ", { description: e.message }),
+    onError: (e: Error) => {
+      setIsDraft(false);
+      toast.error(isDraft ? "บันทึกร่างไม่สำเร็จ" : "เพิ่มโครงการไม่สำเร็จ", { description: e.message });
+    },
+
   });
 
   return (
     <div className="max-w-3xl">
       <PageHeader title="เพิ่มโครงการใหม่" description="รหัสจะถูกสร้างอัตโนมัติ (PRJ-YYYY-NNNN) — โครงการจะเริ่มที่สถานะ 'ร่าง'" />
-      <form onSubmit={form.handleSubmit((v) => create.mutate(v))} className="space-y-6">
+      <form onSubmit={form.handleSubmit((v) => { setIsDraft(false); create.mutate(v); })} className="space-y-6">
         <Card>
           <CardHeader><CardTitle>ข้อมูลโครงการ</CardTitle></CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -276,12 +292,17 @@ function NewProject() {
           </CardContent>
         </Card>
 
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => navigate({ to: "/projects" })}>ยกเลิก</Button>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={() => navigate({ to: "/projects" })}>ยกเลิก</Button>
+          <Button type="button" variant="outline" onClick={saveDraft} disabled={create.isPending}>
+            {create.isPending && isDraft && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}บันทึกร่าง
+          </Button>
           <Button type="submit" disabled={create.isPending}>
-            {create.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}บันทึกโครงการ
+            {create.isPending && !isDraft && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}บันทึกโครงการ
           </Button>
         </div>
+        <p className="text-right text-xs text-muted-foreground">บันทึกร่าง: กรอกแค่ชื่อโครงการก็บันทึกได้ แล้วกลับมาแก้ไขภายหลัง</p>
+
       </form>
 
       <Dialog open={wtOpen} onOpenChange={setWtOpen}>
