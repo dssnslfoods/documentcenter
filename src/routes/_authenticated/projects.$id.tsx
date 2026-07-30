@@ -12,6 +12,7 @@ import { ProjectDocumentsList } from "@/components/project/documents-list";
 import { ProjectSpecNotesList } from "@/components/project/spec-notes-list";
 import { SupplierQuotationsTab } from "@/components/project/supplier-quotations-tab";
 import { CustomerQuotationsTab } from "@/components/project/customer-quotations-tab";
+import { FinalCustomerQuotation } from "@/components/project/final-customer-quotation";
 import { MilestonesTab } from "@/components/project/milestones-tab";
 import { TeamTab } from "@/components/project/team-tab";
 import { useProjectPermissions } from "@/hooks/use-project-permissions";
@@ -316,8 +317,15 @@ function ProjectDetail() {
                 <ProjectDocumentsList projectId={id} type="contract" emptyLabel="ยังไม่มีไฟล์สัญญา" />
               </SectionCard>
               <SectionCard title="ใบเสนอราคาฉบับสุดท้าย" description="ที่ผูกกับสัญญา">
-                <ProjectDocumentsList projectId={id} type="final_quotation" emptyLabel="ยังไม่มีไฟล์" />
+                <div className="space-y-4">
+                  <FinalCustomerQuotation
+                    projectId={id}
+                    canSeePrice={perms?.canSeeCustomerPrice ?? false}
+                  />
+                  <ProjectDocumentsList projectId={id} type="final_quotation" emptyLabel="ยังไม่มีไฟล์" />
+                </div>
               </SectionCard>
+
             </>
           ) : <Denied label="สัญญา" />}
         </TabsContent>
