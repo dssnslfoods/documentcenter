@@ -476,7 +476,7 @@ function GanttRow({
 }
 
 function TaskDialog({
-  open, onOpenChange, projectId, task, parents, members, milestones,
+  open, onOpenChange, projectId, task, parents, members, milestones, defaultStart,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -485,15 +485,18 @@ function TaskDialog({
   parents: Task[];
   members: { id: string; name: string }[];
   milestones: { id: string; milestone_number: number; description: string }[];
+  defaultStart: string;
 }) {
   const sb = getSupabase();
   const qc = useQueryClient();
-  const today = toISO(new Date());
+  const baseStart = defaultStart || toISO(new Date());
+  const baseEnd = toISO(addDays(toDate(baseStart), 1));
 
   const [name, setName] = useState(task?.name ?? "");
   const [description, setDescription] = useState(task?.description ?? "");
-  const [start, setStart] = useState(task?.start_date ?? today);
-  const [end, setEnd] = useState(task?.end_date ?? today);
+  const [start, setStart] = useState(task?.start_date ?? baseStart);
+  const [end, setEnd] = useState(task?.end_date ?? baseEnd);
+
   const [progress, setProgress] = useState(String(task?.progress ?? 0));
   const [status, setStatus] = useState<TaskStatus>(task?.status ?? "not_started");
   const [parentId, setParentId] = useState(task?.parent_id ?? "none");
