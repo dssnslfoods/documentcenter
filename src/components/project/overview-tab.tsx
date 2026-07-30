@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Building2, Calendar, Wallet, User, FileType2, Loader2, Pencil, ArrowRight, Trophy, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { getSupabase } from "@/lib/supabase";
-import { fmtDate, fmtCurrency } from "@/lib/format";
+import { fmtDate, fmtDateTime, fmtCurrency } from "@/lib/format";
 import { LIFECYCLE_LABEL, nextStatuses, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 import { EditProjectDialog } from "@/components/project/edit-project-dialog";
 
@@ -30,6 +30,8 @@ type Project = {
   customer_id?: string | null;
   vat_rate?: number | null;
   is_inhouse?: boolean | null;
+  updated_at?: string | null;
+  updated_by?: string | null;
   lost_reason: string | null;
   completion_comment: string | null;
   departments?: { name_th?: string } | null;
@@ -48,6 +50,20 @@ export function OverviewTab({
   const qc = useQueryClient();
   const [progressDraft, setProgressDraft] = useState<string>("");
   const [editOpen, setEditOpen] = useState(false);
+
+  // Who touched this project last
+  const { data: lastEditor } = useQuery({
+    queryKey: ["project-last-editor", project.id, project.updated_by],
+    enabled: !!project.updated_by,
+    queryFn: async () => {
+      const { data } = await sb
+        .from("profiles")
+        .select("full_name, email")
+        .eq("id", project.updated_by!)
+        .maybeSingle();
+      return (data?.full_name || data?.email || null) as string | null;
+    },
+  });
 
   const updateStatus = useMutation({
     mutationFn: async ({ status, extra }: { status: ProjectLifecycleStatus; extra?: Record<string, unknown> }) => {
@@ -101,6 +117,13 @@ export function OverviewTab({
             <div className="border-t pt-4">
               <div className="mb-1 text-xs uppercase text-muted-foreground">รายละเอียด</div>
               <p className="whitespace-pre-wrap text-sm">{project.description}</p>
+            </div>
+          )}
+          {project.updated_at && (
+            <div className="border-t pt-3 text-xs text-muted-foreground">
+              แก้ไขล่าสุดโดย{" "}
+              <span className="font-medium text-foreground">{lastEditor ?? (project.updated_by ? "…" : "ระบบ")}</span>{" "}
+              เมื่อ {fmtDateTime(project.updated_at)}
             </div>
           )}
           <EditProjectDialog project={project} open={editOpen} onOpenChange={setEditOpen} canEditPrice={canSeePrice} />

@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getSupabase } from "@/lib/supabase";
 import { PartnerFormDialog, usePartners } from "@/components/partner-form-dialog";
+import { useAuth } from "@/hooks/use-supabase";
 
 export type EditableProject = {
   id: string;
@@ -40,6 +41,7 @@ export function EditProjectDialog({
 }) {
   const sb = getSupabase();
   const qc = useQueryClient();
+  const { user } = useAuth();
   const { data: customers } = usePartners("customer");
   const [partnerOpen, setPartnerOpen] = useState(false);
 
@@ -104,6 +106,8 @@ export function EditProjectDialog({
         start_date: startDate || null,
         end_date: endDate || null,
         is_inhouse: isInhouse,
+        updated_by: user?.id ?? null,
+        updated_at: new Date().toISOString(),
       };
       if (canEditPrice) {
         patch.contract_value = hasValue ? net : null;
@@ -118,6 +122,7 @@ export function EditProjectDialog({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["project", project.id] });
       qc.invalidateQueries({ queryKey: ["projects"] });
+      qc.invalidateQueries({ queryKey: ["project-last-editor"] });
       toast.success("บันทึกรายละเอียดโครงการแล้ว");
       onOpenChange(false);
     },
