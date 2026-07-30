@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -26,6 +28,8 @@ const schema = z.object({
   end_date: z.string().optional().or(z.literal("")),
   contract_value: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
   budget: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
+  is_inhouse: z.boolean().optional(),
+
 }).refine(
   (v) => !v.start_date || !v.end_date || new Date(v.end_date) >= new Date(v.start_date),
   { path: ["end_date"], message: "วันสิ้นสุดต้องไม่น้อยกว่าวันเริ่ม" },
@@ -97,7 +101,10 @@ function NewProject() {
         end_date: values.end_date || null,
         contract_value: values.contract_value === "" || values.contract_value == null ? null : Number(values.contract_value),
         budget: values.contract_value === "" || values.contract_value == null ? null : Number(values.contract_value),
+        is_inhouse: !!values.is_inhouse,
+
         status: "draft",
+
         owner_id: user.user.id,
         created_by: user.user.id,
       };
@@ -150,10 +157,26 @@ function NewProject() {
               )}
             </div>
 
+            <div className="sm:col-span-2 flex items-start gap-3 rounded-xl border bg-muted/30 p-3">
+              <Checkbox
+                id="is_inhouse"
+                checked={!!form.watch("is_inhouse")}
+                onCheckedChange={(c) => form.setValue("is_inhouse", c === true)}
+                className="mt-0.5"
+              />
+              <div className="space-y-0.5">
+                <Label htmlFor="is_inhouse" className="cursor-pointer">งานผลิตภายใน (ไม่ใช้ Supplier / Outsource)</Label>
+                <p className="text-xs text-muted-foreground">
+                  เมื่อเลือก ระบบจะข้ามขั้นตอน RFQ / Spec และใบเสนอราคา Supplier — ไปที่การยื่นข้อเสนอลูกค้าได้ทันที
+                </p>
+              </div>
+            </div>
+
             <div className="sm:col-span-2 space-y-2">
               <Label>รายละเอียด</Label>
               <Textarea rows={3} {...form.register("description")} />
             </div>
+
           </CardContent>
         </Card>
 
