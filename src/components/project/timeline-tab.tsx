@@ -380,7 +380,12 @@ function TaskDialog({
       const { error } = task
         ? await sb.from("project_tasks").update(payload).eq("id", task.id)
         : await sb.from("project_tasks").insert(payload);
-      if (error) throw error;
+      if (error) {
+        if (/assignee_label/.test(error.message)) {
+          throw new Error("กรุณารัน db/0022_task_assignee_label.sql ใน Supabase ก่อน จึงจะระบุผู้รับผิดชอบภายนอกได้");
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       toast.success(task ? "บันทึกการแก้ไขแล้ว" : "เพิ่มงานเรียบร้อย");
