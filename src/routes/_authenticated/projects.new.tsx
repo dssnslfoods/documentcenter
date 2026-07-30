@@ -42,10 +42,41 @@ function NewProject() {
   const navigate = useNavigate();
   const qc = useQueryClient();
 
+  const [wtOpen, setWtOpen] = useState(false);
+  const [wtName, setWtName] = useState("");
+
   const { data: workTypes } = useQuery({
     queryKey: ["work-types"],
     queryFn: async () => (await getSupabase().from("work_types").select("id, code, name_th").eq("is_active", true).order("sort_order").order("name_th")).data ?? [],
   });
+
+  const addWorkType = useMutation({
+    mutationFn: async (name: string) => {
+      const sb = getSupabase();
+      const trimmed = name.trim();
+      if (!trimmed) throw new Error("กรุณากรอกชื่อประเภทงาน");
+      const { data: all, error: readErr } = await sb.from("work_types").select("code, sort_order");
+      if (readErr) throw readErr;
+      const code = nextCode("WT", (all ?? []).map((r: { code: string }) => r.code));
+      const sort_order = ((all ?? []).length + 1) * 10;
+      const { data, error } = await sb
+        .from("work_types")
+        .insert({ code, name_th: trimmed, is_active: true, sort_order })
+        .select("id, name_th")
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (row: { name_th: string }) => {
+      toast.success("เพิ่มประเภทงานแล้ว");
+      setWtOpen(false);
+      qc.invalidateQueries({ queryKey: ["work-types"] });
+      qc.invalidateQueries({ queryKey: ["work-types-admin"] });
+      form.setValue("project_type", row.name_th, { shouldValidate: true });
+    },
+    onError: (e: Error) => toast.error("เพิ่มประเภทงานไม่สำเร็จ", { description: e.message }),
+  });
+
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema) as never,
@@ -100,19 +131,25 @@ function NewProject() {
             </div>
             <div className="space-y-2">
               <Label>ประเภทงาน *</Label>
-              <Select value={form.watch("project_type") || ""} onValueChange={(v) => form.setValue("project_type", v, { shouldValidate: true })}>
-                <SelectTrigger><SelectValue placeholder="เลือกประเภทงาน" /></SelectTrigger>
-                <SelectContent>
-                  {workTypes?.map((w: { id: string; code: string; name_th: string }) => (
-                    <SelectItem key={w.id} value={w.name_th}>{w.name_th}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select value={form.watch("project_type") || ""} onValueChange={(v) => form.setValue("project_type", v, { shouldValidate: true })}>
+                  <SelectTrigger className="flex-1"><SelectValue placeholder="เลือกประเภทงาน" /></SelectTrigger>
+                  <SelectContent>
+                    {workTypes?.map((w: { id: string; code: string; name_th: string }) => (
+                      <SelectItem key={w.id} value={w.name_th}>{w.name_th}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button type="button" variant="outline" size="icon" title="เพิ่มประเภทงาน" onClick={() => { setWtName(""); setWtOpen(true); }}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
               {form.formState.errors.project_type && <p className="text-xs text-destructive">{form.formState.errors.project_type.message}</p>}
               {(!workTypes || workTypes.length === 0) && (
-                <p className="text-xs text-muted-foreground">ยังไม่มีประเภทงาน — ให้ผู้ดูแลระบบเพิ่มที่ ตั้งค่า → ประเภทงาน</p>
+                <p className="text-xs text-muted-foreground">ยังไม่มีประเภทงาน — กด + เพื่อเพิ่มประเภทงานใหม่</p>
               )}
             </div>
+
             <div className="sm:col-span-2 space-y-2">
               <Label>รายละเอียด</Label>
               <Textarea rows={3} {...form.register("description")} />
