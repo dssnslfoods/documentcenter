@@ -58,7 +58,7 @@ export function TeamTab({
       const load = async () => {
         const { data, error } = await sb
           .from("project_members")
-          .select("id, user_id")
+          .select("id, user_id, role_title, responsibilities")
           .eq("project_id", projectId);
         if (error) throw error;
         return data ?? [];
