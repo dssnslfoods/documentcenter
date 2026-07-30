@@ -554,7 +554,15 @@ function TaskDialog({
           </div>
           <div className="space-y-1.5">
             <Label>วันเริ่ม</Label>
-            <Input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
+            <Input
+              type="date"
+              value={start}
+              onChange={(e) => {
+                const v = e.target.value;
+                setStart(v);
+                if (v && (!end || toDate(end) < toDate(v))) setEnd(toISO(addDays(toDate(v), 1)));
+              }}
+            />
           </div>
           <div className="space-y-1.5">
             <Label>วันสิ้นสุด</Label>
