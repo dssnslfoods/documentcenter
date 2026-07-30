@@ -47,7 +47,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     label: "กำกับและควบคุม",
     items: [
-      { to: "/approvals", icon: CheckSquare, label: "งานรออนุมัติ" },
+      
       { to: "/reports", icon: BarChart3, label: "รายงาน" },
       { to: "/audit-log", icon: History, label: "Audit Log" },
       { to: "/settings", icon: Settings, label: "ตั้งค่าระบบ" },

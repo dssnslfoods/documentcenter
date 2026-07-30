@@ -16,7 +16,7 @@ const cards = [
   { icon: FolderTree, title: "หมวดหมู่เอกสาร", desc: "จัดการหมวดหมู่และรหัสนำหน้าเอกสาร", to: "/settings/categories" as const },
   { icon: Percent, title: "อัตรา VAT", desc: "กำหนดอัตราภาษีมูลค่าเพิ่มสำหรับคำนวณมูลค่าสัญญา", to: "/settings/vat" as const },
   { icon: Tag, title: "Tag และ Keyword", desc: "จัดการ tag สำหรับเอกสารและโครงการ", to: "/settings/tags" as const },
-  { icon: ClipboardList, title: "Workflow", desc: "Workflow Templates" },
+  
   { icon: SettingsIcon, title: "การตั้งค่าทั่วไป", desc: "ชื่อองค์กร, รูปแบบเลขเอกสาร, Retention", to: "/settings/general" as const },
 ];
 
