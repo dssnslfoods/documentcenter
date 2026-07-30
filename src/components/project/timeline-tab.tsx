@@ -158,6 +158,38 @@ export function TimelineTab({
     return Math.round(list.reduce((s, t) => s + (t.progress ?? 0), 0) / list.length);
   }, [tasks]);
 
+  const exportExcel = async () => {
+    if (!rows.length) { toast.error("ยังไม่มีงานให้ส่งออก"); return; }
+    const XLSX = await import("xlsx");
+    const nameOf = (t: Task) =>
+      t.assignee_label || members?.find((m) => m.id === t.assignee_id)?.name || "-";
+    const msOf = (t: Task) => {
+      const m = milestones?.find((x) => x.id === t.milestone_id);
+      return m ? `งวด ${m.milestone_number} · ${m.description}` : "-";
+    };
+    const data = rows.map(({ task, depth }, i) => ({
+      "ลำดับ": i + 1,
+      "ประเภท": depth === 0 ? "งานหลัก" : "งานย่อย",
+      "ชื่องาน": (depth ? "    " : "") + task.name,
+      "รายละเอียด": task.description || "-",
+      "วันเริ่ม": fmtDate(task.start_date),
+      "วันสิ้นสุด": fmtDate(task.end_date),
+      "จำนวนวัน": diffDays(toDate(task.end_date), toDate(task.start_date)) + 1,
+      "สถานะ": STATUS_META[task.status].label,
+      "ความคืบหน้า (%)": task.progress ?? 0,
+      "ผู้รับผิดชอบ": nameOf(task),
+      "งวดงาน": msOf(task),
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    ws["!cols"] = [{ wch: 6 }, { wch: 10 }, { wch: 36 }, { wch: 40 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 20 }, { wch: 28 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "แผนงาน");
+    const safe = (projectName || "project").replace(/[\\/:*?"<>|]/g, "-").slice(0, 60);
+    XLSX.writeFile(wb, `แผนงาน-${safe}-${toISO(new Date())}.xlsx`);
+    toast.success("ส่งออกไฟล์ Excel เรียบร้อย");
+  };
+
+
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
