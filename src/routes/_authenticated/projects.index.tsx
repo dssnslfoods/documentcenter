@@ -235,7 +235,8 @@ function PipelineView({ rows, isLoading }: { rows: ProjectRow[]; isLoading: bool
   });
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       {PIPELINE_COLUMNS.map((col) => {
         const items = grouped.get(col.key) ?? [];
         const st = col.key;
