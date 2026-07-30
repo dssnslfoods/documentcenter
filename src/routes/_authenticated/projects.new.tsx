@@ -166,8 +166,8 @@ function NewProject() {
               <Input type="date" {...form.register("end_date")} />
               {form.formState.errors.end_date && <p className="text-xs text-destructive">{form.formState.errors.end_date.message}</p>}
             </div>
-            <div className="space-y-2"><Label>งบประมาณภายใน (บาท)</Label><Input type="number" step="0.01" min="0" {...form.register("budget")} /></div>
-            <div className="space-y-2 sm:col-span-3"><Label>มูลค่าสัญญา (บาท)</Label><Input type="number" step="0.01" min="0" {...form.register("contract_value")} /></div>
+            <div className="space-y-2"><Label>มูลค่าสัญญา (บาท)</Label><Input type="number" step="0.01" min="0" {...form.register("contract_value")} /></div>
+
           </CardContent>
         </Card>
 
