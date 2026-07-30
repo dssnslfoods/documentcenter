@@ -184,7 +184,7 @@ export function PermissionEditorDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="w-[95vw] max-w-3xl max-h-[88vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5" />
@@ -192,9 +192,9 @@ export function PermissionEditorDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <div className="flex flex-wrap items-end gap-3">
-            <div className="min-w-[240px] flex-1">
+            <div className="min-w-[220px] flex-1">
               <Label>Apply Template</Label>
               <Select value={templateId} onValueChange={applyTemplate}>
                 <SelectTrigger><SelectValue placeholder="เลือก Template (จะแทนที่ทั้งหมด)" /></SelectTrigger>
@@ -214,9 +214,9 @@ export function PermissionEditorDialog({
           {isLoading ? (
             <div className="py-6 text-center text-sm text-muted-foreground">กำลังโหลด...</div>
           ) : (
-            <Tabs value={active} onValueChange={setActive}>
-              <div className="overflow-x-auto pb-1">
-                <TabsList className="inline-flex h-auto flex-nowrap gap-1 rounded-full bg-muted p-1">
+            <Tabs value={active} onValueChange={setActive} className="min-w-0">
+              <div className="w-full max-w-full overflow-x-auto pb-1">
+                <TabsList className="inline-flex h-auto w-max flex-nowrap gap-1 rounded-full bg-muted p-1">
                   {TAB_GROUPS.map((g) => (
                     <TabsTrigger
                       key={g.value}
@@ -233,10 +233,10 @@ export function PermissionEditorDialog({
               </div>
 
               {TAB_GROUPS.map((g) => (
-                <TabsContent key={g.value} value={g.value} className="mt-4">
-                  <div className="space-y-4 rounded-md border p-4">
+                <TabsContent key={g.value} value={g.value} className="mt-4 w-full min-w-0">
+                  <div className="w-full space-y-4 rounded-md border p-4">
                     <div className="flex items-center justify-between gap-4">
-                      <div>
+                      <div className="min-w-0">
                         <div className="text-sm font-medium">ให้เข้าถึงแท็บ “{g.label}”</div>
                         <p className="text-xs text-muted-foreground">{PERMISSION_LABEL[g.access]}</p>
                       </div>
