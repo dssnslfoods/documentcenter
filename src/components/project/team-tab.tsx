@@ -231,14 +231,29 @@ export function TeamTab({
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
+              <CardContent className="flex items-start gap-3 p-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                  {(m.profiles?.full_name || m.profiles?.email || "?").slice(0, 1).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
                     <span className="truncate font-medium">{m.profiles?.full_name || m.profiles?.email || m.user_id.slice(0, 8)}</span>
                     {m.is_owner && <Badge className="shrink-0">ผู้สร้างโครงการ</Badge>}
                   </div>
                   <div className="truncate text-xs text-muted-foreground">{m.profiles?.email}</div>
+                  {m.role_title && (
+                    <div className="mt-1 text-xs font-medium text-primary">{m.role_title}</div>
+                  )}
+                  {m.responsibilities && (
+                    <div className="mt-0.5 whitespace-pre-wrap text-xs text-muted-foreground">{m.responsibilities}</div>
+                  )}
                 </div>
-                <Badge variant="outline">{m.perm_count} สิทธิ์</Badge>
+                <Badge variant="outline" className="shrink-0">{m.perm_count} สิทธิ์</Badge>
                 {isAdmin && (
                   <>
+                    <Button size="sm" variant="ghost" onClick={() => setEditRole(m)} title="แก้ไขตำแหน่ง/หน้าที่">
+                      <Pencil className="h-4 w-4" />
+                    </Button>
                     <Button
                       size="sm"
                       variant="ghost"
