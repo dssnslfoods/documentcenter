@@ -195,10 +195,9 @@ function ProjectsList() {
   );
 }
 
+// ชนะงาน/แพ้งาน ไม่แสดงเป็นคอลัมน์ใน pipeline — ดูสถิติได้ที่หน้ารายงาน
 const PIPELINE_COLUMNS: { key: ProjectLifecycleStatus; label: string; short: string }[] = [
   ...LIFECYCLE_PHASES.slice(0, 4).map((p) => ({ key: p.key, label: p.label, short: p.short })),
-  { key: "won", label: "ชนะงาน", short: "Won" },
-  { key: "lost", label: "แพ้งาน", short: "Lost" },
   { key: "in_progress", label: "ดำเนินโครงการ", short: "Execution" },
   { key: "completed", label: "ปิดโครงการ", short: "Closed" },
 ];
