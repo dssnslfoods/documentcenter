@@ -28,6 +28,7 @@ type Task = {
   parent_id: string | null;
   milestone_id: string | null;
   assignee_id: string | null;
+  assignee_label?: string | null;
   name: string;
   description: string | null;
   start_date: string;
@@ -216,7 +217,7 @@ export function TimelineTab({
                   <div className="min-w-0 flex-1" style={{ paddingLeft: depth * 12 }}>
                     <div className="truncate text-xs font-medium">{task.name}</div>
                     <div className="truncate text-[10px] text-muted-foreground">
-                      {members?.find((m) => m.id === task.assignee_id)?.name ?? "ไม่ระบุผู้รับผิดชอบ"}
+                      {task.assignee_label || members?.find((m) => m.id === task.assignee_id)?.name || "ไม่ระบุผู้รับผิดชอบ"}
                     </div>
                   </div>
                   {canEdit && (
@@ -351,7 +352,10 @@ function TaskDialog({
   const [progress, setProgress] = useState(String(task?.progress ?? 0));
   const [status, setStatus] = useState<TaskStatus>(task?.status ?? "not_started");
   const [parentId, setParentId] = useState(task?.parent_id ?? "none");
-  const [assignee, setAssignee] = useState(task?.assignee_id ?? "none");
+  const [assignee, setAssignee] = useState(
+    task?.assignee_label ? "external" : task?.assignee_id ?? "none",
+  );
+  const [assigneeLabel, setAssigneeLabel] = useState(task?.assignee_label ?? "");
   const [milestoneId, setMilestoneId] = useState(task?.milestone_id ?? "none");
   const [sortOrder, setSortOrder] = useState(String(task?.sort_order ?? 0));
 
@@ -368,14 +372,20 @@ function TaskDialog({
         progress: Math.max(0, Math.min(100, Number(progress) || 0)),
         status,
         parent_id: parentId === "none" ? null : parentId,
-        assignee_id: assignee === "none" ? null : assignee,
+        assignee_id: assignee === "none" || assignee === "external" ? null : assignee,
+        assignee_label: assignee === "external" ? assigneeLabel.trim() || null : null,
         milestone_id: milestoneId === "none" ? null : milestoneId,
         sort_order: Number(sortOrder) || 0,
       };
       const { error } = task
         ? await sb.from("project_tasks").update(payload).eq("id", task.id)
         : await sb.from("project_tasks").insert(payload);
-      if (error) throw error;
+      if (error) {
+        if (/assignee_label/.test(error.message)) {
+          throw new Error("กรุณารัน db/0022_task_assignee_label.sql ใน Supabase ก่อน จึงจะระบุผู้รับผิดชอบภายนอกได้");
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       toast.success(task ? "บันทึกการแก้ไขแล้ว" : "เพิ่มงานเรียบร้อย");
@@ -434,9 +444,34 @@ function TaskDialog({
               <SelectContent>
                 <SelectItem value="none">— ไม่ระบุ —</SelectItem>
                 {members.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                <SelectItem value="external">+ เพิ่มผู้รับผิดชอบภายนอก (ลูกค้า/คู่ค้า)</SelectItem>
               </SelectContent>
             </Select>
+            {assignee === "external" && (
+              <div className="space-y-1.5 pt-1">
+                <Input
+                  value={assigneeLabel}
+                  onChange={(e) => setAssigneeLabel(e.target.value)}
+                  placeholder="เช่น ลูกค้า / คู่ค้า / ผู้รับเหมา"
+                />
+                <div className="flex flex-wrap gap-1.5">
+                  {["ลูกค้า", "คู่ค้า", "ผู้รับเหมา", "ที่ปรึกษา"].map((p) => (
+                    <Button
+                      key={p}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 rounded-full px-3 text-xs"
+                      onClick={() => setAssigneeLabel(p)}
+                    >
+                      {p}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
+
           <div className="space-y-1.5">
             <Label>ผูกกับงวดงาน</Label>
             <Select value={milestoneId} onValueChange={setMilestoneId}>
