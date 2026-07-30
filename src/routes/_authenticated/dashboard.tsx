@@ -201,6 +201,22 @@ function Dashboard() {
         <KpiCard icon={CheckCircle2} label="งานรออนุมัติ" value="—" loading={false} href="/approvals" />
       </div>
 
+      {/* โครงการที่ฉันมีส่วนร่วม */}
+      <Card className="tile">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <div>
+            <CardTitle className="text-base">โครงการที่ฉันมีส่วนร่วม</CardTitle>
+            <p className="mt-1 text-xs text-muted-foreground">เฉพาะโครงการที่ดำเนินการอยู่และเสร็จสิ้นแล้ว</p>
+          </div>
+          <Link to="/projects" className="text-xs text-primary hover:underline">ดูโครงการทั้งหมด →</Link>
+        </CardHeader>
+        <CardContent className="grid gap-6 md:grid-cols-2">
+          <MyProjectGroup title="ดำเนินโครงการ" tone="primary" items={myProjects?.in_progress ?? []} />
+          <MyProjectGroup title="เสร็จสิ้นแล้ว" tone="success" items={myProjects?.completed ?? []} />
+        </CardContent>
+      </Card>
+
+
       {/* Analytics */}
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="tile lg:col-span-2">
