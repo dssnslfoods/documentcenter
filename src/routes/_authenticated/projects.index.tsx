@@ -225,8 +225,11 @@ function PipelineView({ rows, isLoading }: { rows: ProjectRow[]; isLoading: bool
 
   const grouped = new Map<string, ProjectRow[]>();
   PIPELINE_COLUMNS.forEach((c) => grouped.set(c.key, []));
+  let lostCount = 0;
   rows.forEach((r) => {
-    const k = (r.status ?? "draft") as ProjectLifecycleStatus;
+    let k = (r.status ?? "draft") as ProjectLifecycleStatus;
+    if (k === "lost") { lostCount += 1; return; }        // ดูสถิติที่หน้ารายงาน
+    if (k === "won") k = "in_progress";                   // ชนะงาน = เข้าสู่การดำเนินโครงการ
     if (!grouped.has(k)) grouped.set(k, []);
     grouped.get(k)!.push(r);
   });
