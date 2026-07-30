@@ -222,6 +222,8 @@ function NewProject() {
       return data;
     },
     onSuccess: (row) => {
+      window.clearTimeout(saveTimer.current);
+      clearAutosave();
       qc.invalidateQueries({ queryKey: ["projects"] });
       toast.success(isDraft ? "บันทึกร่างโครงการแล้ว" : "เพิ่มโครงการสำเร็จ");
       navigate({ to: "/projects/$id", params: { id: row.id } });
@@ -236,7 +238,25 @@ function NewProject() {
   return (
     <div className="max-w-3xl">
       <PageHeader title="เพิ่มโครงการใหม่" description="รหัสจะถูกสร้างอัตโนมัติ (PRJ-YYYY-NNNN) — โครงการจะเริ่มที่สถานะ 'ร่าง'" />
+
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-muted/30 px-3 py-2 text-xs">
+        <span className="flex items-center gap-2 text-muted-foreground">
+          <Save className="h-3.5 w-3.5" />
+          {restored
+            ? "กู้คืนข้อมูลที่กรอกค้างไว้แล้ว — ระบบบันทึกอัตโนมัติในเครื่องของคุณ"
+            : savedAt
+              ? `บันทึกอัตโนมัติเมื่อ ${savedAt.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`
+              : "ระบบจะบันทึกสิ่งที่กรอกอัตโนมัติ เพื่อไม่ให้ข้อมูลหายระหว่างกรอก"}
+        </span>
+        {(savedAt || restored) && (
+          <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={discardAutosave}>
+            ล้างข้อมูลที่บันทึกไว้
+          </Button>
+        )}
+      </div>
+
       <form onSubmit={form.handleSubmit((v) => { setIsDraft(false); create.mutate(v); })} className="space-y-6">
+
         <Card>
           <CardHeader><CardTitle>ข้อมูลโครงการ</CardTitle></CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
