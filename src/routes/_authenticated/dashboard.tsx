@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { getSupabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/use-supabase";
 import { fmtCurrency, fmtDate, fmtNumber } from "@/lib/format";
 import { ContractStatusBadge } from "@/components/status-badge";
 import { Link } from "@tanstack/react-router";
@@ -52,7 +53,7 @@ function Dashboard() {
       if (ids.length === 0) return empty;
       const { data } = await sb
         .from("projects")
-        .select("id, code, name, status, updated_at, customer_name, partners(name)")
+        .select("id, code, name, status, updated_at, customer_name")
         .in("id", ids)
         .in("status", ["in_progress", "completed"])
         .is("archived_at", null)
@@ -379,4 +380,41 @@ function KpiCard({
     return <Link to={href} className="tile tile-interactive block">{inner}</Link>;
   }
   return <div className="tile">{inner}</div>;
+}
+
+function MyProjectGroup({ title, tone, items }: { title: string; tone: "primary" | "success"; items: any[] }) {
+  const dot = tone === "success" ? "bg-success" : "bg-primary";
+  return (
+    <div>
+      <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
+        <span className={`h-2 w-2 rounded-full ${dot}`} />
+        {title}
+        <span className="text-xs font-normal text-muted-foreground">({items.length})</span>
+      </div>
+      {items.length === 0 ? (
+        <p className="rounded-lg border border-dashed px-3 py-6 text-center text-xs text-muted-foreground">
+          ยังไม่มีโครงการในกลุ่มนี้
+        </p>
+      ) : (
+        <div className="space-y-1.5">
+          {items.map((p) => (
+            <Link
+              key={p.id}
+              to="/projects/$id"
+              params={{ id: p.id }}
+              className="group flex items-center justify-between gap-3 rounded-lg border px-3 py-2 transition-colors hover:bg-muted/50"
+            >
+              <div className="min-w-0">
+                <div className="truncate text-sm font-medium">{p.name}</div>
+                <div className="truncate text-xs text-muted-foreground">
+                  {p.code}{p.customer_name ? ` · ${p.customer_name}` : ""}
+                </div>
+              </div>
+              <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
