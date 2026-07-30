@@ -50,3 +50,13 @@ end $$;
 -- Done. All mockup data cleared. auth.users, user_roles, permission_templates,
 -- and system_settings are preserved so you can log in and configure the system.
 -- =====================================================================
+
+-- Truncating `departments` cascades into `profiles` (FK), so rebuild profile
+-- rows for every auth user afterwards.
+insert into public.profiles (id, email, full_name, is_active)
+select u.id,
+       coalesce(u.email, u.id::text),
+       coalesce(u.raw_user_meta_data->>'full_name', split_part(coalesce(u.email,''), '@', 1), u.email),
+       true
+from auth.users u
+on conflict (id) do nothing;
