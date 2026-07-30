@@ -79,6 +79,23 @@ function ReportsPage() {
         totalProjectBudget += p.budget ?? 0;
       });
 
+      // Win / Loss statistics
+      const won = (projects.data ?? []).filter((p: { status: string }) =>
+        ["won", "in_progress", "completed"].includes(p.status)).length;
+      const lost = projStatus["lost"] ?? 0;
+      const decided = won + lost;
+      const winRate = decided > 0 ? Math.round((won / decided) * 100) : 0;
+
+      // Win/Loss by month (12 months)
+      const wl = months.map((m) => ({ label: m.label, key: m.key, won: 0, lost: 0 }));
+      const wlMap = new Map(wl.map((m) => [m.key, m]));
+      (projects.data ?? []).forEach((p: { status: string; created_at: string }) => {
+        const m = wlMap.get((p.created_at ?? "").slice(0, 7));
+        if (!m) return;
+        if (["won", "in_progress", "completed"].includes(p.status)) m.won += 1;
+        else if (p.status === "lost") m.lost += 1;
+      });
+
       return {
         contractStatus: Object.entries(contractStatus).map(([k, v]) => ({ name: CONTRACT_STATUS_LABELS[k] ?? k, value: v })),
         totalContractValue,
@@ -89,6 +106,8 @@ function ReportsPage() {
         months,
         docsByCat,
         projStatus: Object.entries(projStatus).map(([k, v]) => ({ name: k, value: v })),
+        won, lost, decided, winRate,
+        winLossMonths: wl,
       };
     },
   });
