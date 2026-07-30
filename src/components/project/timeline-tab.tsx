@@ -380,11 +380,12 @@ export function TimelineTab({
       )}
 
       <TaskDialog
-        key={editing?.id ?? "new"}
+        key={editing?.id ?? `new-${nextStart}`}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         projectId={projectId}
         task={editing}
+        defaultStart={nextStart}
         parents={(tasks ?? []).filter((t) => !t.parent_id && t.id !== editing?.id)}
         members={members ?? []}
         milestones={milestones ?? []}
