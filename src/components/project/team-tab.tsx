@@ -134,12 +134,22 @@ export function TeamTab({
   });
 
   const add = useMutation({
-    mutationFn: async ({ userId, templateId }: { userId: string; templateId: string }) => {
+    mutationFn: async ({
+      userId,
+      templateId,
+      roleTitle,
+      responsibilities,
+    }: { userId: string; templateId: string; roleTitle: string; responsibilities: string }) => {
       const tpl = templates?.find((t) => t.id === templateId);
       const perms = (tpl?.permissions ?? []) as string[];
       const { data: inserted, error } = await sb
         .from("project_members")
-        .insert({ project_id: projectId, user_id: userId })
+        .insert({
+          project_id: projectId,
+          user_id: userId,
+          role_title: roleTitle.trim() || null,
+          responsibilities: responsibilities.trim() || null,
+        })
         .select("id")
         .single();
       if (error) throw error;
@@ -153,6 +163,22 @@ export function TeamTab({
       toast.success("เพิ่มสมาชิกและสิทธิ์เรียบร้อย");
       qc.invalidateQueries({ queryKey: ["project-members", projectId] });
       setOpen(false);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const updateRole = useMutation({
+    mutationFn: async ({ id, roleTitle, responsibilities }: { id: string; roleTitle: string; responsibilities: string }) => {
+      const { error } = await sb
+        .from("project_members")
+        .update({ role_title: roleTitle.trim() || null, responsibilities: responsibilities.trim() || null })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("บันทึกตำแหน่งและหน้าที่เรียบร้อย");
+      qc.invalidateQueries({ queryKey: ["project-members", projectId] });
+      setEditRole(null);
     },
     onError: (e: Error) => toast.error(e.message),
   });
