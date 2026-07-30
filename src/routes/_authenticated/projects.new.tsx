@@ -98,7 +98,9 @@ function NewProject() {
         start_date: values.start_date || null,
         end_date: values.end_date || null,
         contract_value: values.contract_value === "" || values.contract_value == null ? null : Number(values.contract_value),
+        budget: values.contract_value === "" || values.contract_value == null ? null : Number(values.contract_value),
         is_inhouse: !!values.is_inhouse,
+
         status: "draft",
 
         owner_id: user.user.id,
