@@ -45,9 +45,11 @@ const TAB_ORDER = [
   { value: "supplier", label: "3 · ใบเสนอ Supplier" },
   { value: "customer", label: "4 · ยื่นข้อเสนอลูกค้า" },
   { value: "contract", label: "5 · สัญญา" },
-  { value: "milestones", label: "6 · งวดงาน" },
-  { value: "team", label: "7 · ทีมและสิทธิ์" },
+  { value: "timeline", label: "6 · แผนงาน (Timeline)" },
+  { value: "milestones", label: "7 · งวดงาน" },
+  { value: "team", label: "8 · ทีมและสิทธิ์" },
 ] as const;
+
 
 function ProjectDetail() {
   const { id } = Route.useParams();
