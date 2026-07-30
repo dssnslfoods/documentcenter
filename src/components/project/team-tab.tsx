@@ -179,6 +179,10 @@ export function TeamTab({
 
       {isLoading ? (
         <div className="py-8 text-center text-sm text-muted-foreground">กำลังโหลด...</div>
+      ) : error ? (
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+          โหลดรายชื่อสมาชิกไม่สำเร็จ: {(error as Error).message}
+        </div>
       ) : !members || members.length === 0 ? (
         <EmptyState icon={Users} title="ยังไม่มีสมาชิกในโครงการ" />
       ) : (
@@ -190,7 +194,10 @@ export function TeamTab({
                   {(m.profiles?.full_name || m.profiles?.email || "?").slice(0, 1).toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium">{m.profiles?.full_name || "-"}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="truncate font-medium">{m.profiles?.full_name || m.profiles?.email || m.user_id.slice(0, 8)}</span>
+                    {m.is_owner && <Badge className="shrink-0">ผู้สร้างโครงการ</Badge>}
+                  </div>
                   <div className="truncate text-xs text-muted-foreground">{m.profiles?.email}</div>
                 </div>
                 <Badge variant="outline">{m.perm_count} สิทธิ์</Badge>
@@ -204,15 +211,18 @@ export function TeamTab({
                     >
                       <ShieldCheck className="h-4 w-4" />
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-destructive"
-                      onClick={() => confirm("ลบสมาชิกออกจากโครงการ?") && remove.mutate(m.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {!m.is_owner && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive"
+                        onClick={() => confirm("ลบสมาชิกออกจากโครงการ?") && remove.mutate(m.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </>
+
                 )}
               </CardContent>
             </Card>
