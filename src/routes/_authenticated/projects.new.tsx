@@ -178,6 +178,29 @@ function NewProject() {
           </Button>
         </div>
       </form>
+
+      <Dialog open={wtOpen} onOpenChange={setWtOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>เพิ่มประเภทงานใหม่</DialogTitle></DialogHeader>
+          <div className="space-y-2">
+            <Label>ชื่อประเภทงาน (ภาษาไทย) *</Label>
+            <Input
+              value={wtName}
+              onChange={(e) => setWtName(e.target.value)}
+              placeholder="เช่น ติดตั้งระบบ"
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addWorkType.mutate(wtName); } }}
+            />
+            <p className="text-xs text-muted-foreground">รหัสจะถูกสร้างอัตโนมัติ (WT001, WT002, ...) และบันทึกเป็น Master Data</p>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" type="button" onClick={() => setWtOpen(false)}>ยกเลิก</Button>
+            <Button type="button" onClick={() => addWorkType.mutate(wtName)} disabled={addWorkType.isPending}>
+              {addWorkType.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}บันทึก
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 }
