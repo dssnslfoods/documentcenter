@@ -50,9 +50,11 @@ const ZOOM_PX: Record<Zoom, number> = { day: 34, week: 12, month: 4 };
 
 export function TimelineTab({
   projectId,
+  projectName,
   canEdit = true,
 }: {
   projectId: string;
+  projectName?: string;
   canEdit?: boolean;
 }) {
   const sb = getSupabase();
