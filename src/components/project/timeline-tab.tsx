@@ -149,8 +149,20 @@ export function TimelineTab({
 
   const px = ZOOM_PX[zoom];
 
+  // งานใหม่: เริ่มวันถัดจากวันสิ้นสุดของงานล่าสุด (ถ้ายังไม่มีงาน = วันนี้)
+  const nextStart = useMemo(() => {
+    const list = tasks ?? [];
+    if (list.length === 0) return toISO(new Date());
+    const lastEnd = list.reduce((max, t) => {
+      const d = toDate(t.end_date);
+      return d > max ? d : max;
+    }, toDate(list[0].end_date));
+    return toISO(addDays(lastEnd, 1));
+  }, [tasks]);
+
   const openNew = () => { setEditing(null); setDialogOpen(true); };
   const openEdit = (t: Task) => { setEditing(t); setDialogOpen(true); };
+
 
   const overall = useMemo(() => {
     const list = tasks ?? [];
