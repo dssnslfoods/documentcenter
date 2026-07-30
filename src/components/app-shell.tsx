@@ -2,7 +2,7 @@ import { type ReactNode, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, FileText, FileSignature, FileSpreadsheet,
-  Users, FolderKanban, Calendar, CheckSquare, Bell, BarChart3, History, Settings,
+  Users, FolderKanban, Calendar, Bell, BarChart3, History, Settings,
   Search, LogOut, User as UserIcon, Menu, X, ChevronDown, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
