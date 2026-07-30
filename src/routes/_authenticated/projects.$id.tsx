@@ -14,6 +14,7 @@ import { SupplierQuotationsTab } from "@/components/project/supplier-quotations-
 import { CustomerQuotationsTab } from "@/components/project/customer-quotations-tab";
 import { FinalCustomerQuotation } from "@/components/project/final-customer-quotation";
 import { MilestonesTab } from "@/components/project/milestones-tab";
+import { TimelineTab } from "@/components/project/timeline-tab";
 import { TeamTab } from "@/components/project/team-tab";
 import { useProjectPermissions } from "@/hooks/use-project-permissions";
 import {
@@ -45,9 +46,11 @@ const TAB_ORDER = [
   { value: "supplier", label: "3 · ใบเสนอ Supplier" },
   { value: "customer", label: "4 · ยื่นข้อเสนอลูกค้า" },
   { value: "contract", label: "5 · สัญญา" },
-  { value: "milestones", label: "6 · งวดงาน" },
-  { value: "team", label: "7 · ทีมและสิทธิ์" },
+  { value: "timeline", label: "6 · แผนงาน (Timeline)" },
+  { value: "milestones", label: "7 · งวดงาน" },
+  { value: "team", label: "8 · ทีมและสิทธิ์" },
 ] as const;
+
 
 function ProjectDetail() {
   const { id } = Route.useParams();
@@ -254,6 +257,7 @@ function ProjectDetail() {
                   case "supplier": return perms?.canSeeSupplier ?? false;
                   case "customer": return perms?.canSeeCustomer ?? false;
                   case "contract": return perms?.canSeeContract ?? false;
+                  case "timeline": return perms?.canSeeMilestones ?? false;
                   case "milestones": return perms?.canSeeMilestones ?? false;
                   default: return true;
                 }
@@ -341,6 +345,12 @@ function ProjectDetail() {
 
             </>
           ) : <Denied label="สัญญา" />}
+        </TabsContent>
+
+        <TabsContent value="timeline" className="mt-5">
+          {perms?.canSeeMilestones ? (
+            <TimelineTab projectId={id} canEdit={isAdmin || (perms?.canEditMilestones ?? false)} />
+          ) : <Denied label="แผนงาน" />}
         </TabsContent>
 
         <TabsContent value="milestones" className="mt-5">
