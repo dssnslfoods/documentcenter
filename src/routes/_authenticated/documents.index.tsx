@@ -1,89 +1,105 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, FileText, Search, Filter } from "lucide-react";
-import { PageHeader } from "@/components/page-header";
-import { EmptyState } from "@/components/page-header";
+import { FileText, Search, Filter, Download, FolderKanban } from "lucide-react";
+import { PageHeader, EmptyState } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { getSupabase } from "@/lib/supabase";
-import { fmtDate, fmtCurrency } from "@/lib/format";
-import { DocumentStatusBadge, ConfidentialityBadge } from "@/components/status-badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { getSupabase } from "@/lib/supabase";
+import { fmtDateTime } from "@/lib/format";
+import { getProjectFileUrl } from "@/lib/project-files";
+import { usePageGuard } from "@/hooks/use-page-access";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/documents/")({
   head: () => ({
     meta: [
       { title: "คลังเอกสาร | Document Hub" },
-      { name: "description", content: "รายการเอกสารทั้งหมดในระบบ ค้นหา กรอง และจัดการเอกสารได้จากที่นี่" },
+      { name: "description", content: "เอกสารทั้งหมดจากโครงการที่คุณมีส่วนร่วม ค้นหาและเปิดไฟล์ได้จากที่นี่" },
+      { property: "og:title", content: "คลังเอกสาร | Document Hub" },
+      { property: "og:description", content: "เอกสารทั้งหมดจากโครงการที่คุณมีส่วนร่วม" },
     ],
   }),
   component: DocumentsList,
 });
 
+const TYPE_LABEL: Record<string, string> = {
+  rfq_spec: "RFQ / Spec",
+  tor: "TOR",
+  contract: "สัญญา",
+  final_quotation: "ใบเสนอราคาฉบับสุดท้าย",
+  other: "อื่น ๆ",
+};
+
+type Row = {
+  id: string;
+  document_name: string;
+  document_type: string;
+  file_url: string;
+  uploaded_at: string;
+  project_id: string;
+  projects: { name: string; project_code: string | null } | null;
+};
+
 function DocumentsList() {
+  const guard = usePageGuard("documents", "คลังเอกสาร");
   const [q, setQ] = useState("");
-  const [status, setStatus] = useState<string>("all");
-  const [page, setPage] = useState(0);
-  const pageSize = 20;
+  const [type, setType] = useState("all");
 
   const { data, isLoading } = useQuery({
-    queryKey: ["documents", q, status, page],
+    queryKey: ["project-documents-all"],
+    enabled: guard.allowed,
     queryFn: async () => {
-      const sb = getSupabase();
-      let query = sb
-        .from("documents")
-        .select("id, document_no, title, status, confidentiality, end_date, value_amount, currency, category_id, document_categories(name_th), departments(name_th), partners(name)", { count: "exact" })
-        .is("archived_at", null)
-        .order("created_at", { ascending: false })
-        .range(page * pageSize, page * pageSize + pageSize - 1);
-
-      if (q.trim()) {
-        query = query.or(`title.ilike.%${q}%,document_no.ilike.%${q}%,keywords.ilike.%${q}%`);
-      }
-      if (status !== "all") query = query.eq("status", status);
-
-      const { data, count, error } = await query;
+      const { data, error } = await getSupabase()
+        .from("project_documents")
+        .select("id, document_name, document_type, file_url, uploaded_at, project_id, projects(name, project_code)")
+        .order("uploaded_at", { ascending: false });
       if (error) throw error;
-      return { data: data ?? [], count: count ?? 0 };
+      return (data ?? []) as unknown as Row[];
     },
   });
 
-  const totalPages = Math.ceil((data?.count ?? 0) / pageSize);
+  if (!guard.allowed) return guard.node;
+
+  const rows = (data ?? []).filter((r) => {
+    if (type !== "all" && r.document_type !== type) return false;
+    const s = q.trim().toLowerCase();
+    if (!s) return true;
+    return (
+      r.document_name.toLowerCase().includes(s) ||
+      (r.projects?.name ?? "").toLowerCase().includes(s) ||
+      (r.projects?.project_code ?? "").toLowerCase().includes(s)
+    );
+  });
+
+  const open = async (path: string) => {
+    const url = await getProjectFileUrl(path);
+    if (!url) return toast.error("เปิดไฟล์ไม่สำเร็จ");
+    window.open(url, "_blank");
+  };
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="คลังเอกสาร"
-        description="เอกสารทั้งหมดในระบบ — ค้นหาด้วยเลขที่ ชื่อ Tag หรือ Keyword"
-        actions={
-          <Button asChild>
-            <Link to="/documents/new">
-              <Plus className="mr-2 h-4 w-4" /> เพิ่มเอกสารใหม่
-            </Link>
-          </Button>
-        }
+        description="แสดงเฉพาะเอกสารจากโครงการที่คุณมีส่วนร่วม — อัปโหลดเอกสารใหม่ได้จากหน้าโครงการเท่านั้น"
       />
 
       <Card>
         <CardContent className="flex flex-col gap-3 p-4 sm:flex-row">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="ค้นหา..." value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} className="pl-9" />
+            <Input placeholder="ค้นหาชื่อเอกสาร หรือโครงการ..." value={q} onChange={(e) => setQ(e.target.value)} className="pl-9" />
           </div>
-          <Select value={status} onValueChange={(v) => { setStatus(v); setPage(0); }}>
-            <SelectTrigger className="w-full sm:w-48">
-              <Filter className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="สถานะทั้งหมด" />
-            </SelectTrigger>
+          <Select value={type} onValueChange={setType}>
+            <SelectTrigger className="w-full sm:w-64"><Filter className="mr-2 h-4 w-4" /><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">สถานะทั้งหมด</SelectItem>
-              <SelectItem value="draft">ร่าง</SelectItem>
-              <SelectItem value="under_review">กำลังตรวจสอบ</SelectItem>
-              <SelectItem value="active">ใช้งาน</SelectItem>
-              <SelectItem value="expired">หมดอายุ</SelectItem>
-              <SelectItem value="archived">จัดเก็บ</SelectItem>
+              <SelectItem value="all">ทุกประเภทเอกสาร</SelectItem>
+              {Object.entries(TYPE_LABEL).map(([k, v]) => (
+                <SelectItem key={k} value={k}>{v}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </CardContent>
@@ -92,43 +108,35 @@ function DocumentsList() {
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="space-y-2 p-4">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-12 animate-pulse rounded bg-muted/60" />
-              ))}
-            </div>
-          ) : data && data.data.length > 0 ? (
+            <div className="space-y-2 p-4">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-12 animate-pulse rounded bg-muted/60" />)}</div>
+          ) : rows.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="border-b bg-muted/30 text-left text-xs uppercase text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-3">เลขที่</th>
                     <th className="px-4 py-3">ชื่อเอกสาร</th>
-                    <th className="px-4 py-3">หมวด</th>
-                    <th className="px-4 py-3">แผนก</th>
-                    <th className="px-4 py-3">คู่ค้า</th>
-                    <th className="px-4 py-3">สถานะ</th>
-                    <th className="px-4 py-3">ระดับความลับ</th>
-                    <th className="px-4 py-3">สิ้นสุด</th>
-                    <th className="px-4 py-3 text-right">มูลค่า</th>
+                    <th className="px-4 py-3">ประเภท</th>
+                    <th className="px-4 py-3">โครงการ</th>
+                    <th className="px-4 py-3">อัปโหลดเมื่อ</th>
+                    <th className="px-4 py-3 text-right">ไฟล์</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data.data.map((d) => (
-                    <tr key={d.id} className="border-b last:border-0 hover:bg-muted/40">
-                      <td className="px-4 py-3 font-mono text-xs">
-                        <Link to="/documents/$id" params={{ id: d.id }} className="text-primary hover:underline">
-                          {d.document_no}
+                  {rows.map((r) => (
+                    <tr key={r.id} className="border-b last:border-0 hover:bg-muted/40">
+                      <td className="px-4 py-3 font-medium">{r.document_name}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{TYPE_LABEL[r.document_type] ?? r.document_type}</td>
+                      <td className="px-4 py-3">
+                        <Link to="/projects/$id" params={{ id: r.project_id }} className="text-primary hover:underline">
+                          {r.projects?.project_code ? `${r.projects.project_code} · ` : ""}{r.projects?.name ?? "-"}
                         </Link>
                       </td>
-                      <td className="px-4 py-3 font-medium">{d.title}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{(d.document_categories as { name_th?: string } | null)?.name_th ?? "-"}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{(d.departments as { name_th?: string } | null)?.name_th ?? "-"}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{(d.partners as { name?: string } | null)?.name ?? "-"}</td>
-                      <td className="px-4 py-3"><DocumentStatusBadge status={d.status as never} /></td>
-                      <td className="px-4 py-3"><ConfidentialityBadge level={d.confidentiality as never} /></td>
-                      <td className="px-4 py-3 text-muted-foreground">{fmtDate(d.end_date)}</td>
-                      <td className="px-4 py-3 text-right font-mono tabular-nums">{fmtCurrency(d.value_amount, d.currency ?? "THB")}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{fmtDateTime(r.uploaded_at)}</td>
+                      <td className="px-4 py-3 text-right">
+                        <Button variant="ghost" size="sm" onClick={() => open(r.file_url)}>
+                          <Download className="mr-1.5 h-4 w-4" />เปิด
+                        </Button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -137,28 +145,10 @@ function DocumentsList() {
           ) : (
             <EmptyState
               icon={FileText}
-              title="ยังไม่มีเอกสารในระบบ"
-              description="เริ่มต้นเพิ่มเอกสารแรกของคุณเพื่อจัดเก็บและติดตามอย่างเป็นระบบ"
-              action={
-                <Button asChild>
-                  <Link to="/documents/new">
-                    <Plus className="mr-2 h-4 w-4" /> เพิ่มเอกสาร
-                  </Link>
-                </Button>
-              }
+              title="ยังไม่มีเอกสารในโครงการของคุณ"
+              description="เอกสารจะแสดงที่นี่เมื่อมีการอัปโหลดในโครงการที่คุณเป็นสมาชิก"
+              action={<Button asChild variant="outline"><Link to="/projects"><FolderKanban className="mr-2 h-4 w-4" />ไปที่โครงการ</Link></Button>}
             />
-          )}
-
-          {data && data.count > pageSize && (
-            <div className="flex items-center justify-between border-t px-4 py-3 text-sm">
-              <div className="text-muted-foreground">
-                แสดง {page * pageSize + 1}–{Math.min((page + 1) * pageSize, data.count)} จาก {data.count} รายการ
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>ก่อนหน้า</Button>
-                <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)}>ถัดไป</Button>
-              </div>
-            </div>
           )}
         </CardContent>
       </Card>

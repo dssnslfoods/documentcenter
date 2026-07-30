@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/page-header";
 import { SettingsNav } from "@/components/settings-nav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Building2, FolderTree, Settings as SettingsIcon, Tag, Briefcase , Percent } from "lucide-react";
+import { Users, Building2, FolderTree, Settings as SettingsIcon, Tag, Briefcase, Percent, ShieldCheck } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/settings/")({
   head: () => ({ meta: [{ title: "ตั้งค่าระบบ | Document Hub" }] }),
@@ -11,6 +11,8 @@ export const Route = createFileRoute("/_authenticated/settings/")({
 
 const cards = [
   { icon: Users, title: "ผู้ใช้งานและสิทธิ์", desc: "เพิ่ม/เชิญผู้ใช้ กำหนดบทบาทและแผนก", to: "/settings/users" as const },
+  { icon: ShieldCheck, title: "สิทธิ์เมนู", desc: "กำหนดว่าบทบาทไหนเข้าถึงเมนู/หน้าใดได้บ้าง", to: "/settings/access" as const },
+
   { icon: Building2, title: "แผนก", desc: "จัดการแผนกและโครงสร้างองค์กร", to: "/settings/departments" as const },
   { icon: Briefcase, title: "ประเภทงาน", desc: "จัดการประเภทงานสำหรับโครงการ", to: "/settings/work-types" as const },
   { icon: FolderTree, title: "หมวดหมู่เอกสาร", desc: "จัดการหมวดหมู่และรหัสนำหน้าเอกสาร", to: "/settings/categories" as const },

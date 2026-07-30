@@ -1,9 +1,10 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Users, Building2, FolderTree, Tag, Settings as SettingsIcon, LayoutGrid, Briefcase, Percent } from "lucide-react";
+import { Users, Building2, FolderTree, Tag, Settings as SettingsIcon, LayoutGrid, Briefcase, Percent, ShieldCheck } from "lucide-react";
 
 const items: { to: string; label: string; icon: typeof Users; exact?: boolean }[] = [
   { to: "/settings", label: "ภาพรวม", icon: LayoutGrid, exact: true },
   { to: "/settings/users", label: "ผู้ใช้งาน", icon: Users },
+  { to: "/settings/access", label: "สิทธิ์เมนู", icon: ShieldCheck },
   { to: "/settings/departments", label: "แผนก", icon: Building2 },
   { to: "/settings/work-types", label: "ประเภทงาน", icon: Briefcase },
   { to: "/settings/categories", label: "หมวดหมู่", icon: FolderTree },
