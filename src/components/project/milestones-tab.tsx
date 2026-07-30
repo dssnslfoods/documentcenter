@@ -331,6 +331,15 @@ function MilestoneDialog({
           <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
         </div>
         <div>
+          <Label>รายละเอียดการส่งมอบ</Label>
+          <Textarea
+            value={deliverable}
+            onChange={(e) => setDeliverable(e.target.value)}
+            rows={3}
+            placeholder="เช่น ส่งมอบไฟล์ต้นฉบับ Artwork, รายงานสรุป, อุปกรณ์ติดตั้ง ฯลฯ"
+          />
+        </div>
+        <div>
           <Label>หมายเหตุ</Label>
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
         </div>
