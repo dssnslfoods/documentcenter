@@ -36,6 +36,7 @@ type Row = {
   postponed_to_date: string | null;
   status_reason: string | null;
   notes: string | null;
+  deliverable_details: string | null;
 };
 
 export function MilestonesTab({
@@ -165,6 +166,7 @@ export function MilestonesTab({
                         )}
                       </div>
                       {r.status_reason && <p className="mt-1 text-xs italic text-muted-foreground">เหตุผล: {r.status_reason}</p>}
+                      {r.deliverable_details && <p className="mt-1 text-xs text-muted-foreground">ส่งมอบ: {r.deliverable_details}</p>}
                     </div>
                     {canEdit && (
                       <div className="flex items-center gap-2">
@@ -264,6 +266,7 @@ function MilestoneDialog({
   const [payType, setPayType] = useState<PayType>(row?.payment_type ?? "percentage");
   const [payValue, setPayValue] = useState(row ? String(row.payment_value ?? "") : "");
   const [notes, setNotes] = useState(row?.notes ?? "");
+  const [deliverable, setDeliverable] = useState(row?.deliverable_details ?? "");
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
@@ -275,6 +278,7 @@ function MilestoneDialog({
         due_date: dueDate || null,
         payment_type: payType,
         payment_value: payValue ? Number(payValue) : 0,
+        deliverable_details: deliverable || null,
         notes: notes || null,
       };
       const { error } = isEdit
@@ -325,6 +329,15 @@ function MilestoneDialog({
         <div>
           <Label>วันที่กำหนด</Label>
           <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+        </div>
+        <div>
+          <Label>รายละเอียดการส่งมอบ</Label>
+          <Textarea
+            value={deliverable}
+            onChange={(e) => setDeliverable(e.target.value)}
+            rows={3}
+            placeholder="เช่น ส่งมอบไฟล์ต้นฉบับ Artwork, รายงานสรุป, อุปกรณ์ติดตั้ง ฯลฯ"
+          />
         </div>
         <div>
           <Label>หมายเหตุ</Label>
