@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Building2, Calendar, Wallet, User, FileType2, Loader2, ArrowRight, Trophy, XCircle } from "lucide-react";
+import { Building2, Calendar, Wallet, User, FileType2, Loader2, Pencil, ArrowRight, Trophy, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { getSupabase } from "@/lib/supabase";
 import { fmtDate, fmtCurrency } from "@/lib/format";
 import { LIFECYCLE_LABEL, nextStatuses, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
+import { EditProjectDialog } from "@/components/project/edit-project-dialog";
 
 type Project = {
   id: string;
@@ -26,6 +27,9 @@ type Project = {
   description: string | null;
   customer_name: string | null;
   project_type: string | null;
+  customer_id?: string | null;
+  vat_rate?: number | null;
+  is_inhouse?: boolean | null;
   lost_reason: string | null;
   completion_comment: string | null;
   departments?: { name_th?: string } | null;
@@ -43,6 +47,7 @@ export function OverviewTab({
   const sb = getSupabase();
   const qc = useQueryClient();
   const [progressDraft, setProgressDraft] = useState<string>("");
+  const [editOpen, setEditOpen] = useState(false);
 
   const updateStatus = useMutation({
     mutationFn: async ({ status, extra }: { status: ProjectLifecycleStatus; extra?: Record<string, unknown> }) => {
@@ -75,7 +80,14 @@ export function OverviewTab({
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <Card className="lg:col-span-2">
-        <CardHeader><CardTitle>ข้อมูลโครงการ</CardTitle></CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
+          <CardTitle>ข้อมูลโครงการ</CardTitle>
+          {canEdit && (
+            <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+              <Pencil className="mr-2 h-4 w-4" />แก้ไข
+            </Button>
+          )}
+        </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <InfoRow icon={Building2} label="แผนก" value={project.departments?.name_th ?? "-"} />
@@ -91,6 +103,7 @@ export function OverviewTab({
               <p className="whitespace-pre-wrap text-sm">{project.description}</p>
             </div>
           )}
+          <EditProjectDialog project={project} open={editOpen} onOpenChange={setEditOpen} />
           {project.status === "lost" && project.lost_reason && (
             <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
               <div className="text-xs font-semibold text-destructive">เหตุผลที่แพ้งาน</div>

@@ -257,7 +257,7 @@ function ProjectDetail() {
         </div>
 
         <TabsContent value="overview" className="mt-5">
-          {perms?.canSeeOverview ? <OverviewTab project={p} /> : <Denied label="ข้อมูลโครงการ" />}
+          {perms?.canSeeOverview ? <OverviewTab project={p} canEdit={canEditProject} canSeePrice={perms?.canSeeCustomerPrice ?? true} /> : <Denied label="ข้อมูลโครงการ" />}
         </TabsContent>
 
         <TabsContent value="rfq" className="mt-5 space-y-4">
