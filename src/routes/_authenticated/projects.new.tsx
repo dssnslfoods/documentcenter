@@ -20,6 +20,8 @@ import { getSupabase } from "@/lib/supabase";
 import { nextCode } from "@/lib/next-code";
 import { PartnerFormDialog, usePartners } from "@/components/partner-form-dialog";
 
+const AUTOSAVE_KEY = "dochub:new-project-autosave";
+
 const schema = z.object({
   name: z.string().trim().min(1, "กรุณากรอกชื่อโครงการ").max(200),
   description: z.string().optional(),
