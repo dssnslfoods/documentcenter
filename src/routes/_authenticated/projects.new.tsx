@@ -155,10 +155,26 @@ function NewProject() {
               )}
             </div>
 
+            <div className="sm:col-span-2 flex items-start gap-3 rounded-xl border bg-muted/30 p-3">
+              <Checkbox
+                id="is_inhouse"
+                checked={!!form.watch("is_inhouse")}
+                onCheckedChange={(c) => form.setValue("is_inhouse", c === true)}
+                className="mt-0.5"
+              />
+              <div className="space-y-0.5">
+                <Label htmlFor="is_inhouse" className="cursor-pointer">งานผลิตภายใน (ไม่ใช้ Supplier / Outsource)</Label>
+                <p className="text-xs text-muted-foreground">
+                  เมื่อเลือก ระบบจะข้ามขั้นตอน RFQ / Spec และใบเสนอราคา Supplier — ไปที่การยื่นข้อเสนอลูกค้าได้ทันที
+                </p>
+              </div>
+            </div>
+
             <div className="sm:col-span-2 space-y-2">
               <Label>รายละเอียด</Label>
               <Textarea rows={3} {...form.register("description")} />
             </div>
+
           </CardContent>
         </Card>
 
