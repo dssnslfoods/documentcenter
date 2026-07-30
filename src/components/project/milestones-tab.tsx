@@ -166,6 +166,7 @@ export function MilestonesTab({
                         )}
                       </div>
                       {r.status_reason && <p className="mt-1 text-xs italic text-muted-foreground">เหตุผล: {r.status_reason}</p>}
+                      {r.deliverable_details && <p className="mt-1 text-xs text-muted-foreground">ส่งมอบ: {r.deliverable_details}</p>}
                     </div>
                     {canEdit && (
                       <div className="flex items-center gap-2">
