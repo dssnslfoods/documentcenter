@@ -60,7 +60,8 @@ export function TimelineTab({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
 
-  const { data: tasks, isLoading } = useQuery({
+  const { data: tasks, isLoading, error: tasksError } = useQuery({
+    retry: false,
     queryKey: ["project-tasks", projectId],
     queryFn: async () => {
       const { data, error } = await sb
@@ -108,6 +109,8 @@ export function TimelineTab({
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const missingTable = /project_tasks/.test(tasksError?.message ?? "");
 
   // ---- Ordered rows: parents then their children ----
   const rows = useMemo(() => {
@@ -186,7 +189,15 @@ export function TimelineTab({
         </div>
       </div>
 
-      {!rows.length ? (
+      {missingTable ? (
+        <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-5 text-sm">
+          <div className="font-semibold text-destructive">ยังไม่ได้สร้างตารางแผนงานในฐานข้อมูล</div>
+          <p className="mt-1 text-muted-foreground">
+            กรุณารันสคริปต์ <code className="font-mono">db/0021_project_tasks.sql</code> ใน Supabase SQL Editor
+            แล้วรีเฟรชหน้านี้อีกครั้ง (ระบบจึงจะบันทึกงานในแผนได้)
+          </p>
+        </div>
+      ) : !rows.length ? (
         <EmptyState
           icon={CalendarRange}
           title="ยังไม่มีแผนงาน"
