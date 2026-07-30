@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getSupabase } from "@/lib/supabase";
 import { PartnerFormDialog } from "@/components/partner-form-dialog";
+import { useVatRates, calcVat, pickVatRate } from "@/lib/vat";
 
 const schema = z.object({
   project_id: z.string().uuid("กรุณาเลือกโครงการ"),
@@ -67,8 +68,11 @@ function NewQuotation() {
 
   const amt = Number(form.watch("amount_before_tax")) || 0;
   const disc = Number(form.watch("discount")) || 0;
-  const tax = Number(form.watch("tax")) || 0;
-  const total = Math.max(0, amt - disc + tax);
+  const [vatRateId, setVatRateId] = useState<string | undefined>(undefined);
+  const { data: vatRates } = useVatRates();
+  const selectedVat = pickVatRate(vatRates, vatRateId);
+  const netBeforeVat = Math.max(0, amt - disc);
+  const { pct: vatPercent, vatAmount: tax, total } = calcVat(netBeforeVat, selectedVat ? Number(selectedVat.rate) : 0);
   const selectedProjectId = form.watch("project_id");
 
   const create = useMutation({
@@ -86,7 +90,8 @@ function NewQuotation() {
         expiry_date: values.expiry_date || null,
         amount_before_tax: values.amount_before_tax,
         discount: values.discount,
-        tax: values.tax,
+        tax,
+        vat_rate: selectedVat ? Number(selectedVat.rate) : 0,
         total_amount: total,
         currency: values.currency,
         description: values.description || null,
@@ -203,9 +208,20 @@ function NewQuotation() {
         <Card>
           <CardHeader><CardTitle>มูลค่า</CardTitle></CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-4">
-            <div className="space-y-2"><Label>มูลค่าก่อนภาษี</Label><Input type="number" step="0.01" min="0" {...form.register("amount_before_tax")} /></div>
+            <div className="space-y-2"><Label>มูลค่าก่อน VAT</Label><Input type="number" step="0.01" min="0" {...form.register("amount_before_tax")} /></div>
             <div className="space-y-2"><Label>ส่วนลด</Label><Input type="number" step="0.01" min="0" {...form.register("discount")} /></div>
-            <div className="space-y-2"><Label>ภาษี (VAT 7%)</Label><Input type="number" step="0.01" min="0" {...form.register("tax")} /></div>
+            <div className="space-y-2">
+              <Label>อัตรา VAT</Label>
+              <Select value={vatRateId ?? selectedVat?.id ?? "none"} onValueChange={setVatRateId}>
+                <SelectTrigger><SelectValue placeholder="ไม่คิด VAT" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">ไม่คิด VAT (0%)</SelectItem>
+                  {(vatRates ?? []).map((v) => (
+                    <SelectItem key={v.id} value={v.id}>{v.label} ({Number(v.rate).toFixed(2)}%)</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label>สกุลเงิน</Label>
               <Select defaultValue="THB" onValueChange={(v) => form.setValue("currency", v)}>
@@ -213,8 +229,10 @@ function NewQuotation() {
                 <SelectContent><SelectItem value="THB">THB</SelectItem><SelectItem value="USD">USD</SelectItem></SelectContent>
               </Select>
             </div>
-            <div className="sm:col-span-4 flex justify-end gap-2 border-t pt-3">
-              <span className="text-sm text-muted-foreground">มูลค่ารวม:</span>
+            <div className="sm:col-span-4 flex flex-wrap justify-end gap-4 border-t pt-3 text-sm">
+              <span className="text-muted-foreground tabular-nums">ก่อน VAT: {netBeforeVat.toLocaleString("th-TH", { minimumFractionDigits: 2 })}</span>
+              <span className="text-muted-foreground tabular-nums">VAT {vatPercent.toFixed(2)}%: {tax.toLocaleString("th-TH", { minimumFractionDigits: 2 })}</span>
+              <span className="text-sm text-muted-foreground">ยอดสุทธิ:</span>
               <span className="text-lg font-semibold tabular-nums">{total.toLocaleString("th-TH", { minimumFractionDigits: 2 })}</span>
             </div>
           </CardContent>
