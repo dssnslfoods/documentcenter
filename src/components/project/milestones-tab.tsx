@@ -266,6 +266,7 @@ function MilestoneDialog({
   const [payType, setPayType] = useState<PayType>(row?.payment_type ?? "percentage");
   const [payValue, setPayValue] = useState(row ? String(row.payment_value ?? "") : "");
   const [notes, setNotes] = useState(row?.notes ?? "");
+  const [deliverable, setDeliverable] = useState(row?.deliverable_details ?? "");
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
