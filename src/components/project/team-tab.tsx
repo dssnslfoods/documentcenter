@@ -17,7 +17,14 @@ type Member = {
   user_id: string;
   profiles?: { full_name: string | null; email: string | null } | null;
   perm_count: number;
+  is_owner?: boolean;
 };
+
+const FULL_PERMS = [
+  "view_project_info", "view_spec_scope", "view_supplier_quotation", "view_customer_quotation",
+  "view_contract", "view_milestones", "view_all_documents",
+  "edit_project", "edit_milestones", "upload_documents",
+];
 
 export function TeamTab({
   projectId,
@@ -31,25 +38,62 @@ export function TeamTab({
   const [open, setOpen] = useState(false);
   const [editMember, setEditMember] = useState<{ id: string; label: string } | null>(null);
 
-  const { data: members, isLoading } = useQuery({
+  const { data: members, isLoading, error } = useQuery({
     queryKey: ["project-members", projectId],
     queryFn: async () => {
-      const { data, error } = await sb
-        .from("project_members")
-        .select("id, user_id, profiles(full_name, email)")
-        .eq("project_id", projectId);
-      if (error) throw error;
-      const ids = (data ?? []).map((m) => m.id);
-      const { data: perms } = await sb
-        .from("project_member_permissions")
-        .select("project_member_id")
-        .in("project_member_id", ids.length ? ids : ["00000000-0000-0000-0000-000000000000"]);
+      // Ensure the project owner/creator is always a team member
+      const { data: project } = await sb
+        .from("projects")
+        .select("owner_id, created_by")
+        .eq("id", projectId)
+        .maybeSingle();
+      const ownerId = (project?.owner_id ?? project?.created_by ?? null) as string | null;
+
+      const load = async () => {
+        const { data, error } = await sb
+          .from("project_members")
+          .select("id, user_id")
+          .eq("project_id", projectId);
+        if (error) throw error;
+        return data ?? [];
+      };
+
+      let rows = await load();
+
+      if (ownerId && !rows.some((r) => r.user_id === ownerId)) {
+        const { data: created } = await sb
+          .from("project_members")
+          .insert({ project_id: projectId, user_id: ownerId, added_by: ownerId })
+          .select("id")
+          .maybeSingle();
+        if (created?.id) {
+          await sb.from("project_member_permissions").insert(
+            FULL_PERMS.map((k) => ({ project_member_id: created.id, permission_key: k, granted: true })),
+          );
+          rows = await load();
+        }
+      }
+
+      const userIds = rows.map((r) => r.user_id);
+      const { data: profiles } = userIds.length
+        ? await sb.from("profiles").select("id, full_name, email").in("id", userIds)
+        : { data: [] as { id: string; full_name: string | null; email: string | null }[] };
+      const pMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+
+      const ids = rows.map((m) => m.id);
+      const { data: perms } = ids.length
+        ? await sb.from("project_member_permissions").select("project_member_id").in("project_member_id", ids)
+        : { data: [] as { project_member_id: string }[] };
       const counts = new Map<string, number>();
       (perms ?? []).forEach((p) => counts.set(p.project_member_id, (counts.get(p.project_member_id) ?? 0) + 1));
-      return ((data ?? []) as unknown as Member[]).map((m) => ({
-        ...m,
+
+      return rows.map((m) => ({
+        id: m.id,
+        user_id: m.user_id,
+        profiles: pMap.get(m.user_id) ?? null,
         perm_count: counts.get(m.id) ?? 0,
-      }));
+        is_owner: !!ownerId && m.user_id === ownerId,
+      })) as Member[];
     },
   });
 
@@ -135,6 +179,10 @@ export function TeamTab({
 
       {isLoading ? (
         <div className="py-8 text-center text-sm text-muted-foreground">กำลังโหลด...</div>
+      ) : error ? (
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+          โหลดรายชื่อสมาชิกไม่สำเร็จ: {(error as Error).message}
+        </div>
       ) : !members || members.length === 0 ? (
         <EmptyState icon={Users} title="ยังไม่มีสมาชิกในโครงการ" />
       ) : (
@@ -146,7 +194,10 @@ export function TeamTab({
                   {(m.profiles?.full_name || m.profiles?.email || "?").slice(0, 1).toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium">{m.profiles?.full_name || "-"}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="truncate font-medium">{m.profiles?.full_name || m.profiles?.email || m.user_id.slice(0, 8)}</span>
+                    {m.is_owner && <Badge className="shrink-0">ผู้สร้างโครงการ</Badge>}
+                  </div>
                   <div className="truncate text-xs text-muted-foreground">{m.profiles?.email}</div>
                 </div>
                 <Badge variant="outline">{m.perm_count} สิทธิ์</Badge>
@@ -160,15 +211,18 @@ export function TeamTab({
                     >
                       <ShieldCheck className="h-4 w-4" />
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-destructive"
-                      onClick={() => confirm("ลบสมาชิกออกจากโครงการ?") && remove.mutate(m.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {!m.is_owner && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive"
+                        onClick={() => confirm("ลบสมาชิกออกจากโครงการ?") && remove.mutate(m.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </>
+
                 )}
               </CardContent>
             </Card>
