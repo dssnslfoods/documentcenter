@@ -36,6 +36,7 @@ import { Route as AuthenticatedSettingsTagsRouteImport } from './routes/_authent
 import { Route as AuthenticatedSettingsGeneralRouteImport } from './routes/_authenticated/settings.general'
 import { Route as AuthenticatedSettingsDepartmentsRouteImport } from './routes/_authenticated/settings.departments'
 import { Route as AuthenticatedSettingsCategoriesRouteImport } from './routes/_authenticated/settings.categories'
+import { Route as AuthenticatedSettingsAccessRouteImport } from './routes/_authenticated/settings.access'
 import { Route as AuthenticatedQuotationsNewRouteImport } from './routes/_authenticated/quotations.new'
 import { Route as AuthenticatedQuotationsIdRouteImport } from './routes/_authenticated/quotations.$id'
 import { Route as AuthenticatedProjectsNewRouteImport } from './routes/_authenticated/projects.new'
@@ -196,6 +197,12 @@ const AuthenticatedSettingsCategoriesRoute =
     path: '/settings/categories',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedSettingsAccessRoute =
+  AuthenticatedSettingsAccessRouteImport.update({
+    id: '/settings/access',
+    path: '/settings/access',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedQuotationsNewRoute =
   AuthenticatedQuotationsNewRouteImport.update({
     id: '/quotations/new',
@@ -280,6 +287,7 @@ export interface FileRoutesByFullPath {
   '/projects/new': typeof AuthenticatedProjectsNewRoute
   '/quotations/$id': typeof AuthenticatedQuotationsIdRoute
   '/quotations/new': typeof AuthenticatedQuotationsNewRoute
+  '/settings/access': typeof AuthenticatedSettingsAccessRoute
   '/settings/categories': typeof AuthenticatedSettingsCategoriesRoute
   '/settings/departments': typeof AuthenticatedSettingsDepartmentsRoute
   '/settings/general': typeof AuthenticatedSettingsGeneralRoute
@@ -318,6 +326,7 @@ export interface FileRoutesByTo {
   '/projects/new': typeof AuthenticatedProjectsNewRoute
   '/quotations/$id': typeof AuthenticatedQuotationsIdRoute
   '/quotations/new': typeof AuthenticatedQuotationsNewRoute
+  '/settings/access': typeof AuthenticatedSettingsAccessRoute
   '/settings/categories': typeof AuthenticatedSettingsCategoriesRoute
   '/settings/departments': typeof AuthenticatedSettingsDepartmentsRoute
   '/settings/general': typeof AuthenticatedSettingsGeneralRoute
@@ -358,6 +367,7 @@ export interface FileRoutesById {
   '/_authenticated/projects/new': typeof AuthenticatedProjectsNewRoute
   '/_authenticated/quotations/$id': typeof AuthenticatedQuotationsIdRoute
   '/_authenticated/quotations/new': typeof AuthenticatedQuotationsNewRoute
+  '/_authenticated/settings/access': typeof AuthenticatedSettingsAccessRoute
   '/_authenticated/settings/categories': typeof AuthenticatedSettingsCategoriesRoute
   '/_authenticated/settings/departments': typeof AuthenticatedSettingsDepartmentsRoute
   '/_authenticated/settings/general': typeof AuthenticatedSettingsGeneralRoute
@@ -398,6 +408,7 @@ export interface FileRouteTypes {
     | '/projects/new'
     | '/quotations/$id'
     | '/quotations/new'
+    | '/settings/access'
     | '/settings/categories'
     | '/settings/departments'
     | '/settings/general'
@@ -436,6 +447,7 @@ export interface FileRouteTypes {
     | '/projects/new'
     | '/quotations/$id'
     | '/quotations/new'
+    | '/settings/access'
     | '/settings/categories'
     | '/settings/departments'
     | '/settings/general'
@@ -475,6 +487,7 @@ export interface FileRouteTypes {
     | '/_authenticated/projects/new'
     | '/_authenticated/quotations/$id'
     | '/_authenticated/quotations/new'
+    | '/_authenticated/settings/access'
     | '/_authenticated/settings/categories'
     | '/_authenticated/settings/departments'
     | '/_authenticated/settings/general'
@@ -692,6 +705,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsCategoriesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/settings/access': {
+      id: '/_authenticated/settings/access'
+      path: '/settings/access'
+      fullPath: '/settings/access'
+      preLoaderRoute: typeof AuthenticatedSettingsAccessRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/quotations/new': {
       id: '/_authenticated/quotations/new'
       path: '/quotations/new'
@@ -782,6 +802,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedProjectsNewRoute: typeof AuthenticatedProjectsNewRoute
   AuthenticatedQuotationsIdRoute: typeof AuthenticatedQuotationsIdRoute
   AuthenticatedQuotationsNewRoute: typeof AuthenticatedQuotationsNewRoute
+  AuthenticatedSettingsAccessRoute: typeof AuthenticatedSettingsAccessRoute
   AuthenticatedSettingsCategoriesRoute: typeof AuthenticatedSettingsCategoriesRoute
   AuthenticatedSettingsDepartmentsRoute: typeof AuthenticatedSettingsDepartmentsRoute
   AuthenticatedSettingsGeneralRoute: typeof AuthenticatedSettingsGeneralRoute
@@ -813,6 +834,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedProjectsNewRoute: AuthenticatedProjectsNewRoute,
   AuthenticatedQuotationsIdRoute: AuthenticatedQuotationsIdRoute,
   AuthenticatedQuotationsNewRoute: AuthenticatedQuotationsNewRoute,
+  AuthenticatedSettingsAccessRoute: AuthenticatedSettingsAccessRoute,
   AuthenticatedSettingsCategoriesRoute: AuthenticatedSettingsCategoriesRoute,
   AuthenticatedSettingsDepartmentsRoute: AuthenticatedSettingsDepartmentsRoute,
   AuthenticatedSettingsGeneralRoute: AuthenticatedSettingsGeneralRoute,
