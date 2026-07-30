@@ -118,7 +118,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               <X className="h-4 w-4" />
             </button>
-            <SidebarContent collapsed={false} pathname={pathname} />
+            <SidebarContent
+              collapsed={false}
+              pathname={pathname}
+              displayName={displayName}
+              email={user?.email}
+              position={profile?.position ?? null}
+            />
+
           </aside>
         </div>
       )}
