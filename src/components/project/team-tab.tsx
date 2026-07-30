@@ -281,7 +281,69 @@ export function TeamTab({
         projectMemberId={editMember?.id ?? null}
         memberLabel={editMember?.label ?? ""}
       />
+
+      <Dialog open={!!editRole} onOpenChange={(v) => !v && setEditRole(null)}>
+        {editRole && (
+          <RoleDialog
+            member={editRole}
+            saving={updateRole.isPending}
+            onCancel={() => setEditRole(null)}
+            onSave={(roleTitle, responsibilities) =>
+              updateRole.mutate({ id: editRole.id, roleTitle, responsibilities })
+            }
+          />
+        )}
+      </Dialog>
     </div>
+  );
+}
+
+function RoleDialog({
+  member,
+  saving,
+  onCancel,
+  onSave,
+}: {
+  member: Member;
+  saving: boolean;
+  onCancel: () => void;
+  onSave: (roleTitle: string, responsibilities: string) => void;
+}) {
+  const [roleTitle, setRoleTitle] = useState(member.role_title ?? "");
+  const [responsibilities, setResponsibilities] = useState(member.responsibilities ?? "");
+
+  useEffect(() => {
+    setRoleTitle(member.role_title ?? "");
+    setResponsibilities(member.responsibilities ?? "");
+  }, [member]);
+
+  return (
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>ตำแหน่งและหน้าที่ — {member.profiles?.full_name || member.profiles?.email || "-"}</DialogTitle>
+      </DialogHeader>
+      <div className="space-y-3">
+        <div>
+          <Label>ชื่อตำแหน่ง</Label>
+          <Input value={roleTitle} onChange={(e) => setRoleTitle(e.target.value)} placeholder="เช่น ผู้จัดการโครงการ" />
+        </div>
+        <div>
+          <Label>หน้าที่รับผิดชอบ</Label>
+          <Textarea
+            rows={3}
+            value={responsibilities}
+            onChange={(e) => setResponsibilities(e.target.value)}
+            placeholder="เช่น ควบคุมแผนงาน ติดตามงวดงาน ประสานงานลูกค้า"
+          />
+        </div>
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={onCancel}>ยกเลิก</Button>
+        <Button onClick={() => onSave(roleTitle, responsibilities)} disabled={saving}>
+          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}บันทึก
+        </Button>
+      </DialogFooter>
+    </DialogContent>
   );
 }
 
@@ -295,11 +357,13 @@ function AddMemberDialog({
   users: { id: string; full_name: string | null; email: string | null }[];
   templates: { id: string; template_name: string }[];
   onCancel: () => void;
-  onAdd: (userId: string, templateId: string) => void;
+  onAdd: (userId: string, templateId: string, roleTitle: string, responsibilities: string) => void;
   saving: boolean;
 }) {
   const [userId, setUserId] = useState("");
   const [templateId, setTemplateId] = useState("");
+  const [roleTitle, setRoleTitle] = useState("");
+  const [responsibilities, setResponsibilities] = useState("");
 
   return (
     <DialogContent>
@@ -319,6 +383,19 @@ function AddMemberDialog({
           </Select>
         </div>
         <div>
+          <Label>ชื่อตำแหน่ง</Label>
+          <Input value={roleTitle} onChange={(e) => setRoleTitle(e.target.value)} placeholder="เช่น ผู้จัดการโครงการ" />
+        </div>
+        <div>
+          <Label>หน้าที่รับผิดชอบ</Label>
+          <Textarea
+            rows={3}
+            value={responsibilities}
+            onChange={(e) => setResponsibilities(e.target.value)}
+            placeholder="เช่น ควบคุมแผนงาน ติดตามงวดงาน ประสานงานลูกค้า"
+          />
+        </div>
+        <div>
           <Label>Template สิทธิ์</Label>
           <Select value={templateId} onValueChange={setTemplateId}>
             <SelectTrigger><SelectValue placeholder="เลือก Template" /></SelectTrigger>
@@ -328,15 +405,19 @@ function AddMemberDialog({
               ))}
             </SelectContent>
           </Select>
-          <p className="mt-1 text-xs text-muted-foreground">สามารถปรับสิทธิ์รายบุคคลได้ในภายหลัง (Milestone D)</p>
+          <p className="mt-1 text-xs text-muted-foreground">สามารถปรับสิทธิ์รายบุคคลได้ในภายหลัง</p>
         </div>
       </div>
       <DialogFooter>
         <Button variant="outline" onClick={onCancel}>ยกเลิก</Button>
-        <Button onClick={() => onAdd(userId, templateId)} disabled={!userId || !templateId || saving}>
+        <Button
+          onClick={() => onAdd(userId, templateId, roleTitle, responsibilities)}
+          disabled={!userId || !templateId || saving}
+        >
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}เพิ่ม
         </Button>
       </DialogFooter>
     </DialogContent>
   );
 }
+
