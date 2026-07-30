@@ -371,6 +371,11 @@ function ProjectDetail() {
         <TabsContent value="team" className="mt-5">
           <TeamTab projectId={id} isAdmin={isAdmin} />
         </TabsContent>
+
+        <TabsContent value="history" className="mt-5">
+          <ProjectHistoryTab projectId={id} />
+        </TabsContent>
+
       </Tabs>
     </div>
   );
