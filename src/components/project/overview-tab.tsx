@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { getSupabase } from "@/lib/supabase";
-import { fmtDate, fmtCurrency } from "@/lib/format";
+import { fmtDate, fmtDateTime, fmtCurrency } from "@/lib/format";
 import { LIFECYCLE_LABEL, nextStatuses, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 import { EditProjectDialog } from "@/components/project/edit-project-dialog";
 
