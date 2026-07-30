@@ -349,7 +349,7 @@ function ProjectDetail() {
 
         <TabsContent value="timeline" className="mt-5">
           {perms?.canSeeMilestones ? (
-            <TimelineTab projectId={id} canEdit={isAdmin || (perms?.canEditMilestones ?? false)} />
+            <TimelineTab projectId={id} projectName={p?.name ?? p?.title ?? undefined} canEdit={isAdmin || (perms?.canEditMilestones ?? false)} />
           ) : <Denied label="แผนงาน" />}
         </TabsContent>
 
