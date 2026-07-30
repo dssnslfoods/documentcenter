@@ -182,6 +182,7 @@ export function EditProjectDialog({
           <div className="space-y-2"><Label>วันสิ้นสุด</Label><Input type="date" value={endDate ?? ""} onChange={(e) => setEndDate(e.target.value)} /></div>
 
           {canEditPrice ? (
+            <>
             <div className="space-y-2">
               <Label>มูลค่าสัญญา ก่อน VAT (บาท)</Label>
               <Input type="number" step="0.01" min="0" value={contractValue} onChange={(e) => setContractValue(e.target.value)} />
@@ -204,6 +205,7 @@ export function EditProjectDialog({
               <div className="flex justify-between"><span className="text-muted-foreground">VAT {vatPercent.toFixed(2)}%</span><span className="tabular-nums">{vatAmount.toLocaleString("th-TH", { minimumFractionDigits: 2 })} บาท</span></div>
               <div className="mt-1 flex justify-between border-t pt-1 font-semibold"><span>รวมทั้งสิ้น</span><span className="tabular-nums">{gross.toLocaleString("th-TH", { minimumFractionDigits: 2 })} บาท</span></div>
             </div>
+            </>
           ) : (
             <div className="sm:col-span-2 rounded-lg border border-dashed bg-muted/30 p-3 text-xs text-muted-foreground">
               คุณไม่มีสิทธิ์แก้ไขข้อมูลราคา (มูลค่าสัญญา / VAT) — แก้ไขข้อมูลอื่นได้ตามปกติ
