@@ -49,7 +49,9 @@ const TAB_ORDER = [
   { value: "timeline", label: "6 · แผนงาน (Timeline)" },
   { value: "milestones", label: "7 · งวดงาน" },
   { value: "team", label: "8 · ทีมและสิทธิ์" },
+  { value: "history", label: "9 · ประวัติการแก้ไข" },
 ] as const;
+
 
 
 function ProjectDetail() {
