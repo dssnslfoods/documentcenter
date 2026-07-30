@@ -278,11 +278,27 @@ function SidebarContent({
           </div>
         ))}
       </nav>
-      {!collapsed && (
-        <div className="border-t border-sidebar-border p-3 text-[10px] text-muted-foreground">
-          v0.2 · Cloud White
-        </div>
-      )}
+      <div className="border-t border-sidebar-border p-3">
+        <Link
+          to="/profile"
+          className={`flex items-center gap-2.5 rounded-md p-2 transition-colors hover:bg-sidebar-accent ${collapsed ? "justify-center" : ""}`}
+          title={collapsed ? displayName : undefined}
+        >
+          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+            {displayName.charAt(0).toUpperCase()}
+          </div>
+          {!collapsed && (
+            <div className="min-w-0">
+              <div className="truncate text-sm font-medium">{displayName}</div>
+              <div className="truncate text-[10px] text-muted-foreground">{position || email}</div>
+            </div>
+          )}
+        </Link>
+        {!collapsed && (
+          <div className="px-2 pt-2 text-[10px] text-muted-foreground">v0.2 · Cloud White</div>
+        )}
+      </div>
+
     </>
   );
 }
