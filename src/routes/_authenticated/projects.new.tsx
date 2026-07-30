@@ -170,7 +170,7 @@ function NewProject() {
   return (
     <div className="max-w-3xl">
       <PageHeader title="เพิ่มโครงการใหม่" description="รหัสจะถูกสร้างอัตโนมัติ (PRJ-YYYY-NNNN) — โครงการจะเริ่มที่สถานะ 'ร่าง'" />
-      <form onSubmit={form.handleSubmit((v) => create.mutate(v))} className="space-y-6">
+      <form onSubmit={form.handleSubmit((v) => { setIsDraft(false); create.mutate(v); })} className="space-y-6">
         <Card>
           <CardHeader><CardTitle>ข้อมูลโครงการ</CardTitle></CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
