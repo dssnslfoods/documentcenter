@@ -55,12 +55,32 @@ const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
+function useProfileName(userId: string | undefined) {
+  const { data } = useQuery({
+    queryKey: ["sidebar-profile", userId],
+    queryFn: async () => {
+      if (!userId) return null;
+      const { data } = await getSupabase()
+        .from("profiles")
+        .select("full_name, position")
+        .eq("id", userId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!userId,
+  });
+  return data;
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const { user } = useAuth();
+  const profile = useProfileName(user?.id);
+  const displayName =
+    profile?.full_name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "ผู้ใช้งาน";
 
   const signOut = async () => {
     await getSupabase().auth.signOut();
@@ -76,8 +96,15 @@ export function AppShell({ children }: { children: ReactNode }) {
           collapsed ? "w-[68px]" : "w-64"
         }`}
       >
-        <SidebarContent collapsed={collapsed} pathname={pathname} />
+        <SidebarContent
+          collapsed={collapsed}
+          pathname={pathname}
+          displayName={displayName}
+          email={user?.email}
+          position={profile?.position ?? null}
+        />
       </aside>
+
 
       {/* Mobile sidebar */}
       {mobileOpen && (
