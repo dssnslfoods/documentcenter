@@ -278,6 +278,7 @@ function MilestoneDialog({
         due_date: dueDate || null,
         payment_type: payType,
         payment_value: payValue ? Number(payValue) : 0,
+        deliverable_details: deliverable || null,
         notes: notes || null,
       };
       const { error } = isEdit
