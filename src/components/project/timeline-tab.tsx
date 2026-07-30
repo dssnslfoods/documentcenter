@@ -372,7 +372,8 @@ function TaskDialog({
         progress: Math.max(0, Math.min(100, Number(progress) || 0)),
         status,
         parent_id: parentId === "none" ? null : parentId,
-        assignee_id: assignee === "none" ? null : assignee,
+        assignee_id: assignee === "none" || assignee === "external" ? null : assignee,
+        assignee_label: assignee === "external" ? assigneeLabel.trim() || null : null,
         milestone_id: milestoneId === "none" ? null : milestoneId,
         sort_order: Number(sortOrder) || 0,
       };
