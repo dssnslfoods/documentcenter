@@ -11,11 +11,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/page-header";
+import { useVatRates, calcVat, pickVatRate, fmtNum } from "@/lib/vat";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDate, fmtCurrency } from "@/lib/format";
 import { uploadProjectFile, getProjectFileUrl } from "@/lib/project-files";
 
 type Row = {
+  vat_rate?: number | null;
+  vat_amount?: number | null;
+  amount_incl_vat?: number | null;
   id: string;
   supplier_id: string | null;
   supplier_name: string | null;
@@ -54,7 +58,7 @@ export function SupplierQuotationsTab({
     queryFn: async () => {
       const { data, error } = await sb
         .from("supplier_quotations")
-        .select("id, supplier_id, supplier_name, quotation_amount, received_date, notes, file_urls, version, is_selected, partners(name)")
+        .select("id, supplier_id, supplier_name, quotation_amount, vat_rate, vat_amount, amount_incl_vat, received_date, notes, file_urls, version, is_selected, partners(name)")
         .eq("project_id", projectId)
         .order("supplier_id", { ascending: true })
         .order("version", { ascending: false });
@@ -169,8 +173,16 @@ export function SupplierQuotationsTab({
                       {isCheap && !r.is_selected && <Badge className="bg-primary/10 text-primary">ราคาต่ำสุด</Badge>}
                     </div>
                   </div>
-                  <div className="text-lg font-semibold tabular-nums">
-                    {canSeePrice ? fmtCurrency(r.quotation_amount, "THB") : "฿ ••••••"}
+                  <div>
+                    <div className="text-lg font-semibold tabular-nums">
+                      {canSeePrice ? fmtCurrency(r.quotation_amount, "THB") : "฿ ••••••"}
+                    </div>
+                    {canSeePrice && (
+                      <div className="text-xs text-muted-foreground tabular-nums">
+                        ก่อน VAT · VAT {Number(r.vat_rate ?? 0).toFixed(2)}% ={" "}
+                        {fmtCurrency(r.amount_incl_vat ?? r.quotation_amount, "THB")} (สุทธิ)
+                      </div>
+                    )}
                   </div>
                   {r.notes && <p className="text-sm text-muted-foreground">{r.notes}</p>}
                   {r.file_urls?.length > 0 && (
@@ -237,6 +249,10 @@ function AddDialog({
   const [notes, setNotes] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const [vatRateId, setVatRateId] = useState<string | undefined>(undefined);
+  const { data: vatRates } = useVatRates();
+  const selectedVat = pickVatRate(vatRates, vatRateId);
+  const { pct, vatAmount, total } = calcVat(Number(amount) || 0, selectedVat ? Number(selectedVat.rate) : 0);
 
   // Suggest next version number for the chosen supplier
   const nextVersion = (() => {
@@ -258,6 +274,9 @@ function AddDialog({
         supplier_id: supplierId || null,
         supplier_name: supplierName || null,
         quotation_amount: amount ? Number(amount) : null,
+        vat_rate: selectedVat ? Number(selectedVat.rate) : 0,
+        vat_amount: amount ? vatAmount : null,
+        amount_incl_vat: amount ? total : null,
         received_date: date || null,
         notes: notes || null,
         version: nextVersion,
@@ -297,12 +316,31 @@ function AddDialog({
         )}
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <Label>ยอดเงิน (บาท)</Label>
+            <Label>ยอดเงินก่อน VAT (บาท)</Label>
             <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
           </div>
           <div>
             <Label>วันที่ได้รับ</Label>
             <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <Label>อัตรา VAT</Label>
+            <Select value={vatRateId ?? selectedVat?.id ?? "none"} onValueChange={setVatRateId}>
+              <SelectTrigger><SelectValue placeholder="ไม่คิด VAT" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">ไม่คิด VAT (0%)</SelectItem>
+                {(vatRates ?? []).map((v) => (
+                  <SelectItem key={v.id} value={v.id}>{v.label} ({Number(v.rate).toFixed(2)}%)</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs">
+            <div className="flex justify-between"><span className="text-muted-foreground">ก่อน VAT</span><span className="tabular-nums">{fmtNum(Number(amount) || 0)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">VAT {pct.toFixed(2)}%</span><span className="tabular-nums">{fmtNum(vatAmount)}</span></div>
+            <div className="mt-1 flex justify-between border-t pt-1 font-semibold"><span>ยอดสุทธิ</span><span className="tabular-nums">{fmtNum(total)}</span></div>
           </div>
         </div>
         <div>
