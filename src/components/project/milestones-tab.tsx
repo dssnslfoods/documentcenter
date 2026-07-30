@@ -190,6 +190,26 @@ export function MilestonesTab({
                             ))}
                           </SelectContent>
                         </Select>
+                        <Dialog
+                          open={editing === r.id}
+                          onOpenChange={(o) => setEditing(o ? r.id : null)}
+                        >
+                          <DialogTrigger asChild>
+                            <Button size="sm" variant="ghost" title="แก้ไขงวด">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <MilestoneDialog
+                            projectId={projectId}
+                            nextNumber={r.milestone_number}
+                            row={r}
+                            onClose={() => setEditing(null)}
+                            onSaved={() => {
+                              setEditing(null);
+                              qc.invalidateQueries({ queryKey: ["milestones", projectId] });
+                            }}
+                          />
+                        </Dialog>
                         <Button
                           size="sm"
                           variant="ghost"
@@ -198,6 +218,7 @@ export function MilestonesTab({
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
+
                       </div>
                     )}
                   </div>
