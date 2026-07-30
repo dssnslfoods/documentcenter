@@ -30,10 +30,13 @@ export function EditProjectDialog({
   project,
   open,
   onOpenChange,
+  canEditPrice = true,
 }: {
   project: EditableProject;
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  /** When false, price/VAT fields are hidden and left untouched on save. */
+  canEditPrice?: boolean;
 }) {
   const sb = getSupabase();
   const qc = useQueryClient();
@@ -100,13 +103,15 @@ export function EditProjectDialog({
         project_type: projectType || null,
         start_date: startDate || null,
         end_date: endDate || null,
-        contract_value: hasValue ? net : null,
-        budget: hasValue ? net : null,
-        vat_rate: vatPercentStr === "none" ? null : vatPercent,
-        vat_amount: hasValue ? vatAmount : null,
-        contract_value_incl_vat: hasValue ? gross : null,
         is_inhouse: isInhouse,
       };
+      if (canEditPrice) {
+        patch.contract_value = hasValue ? net : null;
+        patch.budget = hasValue ? net : null;
+        patch.vat_rate = vatPercentStr === "none" ? null : vatPercent;
+        patch.vat_amount = hasValue ? vatAmount : null;
+        patch.contract_value_incl_vat = hasValue ? gross : null;
+      }
       const { error } = await sb.from("projects").update(patch).eq("id", project.id);
       if (error) throw error;
     },
@@ -176,28 +181,34 @@ export function EditProjectDialog({
           <div className="space-y-2"><Label>วันเริ่ม</Label><Input type="date" value={startDate ?? ""} onChange={(e) => setStartDate(e.target.value)} /></div>
           <div className="space-y-2"><Label>วันสิ้นสุด</Label><Input type="date" value={endDate ?? ""} onChange={(e) => setEndDate(e.target.value)} /></div>
 
-          <div className="space-y-2">
-            <Label>มูลค่าสัญญา ก่อน VAT (บาท)</Label>
-            <Input type="number" step="0.01" min="0" value={contractValue} onChange={(e) => setContractValue(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>อัตรา VAT</Label>
-            <Select value={vatPercentStr} onValueChange={setVatPercentStr}>
-              <SelectTrigger><SelectValue placeholder="เลือกอัตรา VAT" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">ไม่มี VAT (0%)</SelectItem>
-                {(vatRates ?? []).map((v: { id: string; label: string; rate: number }) => (
-                  <SelectItem key={v.id} value={String(Number(v.rate))}>{v.label} ({Number(v.rate).toFixed(2)}%)</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {canEditPrice ? (
+            <div className="space-y-2">
+              <Label>มูลค่าสัญญา ก่อน VAT (บาท)</Label>
+              <Input type="number" step="0.01" min="0" value={contractValue} onChange={(e) => setContractValue(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>อัตรา VAT</Label>
+              <Select value={vatPercentStr} onValueChange={setVatPercentStr}>
+                <SelectTrigger><SelectValue placeholder="เลือกอัตรา VAT" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">ไม่มี VAT (0%)</SelectItem>
+                  {(vatRates ?? []).map((v: { id: string; label: string; rate: number }) => (
+                    <SelectItem key={v.id} value={String(Number(v.rate))}>{v.label} ({Number(v.rate).toFixed(2)}%)</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div className="sm:col-span-2 rounded-lg border bg-muted/40 p-3 text-sm">
-            <div className="flex justify-between"><span className="text-muted-foreground">มูลค่าก่อน VAT</span><span className="tabular-nums">{net.toLocaleString("th-TH", { minimumFractionDigits: 2 })} บาท</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">VAT {vatPercent.toFixed(2)}%</span><span className="tabular-nums">{vatAmount.toLocaleString("th-TH", { minimumFractionDigits: 2 })} บาท</span></div>
-            <div className="mt-1 flex justify-between border-t pt-1 font-semibold"><span>รวมทั้งสิ้น</span><span className="tabular-nums">{gross.toLocaleString("th-TH", { minimumFractionDigits: 2 })} บาท</span></div>
-          </div>
+            <div className="sm:col-span-2 rounded-lg border bg-muted/40 p-3 text-sm">
+              <div className="flex justify-between"><span className="text-muted-foreground">มูลค่าก่อน VAT</span><span className="tabular-nums">{net.toLocaleString("th-TH", { minimumFractionDigits: 2 })} บาท</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">VAT {vatPercent.toFixed(2)}%</span><span className="tabular-nums">{vatAmount.toLocaleString("th-TH", { minimumFractionDigits: 2 })} บาท</span></div>
+              <div className="mt-1 flex justify-between border-t pt-1 font-semibold"><span>รวมทั้งสิ้น</span><span className="tabular-nums">{gross.toLocaleString("th-TH", { minimumFractionDigits: 2 })} บาท</span></div>
+            </div>
+          ) : (
+            <div className="sm:col-span-2 rounded-lg border border-dashed bg-muted/30 p-3 text-xs text-muted-foreground">
+              คุณไม่มีสิทธิ์แก้ไขข้อมูลราคา (มูลค่าสัญญา / VAT) — แก้ไขข้อมูลอื่นได้ตามปกติ
+            </div>
+          )}
 
           <div className="sm:col-span-2 flex items-start gap-3 rounded-xl border bg-muted/30 p-3">
             <Checkbox id="edit_is_inhouse" checked={isInhouse} onCheckedChange={(c) => setIsInhouse(c === true)} className="mt-0.5" />
