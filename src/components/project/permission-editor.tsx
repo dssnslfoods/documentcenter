@@ -240,7 +240,7 @@ export function PermissionEditorDialog({
                         <div className="text-sm font-medium">ให้เข้าถึงแท็บ “{g.label}”</div>
                         <p className="text-xs text-muted-foreground">{PERMISSION_LABEL[g.access]}</p>
                       </div>
-                      <Switch checked={hasAccess(g)} onCheckedChange={(v) => toggleAccess(g, v)} />
+                      <Switch className="shrink-0" checked={hasAccess(g)} onCheckedChange={(v) => toggleAccess(g, v)} />
                     </div>
 
                     {g.options.length > 0 && (
