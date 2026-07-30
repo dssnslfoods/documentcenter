@@ -114,6 +114,18 @@ function NewProject() {
   const vatAmount = Math.round(netAmount * vatPercent) / 100;
   const grossAmount = Math.round((netAmount + vatAmount) * 100) / 100;
 
+  const [isDraft, setIsDraft] = useState(false);
+
+  const saveDraft = () => {
+    const values = form.getValues();
+    if (!values.name?.trim()) {
+      form.setError("name", { message: "กรุณากรอกชื่อโครงการอย่างน้อย 1 ช่อง เพื่อบันทึกร่าง" });
+      return;
+    }
+    setIsDraft(true);
+    create.mutate(values);
+  };
+
   const create = useMutation({
     mutationFn: async (values: FormValues) => {
       const sb = getSupabase();
