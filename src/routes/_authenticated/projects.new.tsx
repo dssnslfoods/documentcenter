@@ -292,12 +292,17 @@ function NewProject() {
           </CardContent>
         </Card>
 
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => navigate({ to: "/projects" })}>ยกเลิก</Button>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={() => navigate({ to: "/projects" })}>ยกเลิก</Button>
+          <Button type="button" variant="outline" onClick={saveDraft} disabled={create.isPending}>
+            {create.isPending && isDraft && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}บันทึกร่าง
+          </Button>
           <Button type="submit" disabled={create.isPending}>
-            {create.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}บันทึกโครงการ
+            {create.isPending && !isDraft && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}บันทึกโครงการ
           </Button>
         </div>
+        <p className="text-right text-xs text-muted-foreground">บันทึกร่าง: กรอกแค่ชื่อโครงการก็บันทึกได้ แล้วกลับมาแก้ไขภายหลัง</p>
+
       </form>
 
       <Dialog open={wtOpen} onOpenChange={setWtOpen}>
