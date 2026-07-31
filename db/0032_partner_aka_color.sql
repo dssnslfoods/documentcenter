@@ -19,10 +19,11 @@ begin
       return new;
     end if;
     -- อนุญาตเฉพาะการ sync ป้าย AKA จาก master ลูกค้า
+    -- projects_updated จะเปลี่ยน updated_at อัตโนมัติใน UPDATE เดียวกัน จึงต้องตัด field ระบบออกด้วย
     if (new.customer_aka is distinct from old.customer_aka
         or new.customer_aka_color is distinct from old.customer_aka_color)
-       and to_jsonb(new) - 'customer_aka' - 'customer_aka_color'
-         = to_jsonb(old) - 'customer_aka' - 'customer_aka_color' then
+       and to_jsonb(new) - 'customer_aka' - 'customer_aka_color' - 'updated_at'
+         = to_jsonb(old) - 'customer_aka' - 'customer_aka_color' - 'updated_at' then
       return new;
     end if;
     raise exception 'โครงการปิดแล้ว ไม่สามารถแก้ไขข้อมูลได้';
