@@ -50,7 +50,7 @@ const TAB_ORDER = [
   { value: "contract", label: "5 · สัญญา" },
   { value: "timeline", label: "6 · แผนงาน (Timeline)" },
   { value: "milestones", label: "7 · งวดงาน" },
-  { value: "team", label: "8 · ทีมและสิทธิ์" },
+  { value: "team", label: "8 · สมาชิกโครงการ" },
   { value: "history", label: "9 · ประวัติการแก้ไข" },
 ] as const;
 
