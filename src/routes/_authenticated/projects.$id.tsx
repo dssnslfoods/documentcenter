@@ -261,8 +261,9 @@ function ProjectDetail() {
                   case "supplier": return perms?.canSeeSupplier ?? false;
                   case "customer": return perms?.canSeeCustomer ?? false;
                   case "contract": return perms?.canSeeContract ?? false;
-                  case "timeline": return perms?.canSeeMilestones ?? false;
+                  case "timeline": return perms?.canSeeTimeline ?? false;
                   case "milestones": return perms?.canSeeMilestones ?? false;
+
                   default: return true;
                 }
               })
