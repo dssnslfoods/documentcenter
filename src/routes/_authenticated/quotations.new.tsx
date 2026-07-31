@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, FolderKanban, Plus } from "lucide-react";
+import { Loader2, FolderKanban, Plus, AlertCircle, CheckCircle2, HelpCircle } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import { getSupabase } from "@/lib/supabase";
 import { PartnerFormDialog } from "@/components/partner-form-dialog";
 import { useVatRates, calcVat, pickVatRate } from "@/lib/vat";
 import { ScanQuotationCard } from "@/components/scan-quotation-card";
+import type { ScannedQuotation } from "@/lib/scan-quotation.functions";
 
 const schema = z.object({
   project_id: z.string().uuid("กรุณาเลือกโครงการ"),
@@ -43,6 +44,27 @@ export const Route = createFileRoute("/_authenticated/quotations/new")({
   component: NewQuotation,
 });
 
+function FieldConfidence({ score }: { score: number | null | undefined }) {
+  if (score == null) return null;
+  const high = score >= 0.9;
+  const medium = score >= 0.7;
+  return (
+    <span
+      className={`ml-2 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+        high
+          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+          : medium
+            ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+            : "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400"
+      }`}
+      title={`ความมั่นใจ ${Math.round(score * 100)}%`}
+    >
+      {high ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
+      {Math.round(score * 100)}%
+    </span>
+  );
+}
+
 function NewQuotation() {
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -66,6 +88,9 @@ function NewQuotation() {
     resolver: zodResolver(schema) as never,
     defaultValues: { type: "outgoing", currency: "THB", amount_before_tax: 0, discount: 0, tax: 0, project_id: search.project ?? "" },
   });
+
+  const [scanConfidence, setScanConfidence] = useState<ScannedQuotation["confidence"] | undefined>(undefined);
+  const confidence = (key: keyof NonNullable<ScannedQuotation["confidence"]>) => scanConfidence?.[key];
 
   const amt = Number(form.watch("amount_before_tax")) || 0;
   const disc = Number(form.watch("discount")) || 0;
@@ -133,6 +158,7 @@ function NewQuotation() {
       <form onSubmit={form.handleSubmit((v) => create.mutate(v))} className="space-y-6">
         <ScanQuotationCard
           onScanned={(d) => {
+            setScanConfidence(d.confidence);
             if (d.title) form.setValue("title", d.title, { shouldValidate: true });
             if (d.issue_date) form.setValue("issue_date", d.issue_date);
             if (d.expiry_date) form.setValue("expiry_date", d.expiry_date);
@@ -177,7 +203,10 @@ function NewQuotation() {
           <CardHeader><CardTitle>ข้อมูลใบเสนอราคา</CardTitle></CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2 space-y-2">
-              <Label>หัวข้อ *</Label>
+              <Label>
+                หัวข้อ *
+                <FieldConfidence score={confidence("title")} />
+              </Label>
               <Input {...form.register("title")} />
               {form.formState.errors.title && <p className="text-xs text-destructive">{form.formState.errors.title.message}</p>}
             </div>
@@ -192,7 +221,10 @@ function NewQuotation() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>คู่ค้า / ลูกค้า *</Label>
+              <Label>
+                คู่ค้า / ลูกค้า *
+                <FieldConfidence score={confidence("partner_name")} />
+              </Label>
               <div className="flex gap-2">
                 <Select value={form.watch("partner_id") || undefined} onValueChange={(v) => form.setValue("partner_id", v, { shouldValidate: true })}>
                   <SelectTrigger className="flex-1"><SelectValue placeholder="เลือกจากฐานข้อมูลคู่ค้า" /></SelectTrigger>
@@ -220,16 +252,16 @@ function NewQuotation() {
                 <SelectContent>{depts?.map((d: { id: string; name_th: string }) => <SelectItem key={d.id} value={d.id}>{d.name_th}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="space-y-2"><Label>วันที่ออก</Label><Input type="date" {...form.register("issue_date")} /></div>
-            <div className="space-y-2"><Label>วันหมดอายุ</Label><Input type="date" {...form.register("expiry_date")} /></div>
+            <div className="space-y-2"><Label>วันที่ออก<FieldConfidence score={confidence("issue_date")} /></Label><Input type="date" {...form.register("issue_date")} /></div>
+            <div className="space-y-2"><Label>วันหมดอายุ<FieldConfidence score={confidence("expiry_date")} /></Label><Input type="date" {...form.register("expiry_date")} /></div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader><CardTitle>มูลค่า</CardTitle></CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-4">
-            <div className="space-y-2"><Label>มูลค่าก่อน VAT</Label><Input type="number" step="0.01" min="0" {...form.register("amount_before_tax")} /></div>
-            <div className="space-y-2"><Label>ส่วนลด</Label><Input type="number" step="0.01" min="0" {...form.register("discount")} /></div>
+            <div className="space-y-2"><Label>มูลค่าก่อน VAT<FieldConfidence score={confidence("amount_before_tax")} /></Label><Input type="number" step="0.01" min="0" {...form.register("amount_before_tax")} /></div>
+            <div className="space-y-2"><Label>ส่วนลด<FieldConfidence score={confidence("discount")} /></Label><Input type="number" step="0.01" min="0" {...form.register("discount")} /></div>
             <div className="space-y-2">
               <Label>อัตรา VAT</Label>
               <Select value={vatRateId ?? selectedVat?.id ?? "none"} onValueChange={setVatRateId}>
@@ -243,7 +275,7 @@ function NewQuotation() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>สกุลเงิน</Label>
+              <Label>สกุลเงิน<FieldConfidence score={confidence("currency")} /></Label>
               <Select defaultValue="THB" onValueChange={(v) => form.setValue("currency", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent><SelectItem value="THB">THB</SelectItem><SelectItem value="USD">USD</SelectItem></SelectContent>
@@ -261,7 +293,7 @@ function NewQuotation() {
         <Card>
           <CardHeader><CardTitle>รายละเอียด</CardTitle></CardHeader>
           <CardContent className="grid gap-4">
-            <div className="space-y-2"><Label>รายละเอียด</Label><Textarea rows={3} {...form.register("description")} /></div>
+            <div className="space-y-2"><Label>รายละเอียด<FieldConfidence score={confidence("description")} /></Label><Textarea rows={3} {...form.register("description")} /></div>
             <div className="space-y-2"><Label>หมายเหตุ</Label><Textarea rows={2} {...form.register("notes")} /></div>
           </CardContent>
         </Card>

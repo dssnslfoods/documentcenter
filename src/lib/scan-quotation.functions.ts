@@ -18,18 +18,43 @@ export type ScannedQuotation = {
   total_amount?: number | null;
   currency?: string | null;
   description?: string | null;
+  confidence?: {
+    title?: number | null;
+    quotation_no?: number | null;
+    partner_name?: number | null;
+    issue_date?: number | null;
+    expiry_date?: number | null;
+    amount_before_tax?: number | null;
+    discount?: number | null;
+    tax?: number | null;
+    total_amount?: number | null;
+    currency?: number | null;
+    description?: number | null;
+  };
 };
 
 const SYSTEM = `คุณคือผู้ช่วยอ่านเอกสารใบเสนอราคา (ภาษาไทย/อังกฤษ)
 อ่านรูปภาพเอกสารแล้วดึงข้อมูลออกมาเป็น JSON เท่านั้น ห้ามมีข้อความอื่น
 รูปแบบ:
-{"title":string|null,"quotation_no":string|null,"partner_name":string|null,
-"issue_date":"YYYY-MM-DD"|null,"expiry_date":"YYYY-MM-DD"|null,
-"amount_before_tax":number|null,"discount":number|null,"tax":number|null,
-"total_amount":number|null,"currency":string|null,"description":string|null}
+{
+  "data": {
+    "title":string|null,"quotation_no":string|null,"partner_name":string|null,
+    "issue_date":"YYYY-MM-DD"|null,"expiry_date":"YYYY-MM-DD"|null,
+    "amount_before_tax":number|null,"discount":number|null,"tax":number|null,
+    "total_amount":number|null,"currency":string|null,"description":string|null
+  },
+  "confidence": {
+    "title":0.0-1.0,"quotation_no":0.0-1.0,"partner_name":0.0-1.0,
+    "issue_date":0.0-1.0,"expiry_date":0.0-1.0,
+    "amount_before_tax":0.0-1.0,"discount":0.0-1.0,"tax":0.0-1.0,
+    "total_amount":0.0-1.0,"currency":0.0-1.0,"description":0.0-1.0
+  }
+}
 กติกา: ตัวเลขเป็นตัวเลขล้วน ไม่มีคอมมาหรือสัญลักษณ์สกุลเงิน
 ถ้าเป็น พ.ศ. ให้แปลงเป็น ค.ศ. ก่อน (พ.ศ. - 543)
 amount_before_tax คือยอดก่อน VAT, tax คือยอด VAT, total_amount คือยอดรวมสุทธิ
+confidence คือความมั่นใจของแต่ละช่อง ใส่เป็นทศนิยมระหว่าง 0.0 ถึง 1.0 (1.0 = มั่นใจสูงสุด)
+หากช่องใดอ่านไม่ได้หรือไม่แน่ใจ ให้ใส่ค่า null ทั้ง data และ confidence ของช่องนั้น
 ข้อมูลที่ไม่พบให้ใส่ null`;
 
 export const scanQuotation = createServerFn({ method: "POST" })
@@ -66,7 +91,11 @@ export const scanQuotation = createServerFn({ method: "POST" })
     if (!match) throw new Error("ไม่สามารถอ่านข้อมูลจากเอกสารได้");
 
     try {
-      return JSON.parse(match[0]) as ScannedQuotation;
+      const parsed = JSON.parse(match[0]) as { data?: ScannedQuotation; confidence?: ScannedQuotation["confidence"] } | ScannedQuotation;
+      // รองรับทั้งรูปแบบเก่า (flat) และรูปแบบใหม่ (data + confidence)
+      const data = "data" in parsed && parsed.data ? parsed.data : (parsed as ScannedQuotation);
+      const confidence = "confidence" in parsed && parsed.confidence ? parsed.confidence : undefined;
+      return { ...data, confidence };
     } catch {
       throw new Error("ไม่สามารถอ่านข้อมูลจากเอกสารได้");
     }
