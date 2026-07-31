@@ -7,6 +7,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { useMyRoles } from "@/hooks/use-page-access";
+import { canCreateProjects } from "@/lib/project-roles";
 import { getSupabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/use-supabase";
 import { fmtCurrency, fmtDate, fmtNumber } from "@/lib/format";
@@ -173,9 +175,11 @@ function Dashboard() {
         title="ภาพรวม"
         description="เริ่มต้นวันด้วยงานที่ต้องทำ · ตามด้วยสถานะโครงการและสัญญา"
         actions={
-          <Button asChild size="lg" className="rounded-full shadow-sm">
-            <Link to="/projects/new"><Plus className="mr-2 h-4 w-4" />เพิ่มโครงการ</Link>
-          </Button>
+          canCreate ? (
+            <Button asChild size="lg" className="rounded-full shadow-sm">
+              <Link to="/projects/new"><Plus className="mr-2 h-4 w-4" />เพิ่มโครงการ</Link>
+            </Button>
+          ) : null
         }
       />
 

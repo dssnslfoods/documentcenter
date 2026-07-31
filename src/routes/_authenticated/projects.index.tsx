@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { useMyRoles } from "@/hooks/use-page-access";
+import { canCreateProjects } from "@/lib/project-roles";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDate, fmtCurrency } from "@/lib/format";
 import {
@@ -104,9 +106,11 @@ function ProjectsList() {
         title="โครงการ"
         description="ตามลำดับ workflow · ร่าง → RFQ → ใบเสนอ Supplier → ยื่นข้อเสนอ → ผลลัพธ์ → ดำเนินงาน → ปิดโครงการ"
         actions={
-          <Button asChild size="lg" className="rounded-full shadow-sm">
-            <Link to="/projects/new"><Plus className="mr-2 h-4 w-4" />เพิ่มโครงการใหม่</Link>
-          </Button>
+          canCreate ? (
+            <Button asChild size="lg" className="rounded-full shadow-sm">
+              <Link to="/projects/new"><Plus className="mr-2 h-4 w-4" />เพิ่มโครงการใหม่</Link>
+            </Button>
+          ) : null
         }
       />
 
@@ -218,7 +222,6 @@ function PipelineView({ rows, isLoading }: { rows: ProjectRow[]; isLoading: bool
         icon={FolderKanban}
         title="ยังไม่มีโครงการ"
         description="เริ่มต้นเพิ่มโครงการแรกเพื่อจัดกลุ่มเอกสารและติดตามความคืบหน้า"
-        action={<Button asChild><Link to="/projects/new"><Plus className="mr-2 h-4 w-4" />เพิ่มโครงการ</Link></Button>}
       />
     );
   }
@@ -389,8 +392,7 @@ function ListView({
             icon={FolderKanban}
             title="ยังไม่มีโครงการ"
             description="เริ่มต้นเพิ่มโครงการแรกเพื่อจัดกลุ่มเอกสารและติดตามความคืบหน้า"
-            action={<Button asChild><Link to="/projects/new"><Plus className="mr-2 h-4 w-4" />เพิ่มโครงการ</Link></Button>}
-          />
+              />
         )}
         {count > pageSize && (
           <div className="flex items-center justify-between border-t px-4 py-3 text-sm">
