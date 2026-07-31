@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Plus } from "lucide-react";
+import { AlertTriangle, Info, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { getSupabase } from "@/lib/supabase";
 import { PartnerFormDialog, usePartners } from "@/components/partner-form-dialog";
 import { useAuth } from "@/hooks/use-supabase";
+import { fetchFinalQuotationSummary } from "@/lib/contract-value";
 
 export type EditableProject = {
   id: string;
@@ -50,10 +51,10 @@ export function EditProjectDialog({
     queryFn: async () =>
       (await sb.from("work_types").select("id, code, name_th").eq("is_active", true).order("sort_order").order("name_th")).data ?? [],
   });
-  const { data: vatRates } = useQuery({
-    queryKey: ["vat-rates"],
-    queryFn: async () =>
-      (await sb.from("vat_rates").select("id, label, rate, is_default").eq("is_active", true).order("sort_order").order("rate")).data ?? [],
+  const { data: finalQuote } = useQuery({
+    queryKey: ["final-quotation", project.id],
+    enabled: open && canEditPrice,
+    queryFn: () => fetchFinalQuotationSummary(project.id),
   });
 
   const [name, setName] = useState(project.name ?? "");
@@ -63,12 +64,6 @@ export function EditProjectDialog({
   const [projectType, setProjectType] = useState(project.project_type ?? "");
   const [startDate, setStartDate] = useState(project.start_date ?? "");
   const [endDate, setEndDate] = useState(project.end_date ?? "");
-  const [contractValue, setContractValue] = useState(
-    project.contract_value == null ? "" : String(project.contract_value),
-  );
-  const [vatPercentStr, setVatPercentStr] = useState(
-    project.vat_rate == null ? "none" : String(Number(project.vat_rate)),
-  );
   const [isInhouse, setIsInhouse] = useState(!!project.is_inhouse);
 
   // Re-sync the form only when the dialog opens (or switches project).
@@ -87,22 +82,20 @@ export function EditProjectDialog({
     setProjectType(project.project_type ?? "");
     setStartDate(project.start_date ?? "");
     setEndDate(project.end_date ?? "");
-    setContractValue(project.contract_value == null ? "" : String(project.contract_value));
-    setVatPercentStr(project.vat_rate == null ? "none" : String(Number(project.vat_rate)));
     setIsInhouse(!!project.is_inhouse);
   }, [open, syncKey, project]);
 
-  const net = Number(contractValue) || 0;
-  const vatPercent = vatPercentStr === "none" ? 0 : Number(vatPercentStr) || 0;
-  const vatAmount = Math.round(net * vatPercent) / 100;
-  const gross = Math.round((net + vatAmount) * 100) / 100;
+  // Contract value is derived from the FINAL customer quotation — never typed here.
+  const net = Number(finalQuote?.final?.quotation_amount ?? 0);
+  const vatPercent = Number(finalQuote?.final?.vat_rate ?? 0);
+  const vatAmount = Number(finalQuote?.final?.vat_amount ?? Math.round(net * vatPercent) / 100);
+  const gross = Number(finalQuote?.final?.amount_incl_vat ?? Math.round((net + vatAmount) * 100) / 100);
 
   const save = useMutation({
     mutationFn: async () => {
       if (!name.trim()) throw new Error("กรุณากรอกชื่อโครงการ");
       if (startDate && endDate && new Date(endDate) < new Date(startDate))
         throw new Error("วันสิ้นสุดต้องไม่น้อยกว่าวันเริ่ม");
-      const hasValue = contractValue !== "";
       const patch: Record<string, unknown> = {
         name: name.trim(),
         description: description || null,
@@ -115,13 +108,6 @@ export function EditProjectDialog({
         updated_by: user?.id ?? null,
         updated_at: new Date().toISOString(),
       };
-      if (canEditPrice) {
-        patch.contract_value = hasValue ? net : null;
-        patch.budget = hasValue ? net : null;
-        patch.vat_rate = vatPercentStr === "none" ? null : vatPercent;
-        patch.vat_amount = hasValue ? vatAmount : null;
-        patch.contract_value_incl_vat = hasValue ? gross : null;
-      }
       const { data, error } = await sb
         .from("projects")
         .update(patch)
@@ -204,35 +190,34 @@ export function EditProjectDialog({
           <div className="space-y-2"><Label>วันสิ้นสุด</Label><Input type="date" value={endDate ?? ""} onChange={(e) => setEndDate(e.target.value)} /></div>
 
           {canEditPrice ? (
-            <>
-            <div className="space-y-2">
-              <Label>มูลค่าสัญญา ก่อน VAT (บาท)</Label>
-              <Input type="number" step="0.01" min="0" value={contractValue} onChange={(e) => setContractValue(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>อัตรา VAT</Label>
-              <Select value={vatPercentStr} onValueChange={setVatPercentStr}>
-                <SelectTrigger><SelectValue placeholder="เลือกอัตรา VAT" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">ไม่มี VAT (0%)</SelectItem>
-                  {(vatRates ?? []).map((v: { id: string; label: string; rate: number }) => (
-                    <SelectItem key={v.id} value={String(Number(v.rate))}>{v.label} ({Number(v.rate).toFixed(2)}%)</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
             <div className="sm:col-span-2 rounded-lg border bg-muted/40 p-3 text-sm">
-              <div className="flex justify-between"><span className="text-muted-foreground">มูลค่าก่อน VAT</span><span className="tabular-nums">{net.toLocaleString("th-TH", { minimumFractionDigits: 2 })} บาท</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">VAT {vatPercent.toFixed(2)}%</span><span className="tabular-nums">{vatAmount.toLocaleString("th-TH", { minimumFractionDigits: 2 })} บาท</span></div>
-              <div className="mt-1 flex justify-between border-t pt-1 font-semibold"><span>รวมทั้งสิ้น</span><span className="tabular-nums">{gross.toLocaleString("th-TH", { minimumFractionDigits: 2 })} บาท</span></div>
+              <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+                <Info className="h-3.5 w-3.5" />
+                มูลค่าสัญญาดึงมาจากใบเสนอราคาลูกค้าฉบับสุดท้าย (Final) โดยอัตโนมัติ — แก้ไขที่แท็บ “ใบเสนอราคาลูกค้า”
+              </div>
+              {finalQuote?.final ? (
+                <>
+                  <div className="flex justify-between"><span className="text-muted-foreground">มูลค่าก่อน VAT</span><span className="tabular-nums">{net.toLocaleString("th-TH", { minimumFractionDigits: 2 })} บาท</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">VAT {vatPercent.toFixed(2)}%</span><span className="tabular-nums">{vatAmount.toLocaleString("th-TH", { minimumFractionDigits: 2 })} บาท</span></div>
+                  <div className="mt-1 flex justify-between border-t pt-1 font-semibold"><span>รวมทั้งสิ้น</span><span className="tabular-nums">{gross.toLocaleString("th-TH", { minimumFractionDigits: 2 })} บาท</span></div>
+                </>
+              ) : (
+                <div className="flex items-start gap-2 text-xs">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
+                  <span>
+                    {finalQuote?.hasQuotations
+                      ? "ใบเสนอราคาลูกค้ายังไม่ตกลง (ยังไม่มีฉบับ Final) — ยังไม่มีมูลค่าสัญญา"
+                      : "ยังไม่มีใบเสนอราคาลูกค้าในโครงการนี้"}
+                  </span>
+                </div>
+              )}
             </div>
-            </>
           ) : (
             <div className="sm:col-span-2 rounded-lg border border-dashed bg-muted/30 p-3 text-xs text-muted-foreground">
-              คุณไม่มีสิทธิ์แก้ไขข้อมูลราคา (มูลค่าสัญญา / VAT) — แก้ไขข้อมูลอื่นได้ตามปกติ
+              คุณไม่มีสิทธิ์ดู/แก้ไขข้อมูลราคา (มูลค่าสัญญา / VAT) — แก้ไขข้อมูลอื่นได้ตามปกติ
             </div>
           )}
+
 
           <div className="sm:col-span-2 flex items-start gap-3 rounded-xl border bg-muted/30 p-3">
             <Checkbox id="edit_is_inhouse" checked={isInhouse} onCheckedChange={(c) => setIsInhouse(c === true)} className="mt-0.5" />

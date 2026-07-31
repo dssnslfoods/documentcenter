@@ -15,6 +15,9 @@ import { fmtDate, fmtCurrency } from "@/lib/format";
 import { uploadProjectFile, getProjectFileUrl } from "@/lib/project-files";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useVatRates, calcVat, pickVatRate, fmtNum } from "@/lib/vat";
+import { syncContractValueFromFinalQuotation } from "@/lib/contract-value";
+import { AlertTriangle } from "lucide-react";
+
 
 type Row = {
   id: string;
@@ -54,14 +57,26 @@ export function CustomerQuotationsTab({
     },
   });
 
+  const afterChange = async () => {
+    try {
+      await syncContractValueFromFinalQuotation(projectId);
+    } catch {
+      /* keep the UI responsive even if the project row is not writable */
+    }
+    qc.invalidateQueries({ queryKey: ["customer-quotations", projectId] });
+    qc.invalidateQueries({ queryKey: ["project", projectId], refetchType: "all" });
+    qc.invalidateQueries({ queryKey: ["projects"], refetchType: "all" });
+    qc.invalidateQueries({ queryKey: ["final-quotation", projectId] });
+  };
+
   const remove = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await sb.from("customer_quotations").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("ลบเรียบร้อย");
-      qc.invalidateQueries({ queryKey: ["customer-quotations", projectId] });
+      await afterChange();
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -72,19 +87,35 @@ export function CustomerQuotationsTab({
       const { error } = await sb.from("customer_quotations").update({ is_final: true }).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      toast.success("กำหนดเป็นฉบับสุดท้ายแล้ว");
-      qc.invalidateQueries({ queryKey: ["customer-quotations", projectId] });
+    onSuccess: async () => {
+      toast.success("กำหนดเป็นฉบับสุดท้ายแล้ว — อัปเดตมูลค่าสัญญาของโครงการให้อัตโนมัติ");
+      await afterChange();
     },
   });
+
 
   const openFile = async (path: string) => {
     const url = await getProjectFileUrl(path);
     if (url) window.open(url, "_blank");
   };
 
+  const hasFinal = (rows ?? []).some((r) => r.is_final);
+
   return (
     <div className="space-y-4">
+      {!isLoading && rows && rows.length > 0 && !hasFinal && (
+        <div className="flex items-start gap-3 rounded-xl border border-warning/40 bg-warning/10 p-3 text-sm">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+          <div>
+            <div className="font-medium">ใบเสนอราคาลูกค้ายังไม่ตกลง (ยังไม่มีฉบับ Final)</div>
+            <p className="text-xs text-muted-foreground">
+              มูลค่าสัญญาของโครงการจะถูกดึงจากใบเสนอราคาฉบับสุดท้ายเท่านั้น — กดปุ่มดาว
+              เพื่อกำหนดฉบับที่ลูกค้าตกลงเป็น Final
+            </p>
+          </div>
+        </div>
+      )}
+
       {canEdit && (
         <div className="flex justify-end">
           <Dialog open={open} onOpenChange={setOpen}>
@@ -94,14 +125,15 @@ export function CustomerQuotationsTab({
             <AddDialog
               projectId={projectId}
               onClose={() => setOpen(false)}
-              onSaved={() => {
+              onSaved={async () => {
                 setOpen(false);
-                qc.invalidateQueries({ queryKey: ["customer-quotations", projectId] });
+                await afterChange();
               }}
             />
           </Dialog>
         </div>
       )}
+
 
       {isLoading ? (
         <div className="py-8 text-center text-sm text-muted-foreground">กำลังโหลด...</div>
