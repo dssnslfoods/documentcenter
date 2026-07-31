@@ -88,18 +88,24 @@ function NewProject() {
       const { data, error } = await sb
         .from("work_types")
         .insert({ code, name_th: trimmed, is_active: true, sort_order })
-        .select("id, name_th")
+        .select("id, code, name_th")
         .single();
       if (error) throw error;
       return data;
     },
-    onSuccess: (row: { name_th: string }) => {
-      toast.success("เพิ่มประเภทงานแล้ว");
+    onSuccess: (row: { id: string; code: string; name_th: string }) => {
+      toast.success(`เพิ่มประเภทงาน "${row.name_th}" และเลือกให้แล้ว`);
       setWtOpen(false);
+      setWtName("");
+      // เติมเข้า cache ทันที เพื่อให้ค่าที่เพิ่งสร้างถูกเลือกในฟอร์มได้เลย
+      qc.setQueryData<{ id: string; code: string; name_th: string }[]>(["work-types"], (old) =>
+        old ? [...old.filter((w) => w.id !== row.id), row] : [row],
+      );
       qc.invalidateQueries({ queryKey: ["work-types"] });
       qc.invalidateQueries({ queryKey: ["work-types-admin"] });
       form.setValue("project_type", row.name_th, { shouldValidate: true });
     },
+
     onError: (e: Error) => toast.error("เพิ่มประเภทงานไม่สำเร็จ", { description: e.message }),
   });
 
