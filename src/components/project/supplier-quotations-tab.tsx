@@ -372,7 +372,9 @@ function AddDialog({
       <DialogHeader><DialogTitle>เพิ่มใบเสนอราคา Supplier</DialogTitle></DialogHeader>
       <div className="space-y-3">
         <ScanQuotationCard
+          onFile={(f) => setFile(f)}
           onScanned={(d) => {
+
             setScanned(d);
             if (d.amount_before_tax != null) setAmount(String(d.amount_before_tax));
             if (d.issue_date) setDate(d.issue_date);
