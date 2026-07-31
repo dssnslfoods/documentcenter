@@ -245,18 +245,19 @@ function PipelineView({ rows, isLoading }: { rows: ProjectRow[]; isLoading: bool
       {PIPELINE_COLUMNS.map((col) => {
         const items = grouped.get(col.key) ?? [];
         const st = col.key;
+        const c = phaseTone(st);
         return (
-          <div key={col.key} className="tile flex flex-col p-3">
-            <div className="mb-2 flex items-center justify-between px-1">
+          <div key={col.key} className={`tile flex flex-col overflow-hidden p-0 ${c.column}`}>
+            <div className={`mb-0 flex items-center justify-between border-b px-3 py-2.5 ${c.header}`}>
               <div className="flex items-center gap-2">
-                <span className={`h-1.5 w-1.5 rounded-full ${dotColor(st)}`} />
-                <span className="text-xs font-semibold tracking-wide text-muted-foreground">{col.label}</span>
+                <span className={`h-2 w-2 rounded-full ${c.dot}`} />
+                <span className={`text-xs font-semibold tracking-wide ${c.text}`}>{col.label}</span>
               </div>
-              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">{items.length}</span>
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${c.badge}`}>{items.length}</span>
             </div>
-            <div className="min-h-[6rem] space-y-2">
+            <div className="min-h-[6rem] space-y-2 p-3">
               {items.length === 0 ? (
-                <div className="grid h-24 place-items-center rounded-md border border-dashed text-[11px] text-muted-foreground">
+                <div className={`grid h-24 place-items-center rounded-md border border-dashed text-[11px] text-muted-foreground ${c.empty}`}>
                   ว่าง
                 </div>
               ) : (
@@ -265,12 +266,12 @@ function PipelineView({ rows, isLoading }: { rows: ProjectRow[]; isLoading: bool
                     key={p.id}
                     to="/projects/$id"
                     params={{ id: p.id }}
-                    className="tile tile-interactive block rounded-lg p-3"
+                    className={`tile tile-interactive block rounded-lg border-l-4 p-3 ${c.card}`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="font-mono text-[10px] uppercase text-muted-foreground">{p.code}</div>
                       {p.contract_value != null && (
-                        <div className="shrink-0 text-[10px] font-medium tabular-nums text-muted-foreground">
+                        <div className={`shrink-0 text-[10px] font-semibold tabular-nums ${c.text}`}>
                           {fmtCurrency(p.contract_value, "THB")}
                         </div>
                       )}
@@ -287,6 +288,7 @@ function PipelineView({ rows, isLoading }: { rows: ProjectRow[]; isLoading: bool
           </div>
         );
       })}
+
       </div>
       {lostCount > 0 && (
         <div className="flex items-center justify-between rounded-xl border border-dashed px-4 py-3 text-xs text-muted-foreground">
