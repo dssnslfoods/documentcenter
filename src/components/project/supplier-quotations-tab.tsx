@@ -16,6 +16,12 @@ import { getSupabase } from "@/lib/supabase";
 import { fmtDate, fmtCurrency } from "@/lib/format";
 import { uploadProjectFile, getProjectFileUrl } from "@/lib/project-files";
 import { PartnerFormDialog, usePartners } from "@/components/partner-form-dialog";
+import { ScanQuotationCard } from "@/components/scan-quotation-card";
+import type { ScannedItem, ScannedQuotation } from "@/lib/scan-quotation.functions";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 
 type Row = {
@@ -46,6 +52,8 @@ export function SupplierQuotationsTab({
   const sb = getSupabase();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [rfqPrompt, setRfqPrompt] = useState<{ supplier: string; items: ScannedItem[] } | null>(null);
+  const [savingRfq, setSavingRfq] = useState(false);
 
   const { data: partners } = usePartners("supplier");
 
@@ -136,9 +144,14 @@ export function SupplierQuotationsTab({
               partners={partners ?? []}
               existing={rows ?? []}
               onClose={() => setOpen(false)}
-              onSaved={() => {
+              onSaved={(scanned) => {
                 setOpen(false);
                 qc.invalidateQueries({ queryKey: ["supplier-quotations", projectId] });
+                // ถามเฉพาะครั้งแรกของโครงการ ที่สแกนแล้วได้รายการสินค้า/บริการ
+                const items = scanned?.items ?? [];
+                if ((rows ?? []).length === 0 && items.length > 0) {
+                  setRfqPrompt({ supplier: scanned?.supplier ?? "Supplier", items });
+                }
               }}
             />
           </Dialog>
@@ -221,8 +234,68 @@ export function SupplierQuotationsTab({
           })}
         </div>
       )}
+
+      <AlertDialog open={!!rfqPrompt} onOpenChange={(v) => !v && setRfqPrompt(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>นำรายการจากใบเสนอราคาไปใส่ใน RFQ / Spec ด้วยหรือไม่?</AlertDialogTitle>
+            <AlertDialogDescription>
+              ระบบอ่านรายการได้ {rfqPrompt?.items.length ?? 0} รายการจากใบเสนอราคาของ {rfqPrompt?.supplier}
+              — สามารถบันทึกเป็นบันทึกข้อความในแท็บ RFQ / Spec เพื่อใช้อ้างอิงและค้นหาต่อได้
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {rfqPrompt && (
+            <pre className="max-h-52 overflow-auto rounded-md border bg-muted/40 p-3 text-xs whitespace-pre-wrap">
+              {itemsToText(rfqPrompt.items)}
+            </pre>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel>ไม่ใส่</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={savingRfq}
+              onClick={async (e) => {
+                e.preventDefault();
+                if (!rfqPrompt) return;
+                setSavingRfq(true);
+                try {
+                  const { error } = await sb.from("project_spec_notes").insert({
+                    project_id: projectId,
+                    note_type: "rfq_spec",
+                    title: `รายการจากใบเสนอราคา - ${rfqPrompt.supplier}`,
+                    content: itemsToText(rfqPrompt.items),
+                  });
+                  if (error) throw error;
+                  toast.success("เพิ่มลงใน RFQ / Spec แล้ว");
+                  qc.invalidateQueries({ queryKey: ["project-spec-notes", projectId, "rfq_spec"] });
+                  qc.invalidateQueries({ queryKey: ["project-signals", projectId] });
+                  setRfqPrompt(null);
+                } catch (err) {
+                  toast.error((err as Error).message);
+                } finally {
+                  setSavingRfq(false);
+                }
+              }}
+            >
+              {savingRfq && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}ใส่ใน RFQ / Spec
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
+}
+
+/** แปลงรายการที่สแกนได้เป็นข้อความสำหรับบันทึก RFQ / Spec */
+function itemsToText(items: ScannedItem[]) {
+  return items
+    .map((it, i) => {
+      const parts = [`${i + 1}. ${it.description ?? "-"}`];
+      if (it.qty != null) parts.push(`จำนวน ${it.qty}${it.unit ? " " + it.unit : ""}`);
+      if (it.unit_price != null) parts.push(`ราคา/หน่วย ${it.unit_price}`);
+      if (it.amount != null) parts.push(`รวม ${it.amount}`);
+      return parts.join(" | ");
+    })
+    .join("\n");
 }
 
 function AddDialog({
@@ -236,9 +309,10 @@ function AddDialog({
   partners: { id: string; name: string }[];
   existing: Row[];
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (scanned?: { supplier: string; items: ScannedItem[] }) => void;
 }) {
   const sb = getSupabase();
+  const [scanned, setScanned] = useState<ScannedQuotation | null>(null);
   const [supplierId, setSupplierId] = useState<string>("");
   const [supplierName, setSupplierName] = useState("");
   const [partnerOpen, setPartnerOpen] = useState(false);
@@ -283,7 +357,10 @@ function AddDialog({
       });
       if (error) throw error;
       toast.success("บันทึกเรียบร้อย");
-      onSaved();
+      const items = (scanned?.items ?? []).filter((it) => it.description);
+      const supplierLabel =
+        partners.find((p) => p.id === supplierId)?.name || supplierName || scanned?.partner_name || "Supplier";
+      onSaved(items.length ? { supplier: supplierLabel, items } : undefined);
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -295,6 +372,20 @@ function AddDialog({
     <DialogContent className="max-w-lg">
       <DialogHeader><DialogTitle>เพิ่มใบเสนอราคา Supplier</DialogTitle></DialogHeader>
       <div className="space-y-3">
+        <ScanQuotationCard
+          onScanned={(d) => {
+            setScanned(d);
+            if (d.amount_before_tax != null) setAmount(String(d.amount_before_tax));
+            if (d.issue_date) setDate(d.issue_date);
+            if (!supplierId && d.partner_name) {
+              const match = partners.find((p) => p.name.trim().toLowerCase() === d.partner_name!.trim().toLowerCase());
+              if (match) setSupplierId(match.id);
+              else setSupplierName(d.partner_name);
+            }
+            const noteParts = [d.quotation_no ? `เลขที่ ${d.quotation_no}` : null, d.description].filter(Boolean);
+            if (noteParts.length) setNotes(noteParts.join(" · "));
+          }}
+        />
         <div>
           <Label>Supplier (จากรายชื่อคู่ค้า)</Label>
           <div className="flex gap-2">
