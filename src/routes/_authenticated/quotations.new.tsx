@@ -6,7 +6,7 @@ import { z } from "zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, FolderKanban, Plus, AlertCircle, CheckCircle2, HelpCircle } from "lucide-react";
-import { PageHeader, EmptyState } from "@/page-header";
+import { PageHeader, EmptyState } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
