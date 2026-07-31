@@ -13,23 +13,21 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/page-header";
 import { getSupabase } from "@/lib/supabase";
+import {
+  PROJECT_ROLES, PROJECT_ROLE_DESC, PROJECT_ROLE_LABEL, ROLE_PERMISSIONS,
+  type ProjectRole,
+} from "@/lib/project-roles";
 
 type Member = {
   id: string;
   user_id: string;
+  project_role: ProjectRole;
   role_title: string | null;
   responsibilities: string | null;
   profiles?: { full_name: string | null; email: string | null } | null;
   perm_count: number;
   is_owner?: boolean;
 };
-
-
-const FULL_PERMS = [
-  "view_project_info", "view_spec_scope", "view_supplier_quotation", "view_customer_quotation",
-  "view_contract", "view_milestones", "view_all_documents",
-  "edit_project", "edit_milestones", "upload_documents",
-];
 
 export function TeamTab({
   projectId,
@@ -47,7 +45,7 @@ export function TeamTab({
   const { data: members, isLoading, error } = useQuery({
     queryKey: ["project-members", projectId],
     queryFn: async () => {
-      // Ensure the project owner/creator is always a team member
+      // Ensure the project owner/creator is always an executive team member
       const { data: project } = await sb
         .from("projects")
         .select("owner_id, created_by")
@@ -58,7 +56,7 @@ export function TeamTab({
       const load = async () => {
         const { data, error } = await sb
           .from("project_members")
-          .select("id, user_id, role_title, responsibilities")
+          .select("id, user_id, project_role, role_title, responsibilities")
           .eq("project_id", projectId);
         if (error) throw error;
         return data ?? [];
@@ -69,12 +67,12 @@ export function TeamTab({
       if (ownerId && !rows.some((r) => r.user_id === ownerId)) {
         const { data: created } = await sb
           .from("project_members")
-          .insert({ project_id: projectId, user_id: ownerId, added_by: ownerId })
+          .insert({ project_id: projectId, user_id: ownerId, added_by: ownerId, project_role: "exec" })
           .select("id")
           .maybeSingle();
         if (created?.id) {
           await sb.from("project_member_permissions").insert(
-            FULL_PERMS.map((k) => ({ project_member_id: created.id, permission_key: k, granted: true })),
+            ROLE_PERMISSIONS.exec.map((k) => ({ project_member_id: created.id, permission_key: k, granted: true })),
           );
           rows = await load();
         }
@@ -96,6 +94,7 @@ export function TeamTab({
       return rows.map((m) => ({
         id: m.id,
         user_id: m.user_id,
+        project_role: ((m as { project_role?: string }).project_role ?? "staff") as ProjectRole,
         role_title: (m as { role_title?: string | null }).role_title ?? null,
         responsibilities: (m as { responsibilities?: string | null }).responsibilities ?? null,
         profiles: pMap.get(m.user_id) ?? null,
@@ -105,54 +104,57 @@ export function TeamTab({
     },
   });
 
-  const { data: templates } = useQuery({
-    queryKey: ["permission-templates"],
-    queryFn: async () => {
-      const { data } = await sb.from("permission_templates").select("id, template_name, permissions");
-      return data ?? [];
-    },
-  });
-
   const { data: allUsers } = useQuery({
-    queryKey: ["all-users-basic"],
+    queryKey: ["all-users-with-roles"],
     enabled: isAdmin,
     queryFn: async () => {
       const { data } = await sb.from("profiles").select("id, full_name, email").eq("is_active", true).order("full_name");
-      return data ?? [];
+      const { data: roles } = await sb.from("user_roles").select("user_id, role");
+      const roleMap = new Map<string, string[]>();
+      (roles ?? []).forEach((r: { user_id: string; role: string }) => {
+        roleMap.set(r.user_id, [...(roleMap.get(r.user_id) ?? []), r.role]);
+      });
+      return (data ?? []).map((u) => ({ ...u, roles: roleMap.get(u.id) ?? [] }));
     },
   });
 
+  const execCount = (members ?? []).filter((m) => m.project_role === "exec").length;
+
   const remove = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await sb.from("project_members").delete().eq("id", id);
+    mutationFn: async (m: Member) => {
+      if (m.project_role === "exec" && execCount <= 1) {
+        throw new Error("โครงการต้องมีผู้บริหารโครงการอย่างน้อย 1 คน");
+      }
+      const { error } = await sb.from("project_members").delete().eq("id", m.id);
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("ลบสมาชิกเรียบร้อย");
       qc.invalidateQueries({ queryKey: ["project-members", projectId] });
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const add = useMutation({
     mutationFn: async ({
       userId,
-      templateId,
+      projectRole,
       roleTitle,
       responsibilities,
-    }: { userId: string; templateId: string; roleTitle: string; responsibilities: string }) => {
-      const tpl = templates?.find((t) => t.id === templateId);
-      const perms = (tpl?.permissions ?? []) as string[];
+    }: { userId: string; projectRole: ProjectRole; roleTitle: string; responsibilities: string }) => {
       const { data: inserted, error } = await sb
         .from("project_members")
         .insert({
           project_id: projectId,
           user_id: userId,
+          project_role: projectRole,
           role_title: roleTitle.trim() || null,
           responsibilities: responsibilities.trim() || null,
         })
         .select("id")
         .single();
       if (error) throw error;
+      const perms = ROLE_PERMISSIONS[projectRole];
       if (perms.length > 0) {
         await sb.from("project_member_permissions").insert(
           perms.map((k) => ({ project_member_id: inserted.id, permission_key: k, granted: true })),
@@ -162,22 +164,42 @@ export function TeamTab({
     onSuccess: () => {
       toast.success("เพิ่มสมาชิกและสิทธิ์เรียบร้อย");
       qc.invalidateQueries({ queryKey: ["project-members", projectId] });
+      qc.invalidateQueries({ queryKey: ["project-perms", projectId] });
       setOpen(false);
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const updateRole = useMutation({
-    mutationFn: async ({ id, roleTitle, responsibilities }: { id: string; roleTitle: string; responsibilities: string }) => {
+    mutationFn: async ({
+      member, projectRole, roleTitle, responsibilities,
+    }: { member: Member; projectRole: ProjectRole; roleTitle: string; responsibilities: string }) => {
+      if (member.project_role === "exec" && projectRole !== "exec" && execCount <= 1) {
+        throw new Error("โครงการต้องมีผู้บริหารโครงการอย่างน้อย 1 คน");
+      }
       const { error } = await sb
         .from("project_members")
-        .update({ role_title: roleTitle.trim() || null, responsibilities: responsibilities.trim() || null })
-        .eq("id", id);
+        .update({
+          project_role: projectRole,
+          role_title: roleTitle.trim() || null,
+          responsibilities: responsibilities.trim() || null,
+        })
+        .eq("id", member.id);
       if (error) throw error;
+
+      if (projectRole !== member.project_role) {
+        await sb.from("project_member_permissions").delete().eq("project_member_id", member.id);
+        await sb.from("project_member_permissions").insert(
+          ROLE_PERMISSIONS[projectRole].map((k) => ({
+            project_member_id: member.id, permission_key: k, granted: true,
+          })),
+        );
+      }
     },
     onSuccess: () => {
-      toast.success("บันทึกตำแหน่งและหน้าที่เรียบร้อย");
+      toast.success("บันทึกบทบาทและหน้าที่เรียบร้อย");
       qc.invalidateQueries({ queryKey: ["project-members", projectId] });
+      qc.invalidateQueries({ queryKey: ["project-perms", projectId] });
       setEditRole(null);
     },
     onError: (e: Error) => toast.error(e.message),
@@ -188,28 +210,37 @@ export function TeamTab({
 
   return (
     <div className="space-y-4">
-      {isAdmin && (
-        <div className="flex justify-end">
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm"><UserPlus className="mr-2 h-4 w-4" />เพิ่มสมาชิก</Button>
-            </DialogTrigger>
-            <AddMemberDialog
-              users={availableUsers}
-              templates={templates ?? []}
-              onCancel={() => setOpen(false)}
-              onAdd={(userId, templateId, roleTitle, responsibilities) =>
-                add.mutate({ userId, templateId, roleTitle, responsibilities })
-              }
-              saving={add.isPending}
-            />
-          </Dialog>
-        </div>
-      )}
+      <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">บทบาทในโครงการ:</span>{" "}
+        {PROJECT_ROLES.map((r) => `${PROJECT_ROLE_LABEL[r]} — ${PROJECT_ROLE_DESC[r]}`).join(" · ")}
+      </div>
 
-      {!isAdmin && (
+      {isAdmin ? (
+        <div className="flex items-center justify-between gap-3">
+          {execCount === 0 && (
+            <div className="text-xs font-medium text-destructive">
+              โครงการนี้ยังไม่มีผู้บริหารโครงการ กรุณากำหนดอย่างน้อย 1 คน
+            </div>
+          )}
+          <div className="ml-auto">
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm"><UserPlus className="mr-2 h-4 w-4" />เพิ่มสมาชิก</Button>
+              </DialogTrigger>
+              <AddMemberDialog
+                users={availableUsers}
+                onCancel={() => setOpen(false)}
+                onAdd={(userId, projectRole, roleTitle, responsibilities) =>
+                  add.mutate({ userId, projectRole, roleTitle, responsibilities })
+                }
+                saving={add.isPending}
+              />
+            </Dialog>
+          </div>
+        </div>
+      ) : (
         <div className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
-          เฉพาะผู้ดูแลระบบเท่านั้นที่สามารถเพิ่ม/ลบสมาชิกและปรับสิทธิ์
+          เฉพาะผู้บริหารโครงการเท่านั้นที่สามารถเพิ่ม/ลบสมาชิกและปรับสิทธิ์
         </div>
       )}
 
@@ -230,9 +261,12 @@ export function TeamTab({
                   {(m.profiles?.full_name || m.profiles?.email || "?").slice(0, 1).toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="truncate font-medium">{m.profiles?.full_name || m.profiles?.email || m.user_id.slice(0, 8)}</span>
-                    {m.is_owner && <Badge className="shrink-0">ผู้สร้างโครงการ</Badge>}
+                    <Badge variant={m.project_role === "exec" ? "default" : "secondary"} className="shrink-0">
+                      {PROJECT_ROLE_LABEL[m.project_role]}
+                    </Badge>
+                    {m.is_owner && <Badge variant="outline" className="shrink-0">ผู้สร้างโครงการ</Badge>}
                   </div>
                   <div className="truncate text-xs text-muted-foreground">{m.profiles?.email}</div>
                   {m.role_title && (
@@ -242,32 +276,32 @@ export function TeamTab({
                     <div className="mt-0.5 whitespace-pre-wrap text-xs text-muted-foreground">{m.responsibilities}</div>
                   )}
                 </div>
-                <Badge variant="outline" className="shrink-0">{m.perm_count} สิทธิ์</Badge>
                 {isAdmin && (
                   <>
-                    <Button size="sm" variant="ghost" onClick={() => setEditRole(m)} title="แก้ไขตำแหน่ง/หน้าที่">
+                    <Button size="sm" variant="ghost" onClick={() => setEditRole(m)} title="แก้ไขบทบาท/หน้าที่">
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setEditMember({ id: m.id, label: m.profiles?.full_name || m.profiles?.email || "-" })}
-                      title="แก้ไขสิทธิ์"
-                    >
-                      <ShieldCheck className="h-4 w-4" />
-                    </Button>
+                    {m.project_role === "exec" && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setEditMember({ id: m.id, label: m.profiles?.full_name || m.profiles?.email || "-" })}
+                        title="แก้ไขสิทธิ์"
+                      >
+                        <ShieldCheck className="h-4 w-4" />
+                      </Button>
+                    )}
                     {!m.is_owner && (
                       <Button
                         size="sm"
                         variant="ghost"
                         className="text-destructive"
-                        onClick={() => confirm("ลบสมาชิกออกจากโครงการ?") && remove.mutate(m.id)}
+                        onClick={() => confirm("ลบสมาชิกออกจากโครงการ?") && remove.mutate(m)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     )}
                   </>
-
                 )}
               </CardContent>
             </Card>
@@ -286,10 +320,15 @@ export function TeamTab({
         {editRole && (
           <RoleDialog
             member={editRole}
+            canBeExec={
+              !!(allUsers ?? []).find((u) => u.id === editRole.user_id)?.roles.some((r) =>
+                r === "super_admin" || r === "management",
+              ) || editRole.project_role === "exec"
+            }
             saving={updateRole.isPending}
             onCancel={() => setEditRole(null)}
-            onSave={(roleTitle, responsibilities) =>
-              updateRole.mutate({ id: editRole.id, roleTitle, responsibilities })
+            onSave={(projectRole, roleTitle, responsibilities) =>
+              updateRole.mutate({ member: editRole, projectRole, roleTitle, responsibilities })
             }
           />
         )}
@@ -300,19 +339,23 @@ export function TeamTab({
 
 function RoleDialog({
   member,
+  canBeExec,
   saving,
   onCancel,
   onSave,
 }: {
   member: Member;
+  canBeExec: boolean;
   saving: boolean;
   onCancel: () => void;
-  onSave: (roleTitle: string, responsibilities: string) => void;
+  onSave: (projectRole: ProjectRole, roleTitle: string, responsibilities: string) => void;
 }) {
+  const [projectRole, setProjectRole] = useState<ProjectRole>(member.project_role);
   const [roleTitle, setRoleTitle] = useState(member.role_title ?? "");
   const [responsibilities, setResponsibilities] = useState(member.responsibilities ?? "");
 
   useEffect(() => {
+    setProjectRole(member.project_role);
     setRoleTitle(member.role_title ?? "");
     setResponsibilities(member.responsibilities ?? "");
   }, [member]);
@@ -320,9 +363,10 @@ function RoleDialog({
   return (
     <DialogContent>
       <DialogHeader>
-        <DialogTitle>ตำแหน่งและหน้าที่ — {member.profiles?.full_name || member.profiles?.email || "-"}</DialogTitle>
+        <DialogTitle>บทบาทและหน้าที่ — {member.profiles?.full_name || member.profiles?.email || "-"}</DialogTitle>
       </DialogHeader>
       <div className="space-y-3">
+        <RoleSelect value={projectRole} onChange={setProjectRole} canBeExec={canBeExec} />
         <div>
           <Label>ชื่อตำแหน่ง</Label>
           <Input value={roleTitle} onChange={(e) => setRoleTitle(e.target.value)} placeholder="เช่น ผู้จัดการโครงการ" />
@@ -339,7 +383,7 @@ function RoleDialog({
       </div>
       <DialogFooter>
         <Button variant="outline" onClick={onCancel}>ยกเลิก</Button>
-        <Button onClick={() => onSave(roleTitle, responsibilities)} disabled={saving}>
+        <Button onClick={() => onSave(projectRole, roleTitle, responsibilities)} disabled={saving}>
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}บันทึก
         </Button>
       </DialogFooter>
@@ -347,23 +391,57 @@ function RoleDialog({
   );
 }
 
+function RoleSelect({
+  value,
+  onChange,
+  canBeExec,
+}: {
+  value: ProjectRole | "";
+  onChange: (v: ProjectRole) => void;
+  canBeExec: boolean;
+}) {
+  return (
+    <div>
+      <Label>บทบาทในโครงการ</Label>
+      <Select value={value} onValueChange={(v) => onChange(v as ProjectRole)}>
+        <SelectTrigger><SelectValue placeholder="เลือกบทบาท" /></SelectTrigger>
+        <SelectContent>
+          {PROJECT_ROLES.map((r) => (
+            <SelectItem key={r} value={r} disabled={r === "exec" && !canBeExec}>
+              {PROJECT_ROLE_LABEL[r]}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <p className="mt-1 text-xs text-muted-foreground">
+        {value ? PROJECT_ROLE_DESC[value] : "ผู้บริหารโครงการต้องมีบทบาทระบบเป็นผู้ดูแลระบบสูงสุดหรือผู้บริหาร"}
+      </p>
+    </div>
+  );
+}
+
 function AddMemberDialog({
   users,
-  templates,
   onCancel,
   onAdd,
   saving,
 }: {
-  users: { id: string; full_name: string | null; email: string | null }[];
-  templates: { id: string; template_name: string }[];
+  users: { id: string; full_name: string | null; email: string | null; roles: string[] }[];
   onCancel: () => void;
-  onAdd: (userId: string, templateId: string, roleTitle: string, responsibilities: string) => void;
+  onAdd: (userId: string, projectRole: ProjectRole, roleTitle: string, responsibilities: string) => void;
   saving: boolean;
 }) {
   const [userId, setUserId] = useState("");
-  const [templateId, setTemplateId] = useState("");
+  const [projectRole, setProjectRole] = useState<ProjectRole | "">("");
   const [roleTitle, setRoleTitle] = useState("");
   const [responsibilities, setResponsibilities] = useState("");
+
+  const selected = users.find((u) => u.id === userId);
+  const canBeExec = !!selected?.roles.some((r) => r === "super_admin" || r === "management");
+
+  useEffect(() => {
+    if (projectRole === "exec" && !canBeExec) setProjectRole("");
+  }, [canBeExec, projectRole]);
 
   return (
     <DialogContent>
@@ -382,6 +460,7 @@ function AddMemberDialog({
             </SelectContent>
           </Select>
         </div>
+        <RoleSelect value={projectRole} onChange={setProjectRole} canBeExec={canBeExec} />
         <div>
           <Label>ชื่อตำแหน่ง</Label>
           <Input value={roleTitle} onChange={(e) => setRoleTitle(e.target.value)} placeholder="เช่น ผู้จัดการโครงการ" />
@@ -395,24 +474,12 @@ function AddMemberDialog({
             placeholder="เช่น ควบคุมแผนงาน ติดตามงวดงาน ประสานงานลูกค้า"
           />
         </div>
-        <div>
-          <Label>Template สิทธิ์</Label>
-          <Select value={templateId} onValueChange={setTemplateId}>
-            <SelectTrigger><SelectValue placeholder="เลือก Template" /></SelectTrigger>
-            <SelectContent>
-              {templates.map((t) => (
-                <SelectItem key={t.id} value={t.id}>{t.template_name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="mt-1 text-xs text-muted-foreground">สามารถปรับสิทธิ์รายบุคคลได้ในภายหลัง</p>
-        </div>
       </div>
       <DialogFooter>
         <Button variant="outline" onClick={onCancel}>ยกเลิก</Button>
         <Button
-          onClick={() => onAdd(userId, templateId, roleTitle, responsibilities)}
-          disabled={!userId || !templateId || saving}
+          onClick={() => projectRole && onAdd(userId, projectRole, roleTitle, responsibilities)}
+          disabled={!userId || !projectRole || saving}
         >
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}เพิ่ม
         </Button>
@@ -420,4 +487,3 @@ function AddMemberDialog({
     </DialogContent>
   );
 }
-
