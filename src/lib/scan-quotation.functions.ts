@@ -18,6 +18,19 @@ export type ScannedQuotation = {
   total_amount?: number | null;
   currency?: string | null;
   description?: string | null;
+  confidence?: {
+    title?: number | null;
+    quotation_no?: number | null;
+    partner_name?: number | null;
+    issue_date?: number | null;
+    expiry_date?: number | null;
+    amount_before_tax?: number | null;
+    discount?: number | null;
+    tax?: number | null;
+    total_amount?: number | null;
+    currency?: number | null;
+    description?: number | null;
+  };
 };
 
 const SYSTEM = `คุณคือผู้ช่วยอ่านเอกสารใบเสนอราคา (ภาษาไทย/อังกฤษ)
