@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Copy, Trash2, Plus, FileText, Pencil, X, Check } from "lucide-react";
+import { Copy, Trash2, Plus, FileText, Pencil, X, Check, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ type Note = {
   content: string;
   created_at: string;
   updated_at: string;
+  sort_order: number | null;
 };
 
 export function ProjectSpecNotesList({
@@ -47,14 +48,34 @@ export function ProjectSpecNotesList({
     queryFn: async () => {
       const { data, error } = await sb
         .from("project_spec_notes")
-        .select("id, title, content, created_at, updated_at")
+        .select("id, title, content, created_at, updated_at, sort_order")
         .eq("project_id", projectId)
         .eq("note_type", type)
+        .order("sort_order", { ascending: true })
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Note[];
     },
   });
+
+  const reorder = useMutation({
+    mutationFn: async ({ index, dir }: { index: number; dir: -1 | 1 }) => {
+      const list = [...(notes ?? [])];
+      const target = index + dir;
+      if (target < 0 || target >= list.length) return;
+      [list[index], list[target]] = [list[target], list[index]];
+      for (let i = 0; i < list.length; i++) {
+        const { error } = await sb
+          .from("project_spec_notes")
+          .update({ sort_order: i + 1 })
+          .eq("id", list[i].id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
   const create = useMutation({
     mutationFn: async () => {
@@ -66,6 +87,7 @@ export function ProjectSpecNotesList({
         note_type: type,
         title: t,
         content: c,
+        sort_order: (notes?.length ?? 0) + 1,
       });
       if (error) throw error;
     },
@@ -156,7 +178,7 @@ export function ProjectSpecNotesList({
           <EmptyState title={emptyLabel} icon={FileText} />
         ) : (
           <div className="space-y-3">
-            {notes.map((n) => (
+            {notes.map((n, i) => (
               <div key={n.id} className="rounded-md border p-3">
                 {editingId === n.id ? (
                   <div className="space-y-2">
@@ -185,6 +207,28 @@ export function ProjectSpecNotesList({
                           อัปเดต {fmtDateTime(n.updated_at)}
                         </div>
                       </div>
+                      {canEdit && notes.length > 1 && (
+                        <div className="flex items-center">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            title="เลื่อนขึ้น"
+                            disabled={i === 0 || reorder.isPending}
+                            onClick={() => reorder.mutate({ index: i, dir: -1 })}
+                          >
+                            <ArrowUp className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            title="เลื่อนลง"
+                            disabled={i === notes.length - 1 || reorder.isPending}
+                            onClick={() => reorder.mutate({ index: i, dir: 1 })}
+                          >
+                            <ArrowDown className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
                       <Button size="sm" variant="ghost" title="คัดลอกเนื้อหา" onClick={() => copy(n.content)}>
                         <Copy className="h-4 w-4" />
                       </Button>
