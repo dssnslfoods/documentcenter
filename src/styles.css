@@ -164,6 +164,14 @@
   --chart-3: oklch(0.8 0.16 70);
   --chart-4: oklch(0.7 0.17 148);
   --chart-5: oklch(0.65 0.2 27);
+
+  --phase-draft: oklch(0.7 0.03 260);
+  --phase-rfq: oklch(0.72 0.14 200);
+  --phase-supplier: oklch(0.7 0.16 295);
+  --phase-proposal: oklch(0.8 0.15 70);
+  --phase-progress: oklch(0.68 0.18 256);
+  --phase-done: oklch(0.72 0.15 155);
+
   --sidebar: oklch(0.22 0.03 260);
   --sidebar-foreground: oklch(0.95 0.005 250);
   --sidebar-primary: oklch(0.68 0.18 256);
