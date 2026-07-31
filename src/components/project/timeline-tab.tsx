@@ -653,7 +653,7 @@ function TaskDialog({
                   placeholder="เช่น ลูกค้า / คู่ค้า / ผู้รับเหมา"
                 />
                 <div className="flex flex-wrap gap-1.5">
-                  {["ลูกค้า", "คู่ค้า", "ผู้รับเหมา", "ที่ปรึกษา"].map((p) => (
+                  {DEFAULT_ASSIGNEES.map((p) => (
                     <Button
                       key={p}
                       type="button"
@@ -666,6 +666,35 @@ function TaskDialog({
                     </Button>
                   ))}
                 </div>
+                {remembered.filter((r) => !DEFAULT_ASSIGNEES.includes(r)).length > 0 && (
+                  <div className="space-y-1">
+                    <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      เคยใช้ล่าสุด
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {remembered
+                        .filter((r) => !DEFAULT_ASSIGNEES.includes(r))
+                        .map((r) => (
+                          <span
+                            key={r}
+                            className="inline-flex h-7 items-center gap-1 rounded-full border bg-muted/40 pl-3 pr-1 text-xs"
+                          >
+                            <button type="button" onClick={() => setAssigneeLabel(r)} className="max-w-[140px] truncate">
+                              {r}
+                            </button>
+                            <button
+                              type="button"
+                              title="ลบออกจากรายการที่จดจำ"
+                              className="rounded-full p-0.5 text-muted-foreground hover:text-destructive"
+                              onClick={() => setRemembered(forgetAssignee(r))}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </span>
+                        ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
