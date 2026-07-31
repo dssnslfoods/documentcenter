@@ -41,6 +41,7 @@ const STATUS_LABEL: Record<ContractStatus, string> = {
 };
 
 function ContractDetail() {
+  const { canSeeMoney } = useCanSeeMoney();
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();

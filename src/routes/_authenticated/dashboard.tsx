@@ -41,6 +41,7 @@ function Dashboard() {
   const canCreate = canCreateProjects(roles);
   const isExec = canCreate;
   const { can } = useCanAccess();
+  const { canSeeMoney } = useCanSeeMoney();
   const { user } = useAuth();
   const roleLabel = roles.map((r) => ROLES.find((x) => x.value === r)?.label ?? r).join(" · ");
 

@@ -18,6 +18,7 @@ export const Route = createFileRoute("/_authenticated/documents/$id")({
 });
 
 function DocumentDetail() {
+  const { canSeeMoney } = useCanSeeMoney();
   const { id } = useParams({ from: "/_authenticated/documents/$id" });
   const qc = useQueryClient();
 

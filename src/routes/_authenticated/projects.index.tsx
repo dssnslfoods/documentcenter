@@ -227,6 +227,7 @@ const PIPELINE_COLUMNS: { key: ProjectLifecycleStatus; label: string; short: str
 ];
 
 function PipelineView({ rows, isLoading, memberIds, canPeekMembers }: { rows: ProjectRow[]; isLoading: boolean; memberIds: Set<string>; canPeekMembers: boolean }) {
+  const { canSeeMoney } = useCanSeeMoney();
   if (isLoading) {
     return (
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
