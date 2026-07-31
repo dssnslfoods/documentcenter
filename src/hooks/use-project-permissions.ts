@@ -41,6 +41,8 @@ export type ProjectPermissions = {
   isAdmin: boolean;
   isManager: boolean;
   isMember: boolean;
+  /** โครงการปิดแล้ว — ล็อกการแก้ไขทั้งหมด */
+  isLocked: boolean;
   projectRole: ProjectRole | null;
   keys: Set<PermissionKey>;
   has: (k: PermissionKey) => boolean;
