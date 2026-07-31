@@ -45,6 +45,7 @@ import { Route as AuthenticatedDocumentsIdRouteImport } from './routes/_authenti
 import { Route as AuthenticatedContractsIdRouteImport } from './routes/_authenticated/contracts.$id'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
+import { Route as ApiPublicCronDailyCheckRouteImport } from './routes/api/public/cron/daily-check'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -247,6 +248,11 @@ const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   path: '/.lovable/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCronDailyCheckRoute = ApiPublicCronDailyCheckRouteImport.update({
+  id: '/api/public/cron/daily-check',
+  path: '/api/public/cron/daily-check',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -284,6 +290,7 @@ export interface FileRoutesByFullPath {
   '/projects/': typeof AuthenticatedProjectsIndexRoute
   '/quotations/': typeof AuthenticatedQuotationsIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
+  '/api/public/cron/daily-check': typeof ApiPublicCronDailyCheckRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -321,6 +328,7 @@ export interface FileRoutesByTo {
   '/projects': typeof AuthenticatedProjectsIndexRoute
   '/quotations': typeof AuthenticatedQuotationsIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
+  '/api/public/cron/daily-check': typeof ApiPublicCronDailyCheckRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -360,6 +368,7 @@ export interface FileRoutesById {
   '/_authenticated/projects/': typeof AuthenticatedProjectsIndexRoute
   '/_authenticated/quotations/': typeof AuthenticatedQuotationsIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
+  '/api/public/cron/daily-check': typeof ApiPublicCronDailyCheckRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -399,6 +408,7 @@ export interface FileRouteTypes {
     | '/projects/'
     | '/quotations/'
     | '/settings/'
+    | '/api/public/cron/daily-check'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -436,6 +446,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/quotations'
     | '/settings'
+    | '/api/public/cron/daily-check'
   id:
     | '__root__'
     | '/'
@@ -474,6 +485,7 @@ export interface FileRouteTypes {
     | '/_authenticated/projects/'
     | '/_authenticated/quotations/'
     | '/_authenticated/settings/'
+    | '/api/public/cron/daily-check'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -486,6 +498,7 @@ export interface RootRouteChildren {
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  ApiPublicCronDailyCheckRoute: typeof ApiPublicCronDailyCheckRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -742,6 +755,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DotlovableOauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/daily-check': {
+      id: '/api/public/cron/daily-check'
+      path: '/api/public/cron/daily-check'
+      fullPath: '/api/public/cron/daily-check'
+      preLoaderRoute: typeof ApiPublicCronDailyCheckRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -819,6 +839,7 @@ const rootRouteChildren: RootRouteChildren = {
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  ApiPublicCronDailyCheckRoute: ApiPublicCronDailyCheckRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
