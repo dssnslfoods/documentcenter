@@ -329,6 +329,7 @@ function AddDialog({
   const [supplierName, setSupplierName] = useState("");
   const [partnerOpen, setPartnerOpen] = useState(false);
 
+  const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("");
   const [notes, setNotes] = useState("");
