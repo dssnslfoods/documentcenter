@@ -64,7 +64,7 @@ export function SupplierQuotationsTab({
     queryFn: async () => {
       const { data, error } = await sb
         .from("supplier_quotations")
-        .select("id, supplier_id, supplier_name, quotation_amount, vat_rate, vat_amount, amount_incl_vat, received_date, notes, file_urls, version, is_selected, partners(name)")
+        .select("id, supplier_id, supplier_name, quotation_amount, vat_rate, vat_amount, amount_incl_vat, received_date, notes, title, file_urls, version, is_selected, partners(name)")
         .eq("project_id", projectId)
         .order("supplier_id", { ascending: true })
         .order("version", { ascending: false });
