@@ -401,8 +401,19 @@ function AddDialog({
             }
             const noteParts = [d.quotation_no ? `เลขที่ ${d.quotation_no}` : null, d.description].filter(Boolean);
             if (noteParts.length) setNotes(noteParts.join(" · "));
+            // เดาหัวข้องานจากคำอธิบาย หรือรายการแรกในใบเสนอราคา
+            const guess = d.description || d.items?.find((it) => it.description)?.description || "";
+            if (guess) setTitle(String(guess).slice(0, 120));
           }}
         />
+        <div>
+          <Label>หัวข้องาน / ชื่อรายการ</Label>
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="เช่น งานพิมพ์กล่องของขวัญ Premium Gift"
+          />
+        </div>
         <div>
           <Label>Supplier (จากรายชื่อคู่ค้า)</Label>
           <div className="flex gap-2">
