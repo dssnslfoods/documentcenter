@@ -91,11 +91,12 @@ export function ScanQuotationCard({
 
   const confidenceFields = lastResult?.confidence
     ? (Object.entries(lastResult.confidence) as [keyof ScannedQuotation["confidence"], number | null | undefined][])
-        .filter(([key]) => key !== "confidence")
+        .filter(([key]) => key !== "confidence" && key !== "items")
         .map(([key, score]) => ({ key, label: LABELS[key] ?? key, score, value: lastResult[key as keyof ScannedQuotation] }))
-        .filter((item) => item.value != null || item.score != null)
+        .filter((item) => (item.value != null && typeof item.value !== "object") || item.score != null)
         .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
     : [];
+
 
   const lowConfidenceCount = confidenceFields.filter((f) => (f.score ?? 0) < 0.7).length;
 
