@@ -180,15 +180,6 @@ function ProjectDetail() {
         <ArrowLeft className="mr-2 h-4 w-4" />กลับรายการโครงการ
       </Button>
 
-      {!perms?.isMember && (
-        <div className="flex items-center gap-2 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-foreground">
-          <Eye className="h-4 w-4 shrink-0 text-warning" />
-          <span>
-            <span className="font-medium">โหมดดูอย่างเดียว</span> — คุณไม่ได้เป็นสมาชิกของโครงการนี้ จึงดูข้อมูลได้เท่านั้น ไม่สามารถแก้ไขหรืออัปโหลดเอกสารได้
-          </span>
-        </div>
-      )}
-
       {/* Header + auto-detect status banner */}
       <div className="tile grid gap-5 p-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
         <div className="min-w-0 space-y-2">
@@ -201,7 +192,19 @@ function ProjectDetail() {
 
 
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">{p.name}</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-semibold tracking-tight">{p.name}</h1>
+            {!perms?.isMember && (
+              <Badge
+                variant="outline"
+                title="คุณไม่ได้เป็นสมาชิกของโครงการนี้ จึงดูข้อมูลได้เท่านั้น"
+                className="gap-1 border-warning/40 bg-warning/10 text-warning"
+              >
+                <Eye className="h-3 w-3" />โหมดดูอย่างเดียว
+              </Badge>
+            )}
+          </div>
+
           <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
             {p.project_type && <span>ประเภท {p.project_type}</span>}
             {(p.contract_value ?? p.budget) != null && (

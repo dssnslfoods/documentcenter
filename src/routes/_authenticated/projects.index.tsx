@@ -245,18 +245,19 @@ function PipelineView({ rows, isLoading }: { rows: ProjectRow[]; isLoading: bool
       {PIPELINE_COLUMNS.map((col) => {
         const items = grouped.get(col.key) ?? [];
         const st = col.key;
+        const c = phaseTone(st);
         return (
-          <div key={col.key} className="tile flex flex-col p-3">
-            <div className="mb-2 flex items-center justify-between px-1">
+          <div key={col.key} className={`tile flex flex-col overflow-hidden p-0 ${c.column}`}>
+            <div className={`mb-0 flex items-center justify-between border-b px-3 py-2.5 ${c.header}`}>
               <div className="flex items-center gap-2">
-                <span className={`h-1.5 w-1.5 rounded-full ${dotColor(st)}`} />
-                <span className="text-xs font-semibold tracking-wide text-muted-foreground">{col.label}</span>
+                <span className={`h-2 w-2 rounded-full ${c.dot}`} />
+                <span className={`text-xs font-semibold tracking-wide ${c.text}`}>{col.label}</span>
               </div>
-              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">{items.length}</span>
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${c.badge}`}>{items.length}</span>
             </div>
-            <div className="min-h-[6rem] space-y-2">
+            <div className="min-h-[6rem] space-y-2 p-3">
               {items.length === 0 ? (
-                <div className="grid h-24 place-items-center rounded-md border border-dashed text-[11px] text-muted-foreground">
+                <div className={`grid h-24 place-items-center rounded-md border border-dashed text-[11px] text-muted-foreground ${c.empty}`}>
                   ว่าง
                 </div>
               ) : (
@@ -265,12 +266,12 @@ function PipelineView({ rows, isLoading }: { rows: ProjectRow[]; isLoading: bool
                     key={p.id}
                     to="/projects/$id"
                     params={{ id: p.id }}
-                    className="tile tile-interactive block rounded-lg p-3"
+                    className={`tile tile-interactive block rounded-lg border-l-4 p-3 ${c.card}`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="font-mono text-[10px] uppercase text-muted-foreground">{p.code}</div>
                       {p.contract_value != null && (
-                        <div className="shrink-0 text-[10px] font-medium tabular-nums text-muted-foreground">
+                        <div className={`shrink-0 text-[10px] font-semibold tabular-nums ${c.text}`}>
                           {fmtCurrency(p.contract_value, "THB")}
                         </div>
                       )}
@@ -287,6 +288,7 @@ function PipelineView({ rows, isLoading }: { rows: ProjectRow[]; isLoading: bool
           </div>
         );
       })}
+
       </div>
       {lostCount > 0 && (
         <div className="flex items-center justify-between rounded-xl border border-dashed px-4 py-3 text-xs text-muted-foreground">
@@ -298,23 +300,66 @@ function PipelineView({ rows, isLoading }: { rows: ProjectRow[]; isLoading: bool
   );
 }
 
-function dotColor(st: ProjectLifecycleStatus): string {
-  switch (st) {
-    case "won":
-    case "completed":
-      return "bg-success";
-    case "lost":
-      return "bg-destructive";
-    case "in_progress":
-      return "bg-primary";
-    case "proposal_submitted":
-      return "bg-warning";
-    case "draft":
-      return "bg-muted-foreground/40";
-    default:
-      return "bg-primary/60";
-  }
+type PhaseTone = {
+  column: string; header: string; dot: string; text: string; badge: string; card: string; empty: string;
+};
+
+const PHASE_TONES: Record<string, PhaseTone> = {
+  draft: {
+    column: "border-phase-draft/25",
+    header: "border-phase-draft/20 bg-phase-draft/8",
+    dot: "bg-phase-draft", text: "text-phase-draft",
+    badge: "bg-phase-draft/15 text-phase-draft",
+    card: "border-l-phase-draft/70 hover:bg-phase-draft/5",
+    empty: "border-phase-draft/25",
+  },
+  rfq_sent: {
+    column: "border-phase-rfq/25",
+    header: "border-phase-rfq/20 bg-phase-rfq/8",
+    dot: "bg-phase-rfq", text: "text-phase-rfq",
+    badge: "bg-phase-rfq/15 text-phase-rfq",
+    card: "border-l-phase-rfq/70 hover:bg-phase-rfq/5",
+    empty: "border-phase-rfq/25",
+  },
+  quotation_received: {
+    column: "border-phase-supplier/25",
+    header: "border-phase-supplier/20 bg-phase-supplier/8",
+    dot: "bg-phase-supplier", text: "text-phase-supplier",
+    badge: "bg-phase-supplier/15 text-phase-supplier",
+    card: "border-l-phase-supplier/70 hover:bg-phase-supplier/5",
+    empty: "border-phase-supplier/25",
+  },
+  proposal_submitted: {
+    column: "border-phase-proposal/30",
+    header: "border-phase-proposal/25 bg-phase-proposal/10",
+    dot: "bg-phase-proposal", text: "text-phase-proposal",
+    badge: "bg-phase-proposal/20 text-phase-proposal",
+    card: "border-l-phase-proposal/70 hover:bg-phase-proposal/5",
+    empty: "border-phase-proposal/30",
+  },
+  in_progress: {
+    column: "border-phase-progress/25",
+    header: "border-phase-progress/20 bg-phase-progress/8",
+    dot: "bg-phase-progress", text: "text-phase-progress",
+    badge: "bg-phase-progress/15 text-phase-progress",
+    card: "border-l-phase-progress/70 hover:bg-phase-progress/5",
+    empty: "border-phase-progress/25",
+  },
+  completed: {
+    column: "border-phase-done/25",
+    header: "border-phase-done/20 bg-phase-done/8",
+    dot: "bg-phase-done", text: "text-phase-done",
+    badge: "bg-phase-done/15 text-phase-done",
+    card: "border-l-phase-done/70 hover:bg-phase-done/5",
+    empty: "border-phase-done/25",
+  },
+};
+
+function phaseTone(st: ProjectLifecycleStatus): PhaseTone {
+  const key = st === "won" ? "in_progress" : st;
+  return PHASE_TONES[key] ?? PHASE_TONES.draft;
 }
+
 
 function ListView({
   rows, isLoading, page, totalPages, count, pageSize, onPage, sort, onSort,
