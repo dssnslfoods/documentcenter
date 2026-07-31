@@ -15,6 +15,8 @@ import { useVatRates, calcVat, pickVatRate, fmtNum } from "@/lib/vat";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDate, fmtCurrency } from "@/lib/format";
 import { uploadProjectFile, getProjectFileUrl } from "@/lib/project-files";
+import { PartnerFormDialog, usePartners } from "@/components/partner-form-dialog";
+
 
 type Row = {
   vat_rate?: number | null;
@@ -45,13 +47,8 @@ export function SupplierQuotationsTab({
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
 
-  const { data: partners } = useQuery({
-    queryKey: ["partners-suppliers"],
-    queryFn: async () => {
-      const { data } = await sb.from("partners").select("id, name").eq("kind", "vendor").order("name");
-      return data ?? [];
-    },
-  });
+  const { data: partners } = usePartners("supplier");
+
 
   const { data: rows, isLoading } = useQuery({
     queryKey: ["supplier-quotations", projectId],
@@ -244,6 +241,8 @@ function AddDialog({
   const sb = getSupabase();
   const [supplierId, setSupplierId] = useState<string>("");
   const [supplierName, setSupplierName] = useState("");
+  const [partnerOpen, setPartnerOpen] = useState(false);
+
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("");
   const [notes, setNotes] = useState("");
@@ -298,13 +297,25 @@ function AddDialog({
       <div className="space-y-3">
         <div>
           <Label>Supplier (จากรายชื่อคู่ค้า)</Label>
-          <Select value={supplierId} onValueChange={setSupplierId}>
-            <SelectTrigger><SelectValue placeholder="เลือก Supplier" /></SelectTrigger>
-            <SelectContent>
-              {partners.map((p) => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}
-            </SelectContent>
-          </Select>
+          <div className="flex gap-2">
+            <Select value={supplierId} onValueChange={(v) => { setSupplierId(v); setSupplierName(""); }}>
+              <SelectTrigger className="flex-1"><SelectValue placeholder="เลือก Supplier" /></SelectTrigger>
+              <SelectContent>
+                {partners.map((p) => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}
+              </SelectContent>
+            </Select>
+            <Button type="button" variant="outline" size="icon" title="เพิ่ม Supplier ใหม่" onClick={() => setPartnerOpen(true)}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+          <PartnerFormDialog
+            open={partnerOpen}
+            onOpenChange={setPartnerOpen}
+            defaultType="supplier"
+            onSaved={(row) => { setSupplierId(row.id); setSupplierName(""); }}
+          />
         </div>
+
         <div>
           <Label>หรือ พิมพ์ชื่อ Supplier</Label>
           <Input value={supplierName} onChange={(e) => setSupplierName(e.target.value)} placeholder="ชื่อ Supplier" />
