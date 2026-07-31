@@ -76,3 +76,16 @@ export function usePageGuard(key: PageKey, title: string) {
   }
   return { allowed: true, node: null as React.ReactNode };
 }
+
+/**
+ * เห็นจำนวนเงินได้เฉพาะ ผู้ดูแลระบบสูงสุด และ ผู้บริหาร เท่านั้น
+ * (หัวหน้าแผนกลงไปจะไม่เห็นตัวเลขจำนวนเงินจากทุกหน้าจอ)
+ */
+export function useCanSeeMoney() {
+  const { roles, isLoading } = useMyRoles();
+  const canSeeMoney = roles.includes("super_admin") || roles.includes("management");
+  return { canSeeMoney, isLoading };
+}
+
+/** ข้อความแทนจำนวนเงินเมื่อไม่มีสิทธิ์ */
+export const MONEY_MASK = "฿ ••••••";
