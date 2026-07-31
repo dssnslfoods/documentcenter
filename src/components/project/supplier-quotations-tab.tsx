@@ -122,10 +122,12 @@ export function SupplierQuotationsTab({
           </div>
           <div className="space-y-1">
             {selectedRows.map((s) => (
-              <div key={s.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                <span className="font-medium">
-                  {s.partners?.name || s.supplier_name || "-"}
-                  <span className="ml-2 text-xs text-muted-foreground">v{s.version}</span>
+              <div key={s.id} className="flex flex-wrap items-start justify-between gap-2 text-sm">
+                <span className="min-w-0">
+                  <span className="font-medium">{s.title || "ใบเสนอราคา (ไม่ได้ระบุหัวข้องาน)"}</span>
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    {s.partners?.name || s.supplier_name || "-"} · v{s.version}
+                  </span>
                 </span>
                 {canSeePrice && (
                   <span className="font-semibold tabular-nums">{fmtCurrency(s.quotation_amount, "THB")}</span>
