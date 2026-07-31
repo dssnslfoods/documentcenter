@@ -99,8 +99,23 @@ export function CustomerQuotationsTab({
     if (url) window.open(url, "_blank");
   };
 
+  const hasFinal = (rows ?? []).some((r) => r.is_final);
+
   return (
     <div className="space-y-4">
+      {!isLoading && rows && rows.length > 0 && !hasFinal && (
+        <div className="flex items-start gap-3 rounded-xl border border-warning/40 bg-warning/10 p-3 text-sm">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+          <div>
+            <div className="font-medium">ใบเสนอราคาลูกค้ายังไม่ตกลง (ยังไม่มีฉบับ Final)</div>
+            <p className="text-xs text-muted-foreground">
+              มูลค่าสัญญาของโครงการจะถูกดึงจากใบเสนอราคาฉบับสุดท้ายเท่านั้น — กดปุ่มดาว
+              เพื่อกำหนดฉบับที่ลูกค้าตกลงเป็น Final
+            </p>
+          </div>
+        </div>
+      )}
+
       {canEdit && (
         <div className="flex justify-end">
           <Dialog open={open} onOpenChange={setOpen}>
@@ -110,14 +125,15 @@ export function CustomerQuotationsTab({
             <AddDialog
               projectId={projectId}
               onClose={() => setOpen(false)}
-              onSaved={() => {
+              onSaved={async () => {
                 setOpen(false);
-                qc.invalidateQueries({ queryKey: ["customer-quotations", projectId] });
+                await afterChange();
               }}
             />
           </Dialog>
         </div>
       )}
+
 
       {isLoading ? (
         <div className="py-8 text-center text-sm text-muted-foreground">กำลังโหลด...</div>
