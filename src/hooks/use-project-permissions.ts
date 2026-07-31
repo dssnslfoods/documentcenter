@@ -150,6 +150,9 @@ export function useProjectPermissions(projectId: string | undefined): {
       const seeCustomer = has("view_customer_quotation") || has("view_customer_quotation_no_price");
       const seeMilestones = has("view_milestones") || has("view_milestones_no_payment");
 
+      // Admin / management who are NOT project members: read-only access.
+      const outsider = !mem && (isAdmin || canBeExec);
+
       return {
         isAdmin,
         isManager: isExec,
@@ -157,7 +160,7 @@ export function useProjectPermissions(projectId: string | undefined): {
         projectRole,
         keys,
         has,
-        canManageTeam: isAdmin || isExec,
+        canManageTeam: !outsider && (isAdmin || isExec),
         canSeeOverview: isAdmin || has("view_project_info") || !!mem,
         canSeeSpec: has("view_spec_scope") || has("view_all_documents"),
         canSeeSupplier: seeSupplier,
@@ -168,11 +171,12 @@ export function useProjectPermissions(projectId: string | undefined): {
         canSeeMilestones: seeMilestones,
         canSeeMilestonePayment: seeMilestonePayment,
         canSeeTimeline: isAdmin || isExec || seeMilestones,
-        canEditTimeline: isAdmin || isExec || has("edit_milestones"),
-        canEditProject: has("edit_project"),
-        canEditMilestones: has("edit_milestones"),
-        canUpload: has("upload_documents"),
+        canEditTimeline: !outsider && (isAdmin || isExec || has("edit_milestones")),
+        canEditProject: !outsider && has("edit_project"),
+        canEditMilestones: !outsider && has("edit_milestones"),
+        canUpload: !outsider && has("upload_documents"),
       };
+
     },
   });
 
