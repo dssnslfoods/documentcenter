@@ -32,11 +32,11 @@ export const ROLES: { value: AppRole; label: string }[] = [
 export const DEFAULT_ACCESS: Record<AppRole, PageKey[]> = {
   super_admin: PAGES.map((p) => p.key),
   management: PAGES.filter((p) => p.key !== "settings").map((p) => p.key),
-  // ใบเสนอราคา / คู่ค้าและลูกค้า เปิดเฉพาะผู้ดูแลระบบสูงสุด และผู้บริหาร
+  // ใบเสนอราคา / คู่ค้าและลูกค้า / รายงาน เปิดเฉพาะผู้ดูแลระบบสูงสุด และผู้บริหาร
   dept_manager: PAGES.filter(
-    (p) => !["settings", "audit-log", "quotations", "partners"].includes(p.key),
+    (p) => !["settings", "audit-log", "quotations", "partners", "reports"].includes(p.key),
   ).map((p) => p.key),
-  staff: ["dashboard", "calendar", "notifications", "projects", "reports"],
+  staff: ["dashboard", "calendar", "notifications", "projects"],
   viewer: ["dashboard", "calendar", "notifications", "projects"],
 };
 
