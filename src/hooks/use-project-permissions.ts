@@ -81,6 +81,8 @@ export function useProjectPermissions(projectId: string | undefined): {
       const isAdmin = roleList.includes("super_admin");
       // Only super_admin / management may act as project executives.
       const canBeExec = isAdmin || roleList.includes("management");
+      // เห็นจำนวนเงินได้เฉพาะผู้ดูแลระบบสูงสุด / ผู้บริหาร เท่านั้น
+      const canSeeMoney = canBeExec;
 
       const { data: proj } = await sb
         .from("projects")
@@ -117,6 +119,7 @@ export function useProjectPermissions(projectId: string | undefined): {
 
       // Price visibility is never auto-granted: admins can hide it per member.
       const priceSet = (priceKey: PermissionKey, noPriceKey: PermissionKey) => {
+        if (!canSeeMoney) return false;
         if (isAdmin) return true;
         if (keys.has(priceKey)) return true;
         if (keys.has(noPriceKey)) return false;

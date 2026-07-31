@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { useMyRoles } from "@/hooks/use-page-access";
+import { useMyRoles, useCanSeeMoney, MONEY_MASK } from "@/hooks/use-page-access";
 import { useAuth } from "@/hooks/use-supabase";
 import { canCreateProjects } from "@/lib/project-roles";
 import { ProjectMembersPeek } from "@/components/project/project-members-peek";
@@ -227,6 +227,7 @@ const PIPELINE_COLUMNS: { key: ProjectLifecycleStatus; label: string; short: str
 ];
 
 function PipelineView({ rows, isLoading, memberIds, canPeekMembers }: { rows: ProjectRow[]; isLoading: boolean; memberIds: Set<string>; canPeekMembers: boolean }) {
+  const { canSeeMoney } = useCanSeeMoney();
   if (isLoading) {
     return (
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -288,7 +289,7 @@ function PipelineView({ rows, isLoading, memberIds, canPeekMembers }: { rows: Pr
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="font-mono text-[10px] uppercase text-muted-foreground">{p.code}</div>
-                      {p.contract_value != null && (
+                      {canSeeMoney && p.contract_value != null && (
                         <div className={`shrink-0 text-[10px] font-semibold tabular-nums ${c.text}`}>
                           {fmtCurrency(p.contract_value, "THB")}
                         </div>
@@ -404,6 +405,7 @@ function ListView({
   sort: { field: "created_at" | "status"; direction: "asc" | "desc" };
   onSort: (field: "created_at" | "status") => void;
 }) {
+  const { canSeeMoney } = useCanSeeMoney();
   const SortIcon = sort.field === "status"
     ? (sort.direction === "asc" ? ArrowUp : ArrowDown)
     : ArrowUpDown;
@@ -452,7 +454,7 @@ function ListView({
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">{fmtDate(p.start_date)}</td>
                       <td className="px-4 py-3 text-muted-foreground">{fmtDate(p.end_date)}</td>
-                      <td className="px-4 py-3 text-right font-mono tabular-nums">{fmtCurrency(p.contract_value ?? p.budget, "THB")}</td>
+                      <td className="px-4 py-3 text-right font-mono tabular-nums">{canSeeMoney ? fmtCurrency(p.contract_value ?? p.budget, "THB") : MONEY_MASK}</td>
                       <td className="px-4 py-3 text-right">
                         <Link to="/projects/$id" params={{ id: p.id }} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
                           เปิด <ArrowRight className="h-3 w-3" />
