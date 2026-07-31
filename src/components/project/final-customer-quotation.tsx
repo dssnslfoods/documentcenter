@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Star, Download, FileSpreadsheet } from "lucide-react";
+import { FilePreviewButton } from "@/components/project/file-preview-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getSupabase } from "@/lib/supabase";
