@@ -317,15 +317,23 @@ function ProjectDetail() {
           ) : <Denied label="RFQ / Spec" />}
         </TabsContent>
 
-        <TabsContent value="supplier" className="mt-5">
+        <TabsContent value="supplier" className="mt-5 space-y-4">
           {perms?.canSeeSupplier ? (
-            <SupplierQuotationsTab
-              projectId={id}
-              canEdit={isAdmin || (perms?.canUpload ?? false)}
-              canSeePrice={perms?.canSeeSupplierPrice ?? false}
-            />
+            <>
+              {isInhouse && (
+                <div className="rounded-lg border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+                  โครงการนี้เป็นงานผลิตภายใน — ไม่บังคับให้มีใบเสนอราคาจากคู่ค้า แต่สามารถเพิ่มได้ระหว่างดำเนินโครงการ
+                </div>
+              )}
+              <SupplierQuotationsTab
+                projectId={id}
+                canEdit={isAdmin || (perms?.canUpload ?? false)}
+                canSeePrice={perms?.canSeeSupplierPrice ?? false}
+              />
+            </>
           ) : <Denied label="ใบเสนอ Supplier" />}
         </TabsContent>
+
 
         <TabsContent value="customer" className="mt-5">
           {perms?.canSeeCustomer ? (
