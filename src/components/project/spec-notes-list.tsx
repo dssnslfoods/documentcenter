@@ -87,6 +87,7 @@ export function ProjectSpecNotesList({
         note_type: type,
         title: t,
         content: c,
+        sort_order: (notes?.length ?? 0) + 1,
       });
       if (error) throw error;
     },
