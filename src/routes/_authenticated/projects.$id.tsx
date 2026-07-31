@@ -352,8 +352,8 @@ function ProjectDetail() {
         </TabsContent>
 
         <TabsContent value="timeline" className="mt-5">
-          {perms?.canSeeMilestones ? (
-            <TimelineTab projectId={id} projectName={p?.name ?? p?.title ?? undefined} canEdit={isAdmin || (perms?.canEditMilestones ?? false)} />
+          {perms?.canSeeTimeline ? (
+            <TimelineTab projectId={id} projectName={p?.name ?? p?.title ?? undefined} canEdit={perms?.canEditTimeline ?? false} />
           ) : <Denied label="แผนงาน" />}
         </TabsContent>
 
@@ -369,8 +369,9 @@ function ProjectDetail() {
         </TabsContent>
 
         <TabsContent value="team" className="mt-5">
-          <TeamTab projectId={id} isAdmin={isAdmin} />
+          <TeamTab projectId={id} isAdmin={perms?.canManageTeam ?? false} />
         </TabsContent>
+
 
         <TabsContent value="history" className="mt-5">
           <ProjectHistoryTab projectId={id} />
