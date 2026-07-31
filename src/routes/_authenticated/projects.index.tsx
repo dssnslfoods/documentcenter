@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { useMyRoles } from "@/hooks/use-page-access";
 import { useAuth } from "@/hooks/use-supabase";
 import { canCreateProjects } from "@/lib/project-roles";
+import { ProjectMembersPeek } from "@/components/project/project-members-peek";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDate, fmtCurrency } from "@/lib/format";
 import {
@@ -48,6 +49,7 @@ type PipelineSortDir = "asc" | "desc";
 function ProjectsList() {
   const { roles } = useMyRoles();
   const canCreate = canCreateProjects(roles);
+  const canPeekMembers = roles.includes("super_admin") || roles.includes("management");
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
   const [view, setView] = useState<"pipeline" | "list">("pipeline");
@@ -199,7 +201,7 @@ function ProjectsList() {
       </Card>
 
       {view === "pipeline" ? (
-        <PipelineView rows={data?.data ?? []} isLoading={isLoading} memberIds={memberIds} />
+        <PipelineView rows={data?.data ?? []} isLoading={isLoading} memberIds={memberIds} canPeekMembers={canPeekMembers} />
       ) : (
         <ListView
           rows={data?.data ?? []}
@@ -224,7 +226,7 @@ const PIPELINE_COLUMNS: { key: ProjectLifecycleStatus; label: string; short: str
   { key: "completed", label: "ปิดโครงการ", short: "Closed" },
 ];
 
-function PipelineView({ rows, isLoading, memberIds }: { rows: ProjectRow[]; isLoading: boolean; memberIds: Set<string> }) {
+function PipelineView({ rows, isLoading, memberIds, canPeekMembers }: { rows: ProjectRow[]; isLoading: boolean; memberIds: Set<string>; canPeekMembers: boolean }) {
   if (isLoading) {
     return (
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -293,7 +295,7 @@ function PipelineView({ rows, isLoading, memberIds }: { rows: ProjectRow[]; isLo
                       )}
                     </div>
                     <div className="mt-1 line-clamp-2 text-sm font-medium leading-snug">{p.name}</div>
-                    <div className="mt-1.5">
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                       {memberIds.has(p.id) ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
                           <Users className="h-3 w-3" />สมาชิกโครงการ
@@ -303,6 +305,7 @@ function PipelineView({ rows, isLoading, memberIds }: { rows: ProjectRow[]; isLo
                           <Eye className="h-3 w-3" />โหมดดูอย่างเดียว
                         </span>
                       )}
+                      {canPeekMembers && <ProjectMembersPeek projectId={p.id} projectName={p.name} />}
                     </div>
                     <div className="mt-2 truncate text-xs text-muted-foreground">{p.customer_name ?? "—"}</div>
                     {p.end_date && (
