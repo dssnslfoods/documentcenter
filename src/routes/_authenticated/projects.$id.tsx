@@ -101,7 +101,10 @@ function ProjectDetail() {
   const autoAdvancedRef = useRef<string | null>(null);
 
   const isAdmin = perms?.isAdmin ?? false;
-  const canEditProject = isAdmin || (perms?.canEditProject ?? false);
+  // Admin / ผู้บริหาร ที่ไม่ได้เป็นสมาชิกโครงการ = ดูได้อย่างเดียว
+  const editAdmin = isAdmin && (perms?.isMember ?? false);
+  const canEditProject = editAdmin || (perms?.canEditProject ?? false);
+
   const status = (p?.status ?? "draft") as ProjectLifecycleStatus;
 
 
