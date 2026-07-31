@@ -224,7 +224,7 @@ const PIPELINE_COLUMNS: { key: ProjectLifecycleStatus; label: string; short: str
   { key: "completed", label: "ปิดโครงการ", short: "Closed" },
 ];
 
-function PipelineView({ rows, isLoading }: { rows: ProjectRow[]; isLoading: boolean }) {
+function PipelineView({ rows, isLoading, memberIds }: { rows: ProjectRow[]; isLoading: boolean; memberIds: Set<string> }) {
   if (isLoading) {
     return (
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
