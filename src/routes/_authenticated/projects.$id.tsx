@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
-import { ArrowLeft, Loader2, Lock, Trophy, XCircle, CheckCircle2, CircleDashed } from "lucide-react";
+import { ArrowLeft, Loader2, Lock, Trophy, XCircle, CheckCircle2, CircleDashed, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
