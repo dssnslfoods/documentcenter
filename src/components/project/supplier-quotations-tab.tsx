@@ -182,8 +182,11 @@ export function SupplierQuotationsTab({
                 <CardContent className="space-y-3 p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{supplierLabel}</span>
+                      <div className="text-sm font-semibold leading-snug">
+                        {r.title || "ใบเสนอราคา (ไม่ได้ระบุหัวข้องาน)"}
+                      </div>
+                      <div className="mt-0.5 flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">{supplierLabel}</span>
                         <Badge variant="outline" className="text-[10px]">v{r.version}</Badge>
                       </div>
                       <div className="text-xs text-muted-foreground">{fmtDate(r.received_date)}</div>
