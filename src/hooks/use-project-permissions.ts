@@ -126,7 +126,7 @@ export function useProjectPermissions(projectId: string | undefined): {
           keys,
           has: () => false,
           canManageTeam: false,
-          canSeeOverview: true,
+          canSeeOverview: false,
           canSeeSpec: false,
           canSeeSupplier: false,
           canSeeSupplierPrice: false,
