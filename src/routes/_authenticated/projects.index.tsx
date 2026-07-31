@@ -81,12 +81,12 @@ function ProjectsList() {
   };
 
   const { data, isLoading } = useQuery({
-    queryKey: ["projects", q, status, view, page, sort.field, sort.direction, pipelineSort.field, pipelineSort.direction],
+    queryKey: ["projects", q, status, health, view, page, sort.field, sort.direction, pipelineSort.field, pipelineSort.direction],
     queryFn: async () => {
       const sb = getSupabase();
       let query = sb
         .from("projects")
-        .select("id, code, name, status, customer_name, customer_aka, customer_aka_color, project_type, contract_value, start_date, end_date, budget, updated_at", { count: "exact" })
+        .select("id, code, name, status, health_status, customer_name, customer_aka, customer_aka_color, project_type, contract_value, start_date, end_date, budget, updated_at", { count: "exact" })
         .is("archived_at", null);
       if (view === "pipeline") {
         query = query.order(pipelineSort.field, { ascending: pipelineSort.direction === "asc", nullsFirst: false });
@@ -102,6 +102,7 @@ function ProjectsList() {
       }
       if (q.trim()) query = query.or(`name.ilike.%${q}%,code.ilike.%${q}%,customer_name.ilike.%${q}%,description.ilike.%${q}%`);
       if (status !== "all" && view === "list") query = query.eq("status", status);
+      if (health !== "all") query = query.eq("health_status", health);
       const { data, count, error } = await query;
       if (error) throw error;
       return { data: (data ?? []) as ProjectRow[], count: count ?? 0 };
