@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDate, fmtCurrency } from "@/lib/format";
+import { useCanSeeMoney, MONEY_MASK } from "@/hooks/use-page-access";
 import { ContractStatusBadge } from "@/components/status-badge";
 import { ContractNotesList } from "@/components/contract/notes-list";
 import type { ContractStatus } from "@/lib/types";
@@ -111,7 +112,7 @@ function ContractDetail() {
             <Field label="วันลงนาม" value={fmtDate(c.sign_date)} />
             <Field icon={Calendar} label="เริ่มมีผล" value={fmtDate(c.start_date)} />
             <Field icon={Calendar} label="สิ้นสุด" value={fmtDate(c.end_date)} />
-            <Field icon={DollarSign} label="มูลค่า" value={fmtCurrency(c.value_amount, c.currency ?? "THB")} />
+            {canSeeMoney && <Field icon={DollarSign} label="มูลค่า" value={fmtCurrency(c.value_amount, c.currency ?? "THB")} />}
             <Field label="แจ้งเตือนล่วงหน้า" value={c.notice_days ? `${c.notice_days} วัน` : "-"} />
             <Field label="ต่ออายุอัตโนมัติ" value={c.auto_renewal ? "ใช่" : "ไม่ใช่"} />
             {c.payment_terms && <div className="sm:col-span-2"><Field label="เงื่อนไขการชำระเงิน" value={c.payment_terms} multiline /></div>}
@@ -220,14 +221,14 @@ function MilestoneList({ title, icon: Icon, items, currency, showTotal }: {
                 {m.notes && <div className="text-xs text-muted-foreground mt-0.5 truncate">{m.notes}</div>}
                 <div className="text-xs text-muted-foreground mt-1">ครบกำหนด: {fmtDate(m.due_date)}</div>
               </div>
-              <div className="text-sm font-semibold whitespace-nowrap">{fmtCurrency(m.amount, currency)}</div>
+              <div className="text-sm font-semibold whitespace-nowrap">{canSeeMoney ? fmtCurrency(m.amount, currency) : MONEY_MASK}</div>
             </div>
           ))
         )}
         {showTotal && items.length > 0 && (
           <div className="flex justify-end pt-2 border-t text-sm">
             <span className="text-muted-foreground">รวม:&nbsp;</span>
-            <span className="font-semibold">{fmtCurrency(total, currency)}</span>
+            <span className="font-semibold">{canSeeMoney ? fmtCurrency(total, currency) : MONEY_MASK}</span>
           </div>
         )}
       </CardContent>

@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DocumentStatusBadge, ConfidentialityBadge } from "@/components/status-badge";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDate, fmtDateTime, fmtCurrency } from "@/lib/format";
+import { useCanSeeMoney, MONEY_MASK } from "@/hooks/use-page-access";
 
 export const Route = createFileRoute("/_authenticated/documents/$id")({
   head: () => ({ meta: [{ title: "รายละเอียดเอกสาร | Document Hub" }] }),
@@ -104,7 +105,7 @@ function DocumentDetail() {
               <Field label="วันที่ออก" value={fmtDate(doc.issue_date)} />
               <Field label="วันเริ่มมีผล" value={fmtDate(doc.effective_date)} />
               <Field label="วันสิ้นสุด" value={fmtDate(doc.end_date)} />
-              <Field label="มูลค่า" value={fmtCurrency(doc.value_amount, doc.currency)} />
+              {canSeeMoney && <Field label="มูลค่า" value={fmtCurrency(doc.value_amount, doc.currency)} />}
               <Field label="สร้างเมื่อ" value={fmtDateTime(doc.created_at)} />
               <Field label="แก้ไขล่าสุด" value={fmtDateTime(doc.updated_at)} />
               {doc.description && (

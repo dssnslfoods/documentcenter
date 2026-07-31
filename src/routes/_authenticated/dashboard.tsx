@@ -7,7 +7,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { useMyRoles, useCanAccess } from "@/hooks/use-page-access";
+import { useCanSeeMoney, MONEY_MASK, useMyRoles, useCanAccess } from "@/hooks/use-page-access";
 import { ROLES } from "@/lib/pages";
 import { canCreateProjects } from "@/lib/project-roles";
 import { getSupabase } from "@/lib/supabase";
@@ -296,7 +296,7 @@ function Dashboard() {
               <KpiCard icon={CheckCircle2} label="เอกสารกำลังใช้งาน" value={fmtNumber(kpi?.activeDocs)} loading={isLoading} tone="success" href="/documents" />
             </>
           )}
-          {can("contracts") && (
+          {can("contracts") && canSeeMoney && (
             <KpiCard icon={DollarSign} label="มูลค่าสัญญาที่ใช้งาน" value={fmtCurrency(kpi?.totalContractValue)} loading={isLoading} tone="accent" href="/contracts" />
           )}
         </div>
@@ -398,7 +398,7 @@ function Dashboard() {
                         <td className="px-3 py-2 font-medium">{c.title}</td>
                         <td className="px-3 py-2 text-muted-foreground">{partner?.name ?? "-"}</td>
                         <td className="px-3 py-2">{fmtDate(c.end_date)}</td>
-                        <td className="px-3 py-2 text-right font-mono tabular-nums">{fmtCurrency(c.value_amount)}</td>
+                        <td className="px-3 py-2 text-right font-mono tabular-nums">{canSeeMoney ? fmtCurrency(c.value_amount) : MONEY_MASK}</td>
                         <td className="px-3 py-2"><ContractStatusBadge status={c.status as never} /></td>
                       </tr>
                     );
