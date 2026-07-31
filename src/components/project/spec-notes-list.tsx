@@ -48,14 +48,34 @@ export function ProjectSpecNotesList({
     queryFn: async () => {
       const { data, error } = await sb
         .from("project_spec_notes")
-        .select("id, title, content, created_at, updated_at")
+        .select("id, title, content, created_at, updated_at, sort_order")
         .eq("project_id", projectId)
         .eq("note_type", type)
+        .order("sort_order", { ascending: true })
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Note[];
     },
   });
+
+  const reorder = useMutation({
+    mutationFn: async ({ index, dir }: { index: number; dir: -1 | 1 }) => {
+      const list = [...(notes ?? [])];
+      const target = index + dir;
+      if (target < 0 || target >= list.length) return;
+      [list[index], list[target]] = [list[target], list[index]];
+      for (let i = 0; i < list.length; i++) {
+        const { error } = await sb
+          .from("project_spec_notes")
+          .update({ sort_order: i + 1 })
+          .eq("id", list[i].id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
   const create = useMutation({
     mutationFn: async () => {
