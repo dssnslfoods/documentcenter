@@ -115,6 +115,8 @@ function ReportsPage() {
     },
   });
 
+  if (!guard.allowed) return guard.node;
+
   if (isLoading || !data) {
     return (
       <div className="space-y-6">
