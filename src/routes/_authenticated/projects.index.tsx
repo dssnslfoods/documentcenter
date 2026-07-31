@@ -340,6 +340,7 @@ function PipelineView({ rows, isLoading, memberIds, canPeekMembers }: { rows: Pr
                     </div>
                     <div className="mt-1 line-clamp-2 text-sm font-medium leading-snug">{p.name}</div>
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      <HealthBadge health={healthFromString(p.health_status)} size="xs" />
                       {memberIds.has(p.id) ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
                           <Users className="h-3 w-3" />สมาชิกโครงการ
