@@ -137,6 +137,7 @@ function NewQuotation() {
       <form onSubmit={form.handleSubmit((v) => create.mutate(v))} className="space-y-6">
         <ScanQuotationCard
           onScanned={(d) => {
+            setScanConfidence(d.confidence);
             if (d.title) form.setValue("title", d.title, { shouldValidate: true });
             if (d.issue_date) form.setValue("issue_date", d.issue_date);
             if (d.expiry_date) form.setValue("expiry_date", d.expiry_date);
