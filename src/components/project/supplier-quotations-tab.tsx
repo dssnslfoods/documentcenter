@@ -34,6 +34,7 @@ type Row = {
   quotation_amount: number | null;
   received_date: string | null;
   notes: string | null;
+  title?: string | null;
   file_urls: string[];
   version: number;
   is_selected: boolean;
