@@ -5,8 +5,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, FolderKanban, Plus } from "lucide-react";
-import { PageHeader, EmptyState } from "@/components/page-header";
+import { Loader2, FolderKanban, Plus, AlertCircle, CheckCircle2, HelpCircle } from "lucide-react";
+import { PageHeader, EmptyState } from "@/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +17,7 @@ import { getSupabase } from "@/lib/supabase";
 import { PartnerFormDialog } from "@/components/partner-form-dialog";
 import { useVatRates, calcVat, pickVatRate } from "@/lib/vat";
 import { ScanQuotationCard } from "@/components/scan-quotation-card";
+import type { ScannedQuotation } from "@/lib/scan-quotation.functions";
 
 const schema = z.object({
   project_id: z.string().uuid("กรุณาเลือกโครงการ"),
