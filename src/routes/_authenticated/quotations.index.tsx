@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, FileSpreadsheet, Search, Filter } from "lucide-react";
+import { Plus, FileSpreadsheet, Search, Filter, Star, FileDown } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getSupabase } from "@/lib/supabase";
 import { fmtDate, fmtCurrency } from "@/lib/format";
 import { QuotationStatusBadge } from "@/components/status-badge";
+import { Badge } from "@/components/ui/badge";
+import { getProjectFileUrl } from "@/lib/project-files";
 
 export const Route = createFileRoute("/_authenticated/quotations/")({
   head: () => ({
@@ -20,6 +22,147 @@ export const Route = createFileRoute("/_authenticated/quotations/")({
   }),
   component: QuotationsList,
 });
+
+
+type FinalRow = {
+  id: string;
+  kind: "customer" | "supplier";
+  projectId: string;
+  projectCode: string | null;
+  projectName: string;
+  party: string;
+  date: string | null;
+  amount: number | null;
+  amountInclVat: number | null;
+  files: string[];
+};
+
+/** ใบเสนอราคา final ที่อัปโหลดไว้ในโครงการ (ลูกค้า = ขาออก, supplier = ขาเข้า) */
+function useFinalProjectQuotations() {
+  return useQuery({
+    queryKey: ["final-project-quotations"],
+    queryFn: async (): Promise<FinalRow[]> => {
+      const sb = getSupabase();
+      const [cust, sup] = await Promise.all([
+        sb.from("customer_quotations")
+          .select("id, project_id, quotation_amount, amount_incl_vat, submitted_date, file_url, projects(id, code, name, customer_name)")
+          .eq("is_final", true),
+        sb.from("supplier_quotations")
+          .select("id, project_id, quotation_amount, amount_incl_vat, received_date, file_urls, supplier_name, partners(name), projects(id, code, name)")
+          .eq("is_selected", true),
+      ]);
+
+      const pick = <T,>(v: unknown): T | null => (Array.isArray(v) ? (v[0] as T) ?? null : (v as T) ?? null);
+      const rows: FinalRow[] = [];
+
+      (cust.data ?? []).forEach((r) => {
+        const p = pick<{ id: string; code: string | null; name: string; customer_name: string | null }>(r.projects);
+        if (!p) return;
+        rows.push({
+          id: r.id, kind: "customer", projectId: p.id, projectCode: p.code, projectName: p.name,
+          party: p.customer_name ?? "—", date: r.submitted_date ?? null,
+          amount: r.quotation_amount ?? null, amountInclVat: r.amount_incl_vat ?? null,
+          files: r.file_url ? [r.file_url as string] : [],
+        });
+      });
+
+      (sup.data ?? []).forEach((r) => {
+        const p = pick<{ id: string; code: string | null; name: string }>(r.projects);
+        if (!p) return;
+        const partner = pick<{ name: string }>(r.partners);
+        rows.push({
+          id: r.id, kind: "supplier", projectId: p.id, projectCode: p.code, projectName: p.name,
+          party: partner?.name ?? (r.supplier_name as string | null) ?? "—", date: r.received_date ?? null,
+          amount: r.quotation_amount ?? null, amountInclVat: r.amount_incl_vat ?? null,
+          files: Array.isArray(r.file_urls) ? (r.file_urls as string[]) : [],
+        });
+      });
+
+      return rows.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+    },
+  });
+}
+
+function FinalProjectQuotations({ q, type }: { q: string; type: string }) {
+  const { data, isLoading } = useFinalProjectQuotations();
+
+  const rows = (data ?? []).filter((r) => {
+    if (type === "outgoing" && r.kind !== "customer") return false;
+    if (type === "incoming" && r.kind !== "supplier") return false;
+    const term = q.trim().toLowerCase();
+    if (!term) return true;
+    return [r.projectName, r.projectCode ?? "", r.party].some((v) => v.toLowerCase().includes(term));
+  });
+
+  const openFile = async (path: string) => {
+    const url = await getProjectFileUrl(path);
+    if (url) window.open(url, "_blank");
+  };
+
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <div className="flex items-center gap-2 border-b px-4 py-3">
+          <Star className="h-4 w-4 fill-current text-primary" />
+          <div>
+            <div className="text-sm font-medium">ใบเสนอราคาฉบับสุดท้ายจากโครงการ</div>
+            <div className="text-xs text-muted-foreground">ไฟล์ที่อัปโหลดในโครงการและถูกเลือกเป็น Final — ค้นหาได้จากช่องค้นหาด้านบน</div>
+          </div>
+        </div>
+        {isLoading ? (
+          <div className="space-y-2 p-4">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-10 animate-pulse rounded bg-muted/60" />)}</div>
+        ) : rows.length === 0 ? (
+          <div className="p-6 text-center text-sm text-muted-foreground">ยังไม่มีใบเสนอราคาฉบับสุดท้ายจากโครงการ</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b bg-muted/30 text-left text-xs uppercase text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-3">โครงการ</th>
+                  <th className="px-4 py-3">ประเภท</th>
+                  <th className="px-4 py-3">คู่ค้า / ลูกค้า</th>
+                  <th className="px-4 py-3">วันที่</th>
+                  <th className="px-4 py-3 text-right">ยอดก่อน VAT</th>
+                  <th className="px-4 py-3 text-right">ยอดรวม</th>
+                  <th className="px-4 py-3">ไฟล์</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={`${r.kind}-${r.id}`} className="border-b last:border-0 hover:bg-muted/40">
+                    <td className="px-4 py-3">
+                      <Link to="/projects/$id" params={{ id: r.projectId }} className="text-primary hover:underline">
+                        <span className="font-mono text-xs">{r.projectCode ?? "-"}</span> <span>{r.projectName}</span>
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge variant="secondary">{r.kind === "customer" ? "ขาออก · ลูกค้า" : "ขาเข้า · Supplier"}</Badge>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">{r.party}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{fmtDate(r.date)}</td>
+                    <td className="px-4 py-3 text-right font-mono tabular-nums">{fmtCurrency(r.amount, "THB")}</td>
+                    <td className="px-4 py-3 text-right font-mono tabular-nums">{fmtCurrency(r.amountInclVat ?? r.amount, "THB")}</td>
+                    <td className="px-4 py-3">
+                      {r.files.length === 0 ? <span className="text-xs text-muted-foreground">—</span> : (
+                        <div className="flex flex-wrap gap-2">
+                          {r.files.map((f, i) => (
+                            <Button key={f} size="sm" variant="outline" onClick={() => void openFile(f)}>
+                              <FileDown className="mr-1 h-3.5 w-3.5" />ไฟล์{r.files.length > 1 ? ` ${i + 1}` : ""}
+                            </Button>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 function QuotationsList() {
   const [q, setQ] = useState("");
@@ -154,6 +297,8 @@ function QuotationsList() {
           )}
         </CardContent>
       </Card>
+
+      <FinalProjectQuotations q={q} type={type} />
     </div>
   );
 }
