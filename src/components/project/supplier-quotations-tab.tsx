@@ -147,9 +147,9 @@ export function SupplierQuotationsTab({
               onSaved={(scanned) => {
                 setOpen(false);
                 qc.invalidateQueries({ queryKey: ["supplier-quotations", projectId] });
-                // ถามเฉพาะครั้งแรกของโครงการ ที่สแกนแล้วได้รายการสินค้า/บริการ
+                // ถามทุกครั้งที่สแกนแล้วได้รายการสินค้า/บริการ
                 const items = scanned?.items ?? [];
-                if ((rows ?? []).length === 0 && items.length > 0) {
+                if (items.length > 0) {
                   setRfqPrompt({ supplier: scanned?.supplier ?? "Supplier", items });
                 }
               }}
