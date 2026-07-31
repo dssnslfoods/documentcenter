@@ -199,7 +199,7 @@ function ProjectsList() {
       </Card>
 
       {view === "pipeline" ? (
-        <PipelineView rows={data?.data ?? []} isLoading={isLoading} />
+        <PipelineView rows={data?.data ?? []} isLoading={isLoading} memberIds={memberIds} />
       ) : (
         <ListView
           rows={data?.data ?? []}
