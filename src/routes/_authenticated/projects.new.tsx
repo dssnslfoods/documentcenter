@@ -21,7 +21,6 @@ import { nextCode } from "@/lib/next-code";
 import { PartnerFormDialog, usePartners } from "@/components/partner-form-dialog";
 import { ROLE_PERMISSIONS, canCreateProjects } from "@/lib/project-roles";
 import { useMyRoles } from "@/hooks/use-page-access";
-import { PageHeader as _PH } from "@/components/page-header";
 
 const AUTOSAVE_KEY = "dochub:new-project-autosave";
 
@@ -51,6 +50,8 @@ export const Route = createFileRoute("/_authenticated/projects/new")({
 });
 
 function NewProject() {
+  const { roles, isLoading: rolesLoading } = useMyRoles();
+  const allowed = canCreateProjects(roles);
   const navigate = useNavigate();
   const qc = useQueryClient();
 
@@ -255,6 +256,20 @@ function NewProject() {
     },
 
   });
+
+  if (rolesLoading) {
+    return <div className="p-8 text-center text-sm text-muted-foreground">กำลังตรวจสอบสิทธิ์...</div>;
+  }
+  if (!allowed) {
+    return (
+      <div className="max-w-3xl space-y-4">
+        <PageHeader title="เพิ่มโครงการใหม่" description="คุณไม่มีสิทธิ์สร้างโครงการ" />
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+          เฉพาะผู้ดูแลระบบสูงสุดและผู้บริหารเท่านั้นที่สามารถสร้างโครงการได้
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl">
