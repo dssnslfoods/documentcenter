@@ -19,6 +19,7 @@ import {
   LIFECYCLE_LABEL, LIFECYCLE_PHASES, STATUS_TONE,
   type ProjectLifecycleStatus,
 } from "@/lib/project-lifecycle";
+import { HEALTH_LABEL, HEALTH_DOT, healthFromString, type ProjectHealth } from "@/lib/project-health";
 
 export const Route = createFileRoute("/_authenticated/projects/")({
   head: () => ({
