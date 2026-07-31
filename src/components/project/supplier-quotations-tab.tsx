@@ -285,14 +285,13 @@ export function SupplierQuotationsTab({
   );
 }
 
-/** แปลงรายการที่สแกนได้เป็นข้อความสำหรับบันทึก RFQ / Spec */
+/** แปลงรายการที่สแกนได้เป็นข้อความสำหรับบันทึก RFQ / Spec (ไม่ใส่ราคา) */
 function itemsToText(items: ScannedItem[]) {
   return items
     .map((it, i) => {
       const parts = [`${i + 1}. ${it.description ?? "-"}`];
       if (it.qty != null) parts.push(`จำนวน ${it.qty}${it.unit ? " " + it.unit : ""}`);
-      if (it.unit_price != null) parts.push(`ราคา/หน่วย ${it.unit_price}`);
-      if (it.amount != null) parts.push(`รวม ${it.amount}`);
+      else if (it.unit) parts.push(`หน่วย ${it.unit}`);
       return parts.join(" | ");
     })
     .join("\n");
