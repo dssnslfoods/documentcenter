@@ -120,19 +120,35 @@ export function PartnerFormDialog({
       };
 
       if (editing) {
-        const { data, error } = await sb.from("partners").update(payload).eq("id", editing.id).select("id, name").single();
+        const { data, error } = await sb.from("partners").update(payload).eq("id", editing.id).select("id, code, name, type, status").single();
         if (error) throw error;
         return data;
       }
       const { data: all, error: readErr } = await sb.from("partners").select("code");
       if (readErr) throw readErr;
       const newCode = nextCode("PT-", (all ?? []).map((r: { code: string }) => r.code), 4);
-      const { data, error } = await sb.from("partners").insert({ ...payload, code: newCode }).select("id, name").single();
+      const { data, error } = await sb.from("partners").insert({ ...payload, code: newCode }).select("id, code, name, type, status").single();
       if (error) throw error;
       return data;
     },
     onSuccess: (row) => {
       toast.success(editing ? "บันทึกข้อมูลแล้ว" : "เพิ่มคู่ค้า/ลูกค้าแล้ว");
+
+      // เติมรายการใหม่เข้า cache ทันที เพื่อให้เลือกใช้ได้เลยโดยไม่ต้องรอโหลดใหม่
+      const r = row as { id: string; code: string; name: string; type: string; status: string };
+      if (r?.id && r.status === "active") {
+        type PRow = { id: string; code: string; name: string; type: string };
+        qc.getQueriesData<PRow[]>({ queryKey: ["partners-active"] }).forEach(([key, old]) => {
+          if (!old) return;
+          const filterType = (key as unknown[])[1] as string | undefined;
+          const matches = !filterType || filterType === "all" || r.type === filterType || r.type === "both";
+          const rest = old.filter((p) => p.id !== r.id);
+          const next = matches ? [...rest, { id: r.id, code: r.code, name: r.name, type: r.type }] : rest;
+          qc.setQueryData(key, next.sort((a, b) => a.name.localeCompare(b.name)));
+        });
+      }
+
+
       qc.invalidateQueries({ queryKey: ["partners-list"] });
       qc.invalidateQueries({ queryKey: ["partners-active"] });
       onOpenChange(false);
@@ -140,6 +156,7 @@ export function PartnerFormDialog({
     },
     onError: (e: Error) => toast.error("ไม่สำเร็จ", { description: e.message }),
   });
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
