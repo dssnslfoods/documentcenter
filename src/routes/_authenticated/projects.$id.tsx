@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
-import { ArrowLeft, Loader2, Lock, Trophy, XCircle, CheckCircle2, CircleDashed } from "lucide-react";
+import { ArrowLeft, Loader2, Lock, Trophy, XCircle, CheckCircle2, CircleDashed, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -179,6 +179,15 @@ function ProjectDetail() {
       <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/projects" })} className="-ml-2">
         <ArrowLeft className="mr-2 h-4 w-4" />กลับรายการโครงการ
       </Button>
+
+      {!perms?.isMember && (
+        <div className="flex items-center gap-2 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-foreground">
+          <Eye className="h-4 w-4 shrink-0 text-warning" />
+          <span>
+            <span className="font-medium">โหมดดูอย่างเดียว</span> — คุณไม่ได้เป็นสมาชิกของโครงการนี้ จึงดูข้อมูลได้เท่านั้น ไม่สามารถแก้ไขหรืออัปโหลดเอกสารได้
+          </span>
+        </div>
+      )}
 
       {/* Header + auto-detect status banner */}
       <div className="tile grid gap-5 p-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
