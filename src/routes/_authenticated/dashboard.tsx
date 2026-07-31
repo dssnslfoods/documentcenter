@@ -320,11 +320,11 @@ function Dashboard() {
 
       {/* Analytics */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="tile lg:col-span-2">
+        <Card className={`tile ${can("documents") ? "lg:col-span-2" : "lg:col-span-3"}`}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <div>
               <CardTitle className="text-base">Pipeline โครงการ</CardTitle>
-              <p className="mt-1 text-xs text-muted-foreground">แยกตามระยะของ workflow</p>
+              <p className="mt-1 text-xs text-muted-foreground">แยกตามระยะของ workflow{isExec ? "" : " · เฉพาะโครงการของคุณ"}</p>
             </div>
             <Link to="/projects" className="text-xs text-primary hover:underline">เปิด pipeline →</Link>
           </CardHeader>
@@ -345,6 +345,7 @@ function Dashboard() {
           </CardContent>
         </Card>
 
+        {can("documents") && (
         <Card className="tile">
           <CardHeader>
             <CardTitle className="text-base">สัดส่วนหมวดเอกสาร</CardTitle>
@@ -365,8 +366,10 @@ function Dashboard() {
             )}
           </CardContent>
         </Card>
+        )}
       </div>
 
+      {can("contracts") && (
       <Card className="tile">
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">สัญญาที่จะครบกำหนดใน 90 วัน</CardTitle>
@@ -408,6 +411,7 @@ function Dashboard() {
           )}
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }
