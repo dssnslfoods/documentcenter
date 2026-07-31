@@ -157,7 +157,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
 
           <form
-            className="relative flex-1 max-w-xl"
+            className="relative min-w-0 flex-1 max-w-xl"
             onSubmit={(e) => {
               e.preventDefault();
               const v = new FormData(e.currentTarget).get("q");
@@ -168,10 +168,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               name="q"
-              placeholder="ค้นหาโครงการ เอกสาร สัญญา งวดงาน..."
-              className="h-10 rounded-full border-transparent bg-muted pl-9 focus-visible:border-ring focus-visible:bg-card"
+              placeholder="ค้นหา..."
+              className="h-10 w-full rounded-full border-transparent bg-muted pl-9 text-sm focus-visible:border-ring focus-visible:bg-card"
             />
           </form>
+
 
           <NotificationBell userId={user?.id} />
 
