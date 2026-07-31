@@ -35,6 +35,7 @@ type ProjectRow = {
   code: string;
   name: string;
   status: string | null;
+  health_status: string | null;
   customer_name: string | null;
   customer_aka: string | null;
   customer_aka_color: string | null;
