@@ -541,6 +541,10 @@ function TaskDialog({
     task?.assignee_label ? "external" : task?.assignee_id ?? "none",
   );
   const [assigneeLabel, setAssigneeLabel] = useState(task?.assignee_label ?? "");
+  const [remembered, setRemembered] = useState<string[]>(() => loadRememberedAssignees());
+  useEffect(() => {
+    if (open) setRemembered(loadRememberedAssignees());
+  }, [open]);
   const [milestoneId, setMilestoneId] = useState(task?.milestone_id ?? "none");
   const [sortOrder, setSortOrder] = useState(String(task?.sort_order ?? 0));
 
