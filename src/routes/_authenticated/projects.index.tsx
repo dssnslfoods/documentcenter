@@ -300,23 +300,66 @@ function PipelineView({ rows, isLoading }: { rows: ProjectRow[]; isLoading: bool
   );
 }
 
-function dotColor(st: ProjectLifecycleStatus): string {
-  switch (st) {
-    case "won":
-    case "completed":
-      return "bg-success";
-    case "lost":
-      return "bg-destructive";
-    case "in_progress":
-      return "bg-primary";
-    case "proposal_submitted":
-      return "bg-warning";
-    case "draft":
-      return "bg-muted-foreground/40";
-    default:
-      return "bg-primary/60";
-  }
+type PhaseTone = {
+  column: string; header: string; dot: string; text: string; badge: string; card: string; empty: string;
+};
+
+const PHASE_TONES: Record<string, PhaseTone> = {
+  draft: {
+    column: "border-phase-draft/25",
+    header: "border-phase-draft/20 bg-phase-draft/8",
+    dot: "bg-phase-draft", text: "text-phase-draft",
+    badge: "bg-phase-draft/15 text-phase-draft",
+    card: "border-l-phase-draft/70 hover:bg-phase-draft/5",
+    empty: "border-phase-draft/25",
+  },
+  rfq_sent: {
+    column: "border-phase-rfq/25",
+    header: "border-phase-rfq/20 bg-phase-rfq/8",
+    dot: "bg-phase-rfq", text: "text-phase-rfq",
+    badge: "bg-phase-rfq/15 text-phase-rfq",
+    card: "border-l-phase-rfq/70 hover:bg-phase-rfq/5",
+    empty: "border-phase-rfq/25",
+  },
+  quotation_received: {
+    column: "border-phase-supplier/25",
+    header: "border-phase-supplier/20 bg-phase-supplier/8",
+    dot: "bg-phase-supplier", text: "text-phase-supplier",
+    badge: "bg-phase-supplier/15 text-phase-supplier",
+    card: "border-l-phase-supplier/70 hover:bg-phase-supplier/5",
+    empty: "border-phase-supplier/25",
+  },
+  proposal_submitted: {
+    column: "border-phase-proposal/30",
+    header: "border-phase-proposal/25 bg-phase-proposal/10",
+    dot: "bg-phase-proposal", text: "text-phase-proposal",
+    badge: "bg-phase-proposal/20 text-phase-proposal",
+    card: "border-l-phase-proposal/70 hover:bg-phase-proposal/5",
+    empty: "border-phase-proposal/30",
+  },
+  in_progress: {
+    column: "border-phase-progress/25",
+    header: "border-phase-progress/20 bg-phase-progress/8",
+    dot: "bg-phase-progress", text: "text-phase-progress",
+    badge: "bg-phase-progress/15 text-phase-progress",
+    card: "border-l-phase-progress/70 hover:bg-phase-progress/5",
+    empty: "border-phase-progress/25",
+  },
+  completed: {
+    column: "border-phase-done/25",
+    header: "border-phase-done/20 bg-phase-done/8",
+    dot: "bg-phase-done", text: "text-phase-done",
+    badge: "bg-phase-done/15 text-phase-done",
+    card: "border-l-phase-done/70 hover:bg-phase-done/5",
+    empty: "border-phase-done/25",
+  },
+};
+
+function phaseTone(st: ProjectLifecycleStatus): PhaseTone {
+  const key = st === "won" ? "in_progress" : st;
+  return PHASE_TONES[key] ?? PHASE_TONES.draft;
 }
+
 
 function ListView({
   rows, isLoading, page, totalPages, count, pageSize, onPage, sort, onSort,
