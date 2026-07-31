@@ -84,22 +84,17 @@ export function SupplierQuotationsTab({
     onError: (e: Error) => toast.error(e.message),
   });
 
-  // Set this row as the final selected vendor quotation. Clear others first.
-  const selectFinal = useMutation({
-    mutationFn: async (id: string) => {
-      const { error: e1 } = await sb
+  // โครงการหนึ่งมีได้หลายใบเสนอราคาจาก supplier — เลือกเป็น Final ได้มากกว่า 1 รายการ
+  const toggleFinal = useMutation({
+    mutationFn: async ({ id, next }: { id: string; next: boolean }) => {
+      const { error } = await sb
         .from("supplier_quotations")
-        .update({ is_selected: false })
-        .eq("project_id", projectId);
-      if (e1) throw e1;
-      const { error: e2 } = await sb
-        .from("supplier_quotations")
-        .update({ is_selected: true })
+        .update({ is_selected: next })
         .eq("id", id);
-      if (e2) throw e2;
+      if (error) throw error;
     },
-    onSuccess: () => {
-      toast.success("เลือกเป็น Final version แล้ว");
+    onSuccess: (_d, v) => {
+      toast.success(v.next ? "เพิ่มเป็น Final แล้ว" : "ยกเลิก Final แล้ว");
       qc.invalidateQueries({ queryKey: ["supplier-quotations", projectId] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -111,27 +106,41 @@ export function SupplierQuotationsTab({
   };
 
   const cheapest = rows && rows.length ? Math.min(...rows.filter((r) => r.quotation_amount != null).map((r) => Number(r.quotation_amount))) : null;
-  const selected = rows?.find((r) => r.is_selected);
+  const selectedRows = (rows ?? []).filter((r) => r.is_selected);
+  const selectedTotal = selectedRows.reduce((s, r) => s + Number(r.quotation_amount ?? 0), 0);
 
   return (
     <div className="space-y-4">
-      {selected && (
-        <div className="tile flex flex-wrap items-center justify-between gap-3 border-success/40 bg-success/5 p-4">
-          <div className="flex items-center gap-3">
+      {selectedRows.length > 0 && (
+        <div className="tile space-y-2 border-success/40 bg-success/5 p-4">
+          <div className="flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-success" />
-            <div>
-              <div className="text-[10px] font-semibold uppercase tracking-widest text-success">Final vendor · เวอร์ชันที่เลือก</div>
-              <div className="text-sm font-medium">
-                {selected.partners?.name || selected.supplier_name || "-"}
-                <span className="ml-2 text-xs text-muted-foreground">v{selected.version}</span>
-              </div>
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-success">
+              Final vendor · เลือกไว้ {selectedRows.length} รายการ
             </div>
           </div>
-          {canSeePrice && (
-            <div className="text-lg font-semibold tabular-nums">{fmtCurrency(selected.quotation_amount, "THB")}</div>
+          <div className="space-y-1">
+            {selectedRows.map((s) => (
+              <div key={s.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                <span className="font-medium">
+                  {s.partners?.name || s.supplier_name || "-"}
+                  <span className="ml-2 text-xs text-muted-foreground">v{s.version}</span>
+                </span>
+                {canSeePrice && (
+                  <span className="font-semibold tabular-nums">{fmtCurrency(s.quotation_amount, "THB")}</span>
+                )}
+              </div>
+            ))}
+          </div>
+          {canSeePrice && selectedRows.length > 1 && (
+            <div className="flex justify-between border-t border-success/30 pt-2 text-sm font-semibold">
+              <span>รวม Final ทั้งหมด</span>
+              <span className="tabular-nums">{fmtCurrency(selectedTotal, "THB")}</span>
+            </div>
           )}
         </div>
       )}
+
 
       {canEdit && (
         <div className="flex justify-end">
@@ -206,18 +215,16 @@ export function SupplierQuotationsTab({
                   )}
                   {canEdit && (
                     <div className="flex items-center justify-between gap-2 border-t pt-2">
-                      {!r.is_selected ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => selectFinal.mutate(r.id)}
-                          disabled={selectFinal.isPending}
-                        >
-                          <Star className="mr-1 h-3.5 w-3.5" />เลือกเป็น Final
-                        </Button>
-                      ) : (
-                        <span className="text-xs text-success">✓ เวอร์ชันที่เลือกสำหรับโครงการ</span>
-                      )}
+                      <Button
+                        size="sm"
+                        variant={r.is_selected ? "secondary" : "outline"}
+                        onClick={() => toggleFinal.mutate({ id: r.id, next: !r.is_selected })}
+                        disabled={toggleFinal.isPending}
+                      >
+                        <Star className={`mr-1 h-3.5 w-3.5 ${r.is_selected ? "fill-current text-success" : ""}`} />
+                        {r.is_selected ? "ยกเลิก Final" : "เลือกเป็น Final"}
+                      </Button>
+
                       <Button
                         size="sm"
                         variant="ghost"
