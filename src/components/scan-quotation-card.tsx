@@ -80,6 +80,7 @@ export function ScanQuotationCard({
       const result = await scan({ data: { image, filename: file.name } });
       setLastResult(result);
       onScanned(result);
+      onFile?.(file);
       toast.success("อ่านเอกสารสำเร็จ", { description: "กรุณาตรวจสอบข้อมูลที่ระบบเติมให้ก่อนบันทึก" });
     } catch (e) {
       toast.error("สแกนไม่สำเร็จ", { description: (e as Error).message });
