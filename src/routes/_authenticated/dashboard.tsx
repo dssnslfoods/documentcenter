@@ -356,8 +356,39 @@ function Dashboard() {
         </CardContent>
       </Card>
 
+      {/* Project health / at-risk */}
+      {scopeReady && (healthSummary?.red.length || healthSummary?.yellow.length) ? (
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Card className="tile lg:col-span-3">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <div>
+                <CardTitle className="text-base">โครงการที่ต้องติดตาม</CardTitle>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  โครงการที่ล่าช้า (แดง) และใกล้เสี่ยง (เหลือง){isExec ? "" : " · เฉพาะโครงการของคุณ"}
+                </p>
+              </div>
+              <Link to="/projects" className="text-xs text-primary hover:underline">ดูทั้งหมด →</Link>
+            </CardHeader>
+            <CardContent className="grid gap-6 md:grid-cols-2">
+              <div>
+                <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-red-700">
+                  <span className="h-2 w-2 rounded-full bg-red-500" />
+                  ล่าช้า ({healthSummary?.red.length ?? 0})
+                </div>
+                <AtRiskProjectList items={healthSummary?.red ?? []} tone="destructive" />
+              </div>
+              <div>
+                <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-amber-700">
+                  <span className="h-2 w-2 rounded-full bg-amber-500" />
+                  ใกล้เสี่ยง ({healthSummary?.yellow.length ?? 0})
+                </div>
+                <AtRiskProjectList items={healthSummary?.yellow ?? []} tone="warning" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
 
-      {/* Analytics */}
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className={`tile ${can("documents") ? "lg:col-span-2" : "lg:col-span-3"}`}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
