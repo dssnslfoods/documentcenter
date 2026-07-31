@@ -71,9 +71,15 @@ export function EditProjectDialog({
   );
   const [isInhouse, setIsInhouse] = useState(!!project.is_inhouse);
 
-  // Re-sync the form whenever a different project (or fresh data) is opened.
+  // Re-sync the form only when the dialog opens (or switches project).
+  // Depending on the whole `project` object would reset the user's typing on any
+  // background refetch of the project query.
+  const syncKey = `${open ? "1" : "0"}:${project.id}`;
+  const lastSync = useRef<string | null>(null);
   useEffect(() => {
     if (!open) return;
+    if (lastSync.current === syncKey) return;
+    lastSync.current = syncKey;
     setName(project.name ?? "");
     setDescription(project.description ?? "");
     setCustomerId(project.customer_id ?? "");
@@ -84,7 +90,7 @@ export function EditProjectDialog({
     setContractValue(project.contract_value == null ? "" : String(project.contract_value));
     setVatPercentStr(project.vat_rate == null ? "none" : String(Number(project.vat_rate)));
     setIsInhouse(!!project.is_inhouse);
-  }, [open, project]);
+  }, [open, syncKey, project]);
 
   const net = Number(contractValue) || 0;
   const vatPercent = vatPercentStr === "none" ? 0 : Number(vatPercentStr) || 0;
