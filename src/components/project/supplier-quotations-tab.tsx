@@ -295,13 +295,25 @@ function AddDialog({
       <div className="space-y-3">
         <div>
           <Label>Supplier (จากรายชื่อคู่ค้า)</Label>
-          <Select value={supplierId} onValueChange={setSupplierId}>
-            <SelectTrigger><SelectValue placeholder="เลือก Supplier" /></SelectTrigger>
-            <SelectContent>
-              {partners.map((p) => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}
-            </SelectContent>
-          </Select>
+          <div className="flex gap-2">
+            <Select value={supplierId} onValueChange={(v) => { setSupplierId(v); setSupplierName(""); }}>
+              <SelectTrigger className="flex-1"><SelectValue placeholder="เลือก Supplier" /></SelectTrigger>
+              <SelectContent>
+                {partners.map((p) => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}
+              </SelectContent>
+            </Select>
+            <Button type="button" variant="outline" size="icon" title="เพิ่ม Supplier ใหม่" onClick={() => setPartnerOpen(true)}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+          <PartnerFormDialog
+            open={partnerOpen}
+            onOpenChange={setPartnerOpen}
+            defaultType="supplier"
+            onSaved={(row) => { setSupplierId(row.id); setSupplierName(""); }}
+          />
         </div>
+
         <div>
           <Label>หรือ พิมพ์ชื่อ Supplier</Label>
           <Input value={supplierName} onChange={(e) => setSupplierName(e.target.value)} placeholder="ชื่อ Supplier" />
