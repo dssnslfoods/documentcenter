@@ -91,7 +91,11 @@ export const scanQuotation = createServerFn({ method: "POST" })
     if (!match) throw new Error("ไม่สามารถอ่านข้อมูลจากเอกสารได้");
 
     try {
-      return JSON.parse(match[0]) as ScannedQuotation;
+      const parsed = JSON.parse(match[0]) as { data?: ScannedQuotation; confidence?: ScannedQuotation["confidence"] } | ScannedQuotation;
+      // รองรับทั้งรูปแบบเก่า (flat) และรูปแบบใหม่ (data + confidence)
+      const data = "data" in parsed && parsed.data ? parsed.data : (parsed as ScannedQuotation);
+      const confidence = "confidence" in parsed && parsed.confidence ? parsed.confidence : undefined;
+      return { ...data, confidence };
     } catch {
       throw new Error("ไม่สามารถอ่านข้อมูลจากเอกสารได้");
     }
