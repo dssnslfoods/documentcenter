@@ -12,6 +12,7 @@ import { useMyRoles, useCanSeeMoney, MONEY_MASK } from "@/hooks/use-page-access"
 import { useAuth } from "@/hooks/use-supabase";
 import { canCreateProjects } from "@/lib/project-roles";
 import { ProjectMembersPeek } from "@/components/project/project-members-peek";
+import { akaBadgeClass } from "@/lib/aka-colors";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDate, fmtCurrency } from "@/lib/format";
 import {
@@ -36,6 +37,7 @@ type ProjectRow = {
   status: string | null;
   customer_name: string | null;
   customer_aka: string | null;
+  customer_aka_color: string | null;
   project_type: string | null;
   contract_value: number | null;
   start_date: string | null;
@@ -81,7 +83,7 @@ function ProjectsList() {
       const sb = getSupabase();
       let query = sb
         .from("projects")
-        .select("id, code, name, status, customer_name, customer_aka, project_type, contract_value, start_date, end_date, budget, updated_at", { count: "exact" })
+        .select("id, code, name, status, customer_name, customer_aka, customer_aka_color, project_type, contract_value, start_date, end_date, budget, updated_at", { count: "exact" })
         .is("archived_at", null);
       if (view === "pipeline") {
         query = query.order(pipelineSort.field, { ascending: pipelineSort.direction === "asc", nullsFirst: false });
@@ -291,7 +293,7 @@ function PipelineView({ rows, isLoading, memberIds, canPeekMembers }: { rows: Pr
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex min-w-0 items-center gap-1.5">
                         {p.customer_aka && (
-                          <span className="shrink-0 rounded-md bg-primary px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide text-primary-foreground shadow-sm">
+                          <span className={`shrink-0 rounded-md px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide shadow-sm ${akaBadgeClass(p.customer_aka_color)}`}>
                             {p.customer_aka}
                           </span>
                         )}
@@ -458,7 +460,7 @@ function ListView({
                       <td className="px-4 py-3 font-medium">{p.name}</td>
                       <td className="px-4 py-3 text-muted-foreground">
                         {p.customer_aka && (
-                          <span className="mr-1.5 rounded bg-primary px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase text-primary-foreground">{p.customer_aka}</span>
+                          <span className={`mr-1.5 rounded px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase ${akaBadgeClass(p.customer_aka_color)}`}>{p.customer_aka}</span>
                         )}
                         {p.customer_name ?? "-"}
                       </td>

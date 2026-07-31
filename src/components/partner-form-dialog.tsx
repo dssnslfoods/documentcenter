@@ -9,12 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getSupabase } from "@/lib/supabase";
 import { nextCode } from "@/lib/next-code";
+import { AKA_COLORS, akaBadgeClass } from "@/lib/aka-colors";
 
 export type Partner = {
   id: string;
   code: string;
   name: string;
   aka: string | null;
+  aka_color: string | null;
   type: "customer" | "supplier" | "both";
   tax_id: string | null;
   address: string | null;
@@ -30,6 +32,7 @@ export type Partner = {
 export type PartnerFormValues = {
   name: string;
   aka: string;
+  aka_color: string;
   type: Partner["type"];
   tax_id: string;
   address: string;
@@ -43,7 +46,7 @@ export type PartnerFormValues = {
 };
 
 const empty: PartnerFormValues = {
-  name: "", aka: "", type: "both", tax_id: "", address: "", phone: "", email: "", website: "",
+  name: "", aka: "", aka_color: "blue", type: "both", tax_id: "", address: "", phone: "", email: "", website: "",
   business_type: "", credit_terms: "", notes: "", status: "active",
 };
 
@@ -51,7 +54,7 @@ export function usePartners(type?: "customer" | "supplier") {
   return useQuery({
     queryKey: ["partners-active", type ?? "all"],
     queryFn: async () => {
-      let q = getSupabase().from("partners").select("id, code, name, aka, type").eq("status", "active");
+      let q = getSupabase().from("partners").select("id, code, name, aka, aka_color, type").eq("status", "active");
       if (type) q = q.in("type", [type, "both"]);
       const { data } = await q.order("name");
       return (data ?? []) as { id: string; code: string; name: string; aka: string | null; type: string }[];
@@ -84,6 +87,7 @@ export function PartnerFormDialog({
       setForm({
         name: editing.name,
         aka: editing.aka ?? "",
+        aka_color: editing.aka_color ?? "blue",
         type: editing.type,
         tax_id: editing.tax_id ?? "",
         address: editing.address ?? "",
@@ -113,6 +117,7 @@ export function PartnerFormDialog({
       const payload = {
         name,
         aka: form.aka.trim() || null,
+        aka_color: form.aka.trim() ? form.aka_color : null,
         type: form.type,
         tax_id: form.tax_id.trim() || null,
         address: form.address.trim() || null,
@@ -126,14 +131,14 @@ export function PartnerFormDialog({
       };
 
       if (editing) {
-        const { data, error } = await sb.from("partners").update(payload).eq("id", editing.id).select("id, code, name, aka, type, status").single();
+        const { data, error } = await sb.from("partners").update(payload).eq("id", editing.id).select("id, code, name, aka, aka_color, type, status").single();
         if (error) throw error;
         return data;
       }
       const { data: all, error: readErr } = await sb.from("partners").select("code");
       if (readErr) throw readErr;
       const newCode = nextCode("PT-", (all ?? []).map((r: { code: string }) => r.code), 4);
-      const { data, error } = await sb.from("partners").insert({ ...payload, code: newCode }).select("id, code, name, aka, type, status").single();
+      const { data, error } = await sb.from("partners").insert({ ...payload, code: newCode }).select("id, code, name, aka, aka_color, type, status").single();
       if (error) throw error;
       return data;
     },
@@ -191,6 +196,22 @@ export function PartnerFormDialog({
               onChange={(e) => setForm({ ...form, aka: e.target.value })}
             />
             <p className="text-[11px] text-muted-foreground">ใช้แสดงเป็นสัญลักษณ์เด่นบนการ์ดโครงการ (สูงสุด 20 ตัวอักษร)</p>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <span className="text-[11px] text-muted-foreground">สีป้าย:</span>
+              {AKA_COLORS.map((c) => (
+                <button
+                  key={c.key}
+                  type="button"
+                  aria-label={c.label}
+                  title={c.label}
+                  onClick={() => setForm({ ...form, aka_color: c.key })}
+                  className={`h-6 w-6 rounded-full ${c.swatch} ring-offset-2 ring-offset-background transition ${form.aka_color === c.key ? "ring-2 ring-foreground" : "opacity-70 hover:opacity-100"}`}
+                />
+              ))}
+              <span className={`ml-auto rounded-md px-2 py-0.5 font-mono text-[10px] font-bold uppercase ${akaBadgeClass(form.aka_color)}`}>
+                {form.aka.trim() || "AKA"}
+              </span>
+            </div>
           </div>
           <div className="space-y-1">
             <Label>ประเภท *</Label>
