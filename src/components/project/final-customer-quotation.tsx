@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Star, Download, FileSpreadsheet } from "lucide-react";
+import { FilePreviewButton } from "@/components/project/file-preview-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getSupabase } from "@/lib/supabase";
@@ -81,9 +82,12 @@ export function FinalCustomerQuotation({
         )}
       </div>
       {data.file_url ? (
-        <Button size="sm" variant="outline" onClick={() => openFile(data.file_url!)}>
-          <Download className="h-4 w-4" />
-        </Button>
+        <div className="flex gap-1">
+          <FilePreviewButton path={data.file_url} label="ดูใบเสนอราคา" />
+          <Button size="sm" variant="outline" onClick={() => openFile(data.file_url!)} title="ดาวน์โหลด">
+            <Download className="h-4 w-4" />
+          </Button>
+        </div>
       ) : (
         <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
       )}

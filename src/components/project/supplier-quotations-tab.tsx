@@ -15,6 +15,7 @@ import { useVatRates, calcVat, pickVatRate, fmtNum } from "@/lib/vat";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDate, fmtCurrency } from "@/lib/format";
 import { uploadProjectFile, getProjectFileUrl } from "@/lib/project-files";
+import { FilePreviewButton } from "@/components/project/file-preview-dialog";
 import { PartnerFormDialog, usePartners } from "@/components/partner-form-dialog";
 import { ScanQuotationCard } from "@/components/scan-quotation-card";
 import type { ScannedItem, ScannedQuotation } from "@/lib/scan-quotation.functions";
@@ -213,9 +214,12 @@ export function SupplierQuotationsTab({
                   {r.file_urls?.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {r.file_urls.map((f, i) => (
-                        <Button key={i} size="sm" variant="outline" onClick={() => openFile(f)}>
-                          <Download className="mr-1 h-3 w-3" />ไฟล์ {i + 1}
-                        </Button>
+                        <span key={i} className="inline-flex gap-1">
+                          <FilePreviewButton path={f} label={`ดูไฟล์ ${i + 1}`} />
+                          <Button size="sm" variant="outline" onClick={() => openFile(f)} title="ดาวน์โหลด">
+                            <Download className="h-3 w-3" />
+                          </Button>
+                        </span>
                       ))}
                     </div>
                   )}
