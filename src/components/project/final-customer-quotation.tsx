@@ -81,9 +81,12 @@ export function FinalCustomerQuotation({
         )}
       </div>
       {data.file_url ? (
-        <Button size="sm" variant="outline" onClick={() => openFile(data.file_url!)}>
-          <Download className="h-4 w-4" />
-        </Button>
+        <div className="flex gap-1">
+          <FilePreviewButton path={data.file_url} label="ดูใบเสนอราคา" />
+          <Button size="sm" variant="outline" onClick={() => openFile(data.file_url!)} title="ดาวน์โหลด">
+            <Download className="h-4 w-4" />
+          </Button>
+        </div>
       ) : (
         <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
       )}
