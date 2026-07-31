@@ -215,18 +215,16 @@ export function SupplierQuotationsTab({
                   )}
                   {canEdit && (
                     <div className="flex items-center justify-between gap-2 border-t pt-2">
-                      {!r.is_selected ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => selectFinal.mutate(r.id)}
-                          disabled={selectFinal.isPending}
-                        >
-                          <Star className="mr-1 h-3.5 w-3.5" />เลือกเป็น Final
-                        </Button>
-                      ) : (
-                        <span className="text-xs text-success">✓ เวอร์ชันที่เลือกสำหรับโครงการ</span>
-                      )}
+                      <Button
+                        size="sm"
+                        variant={r.is_selected ? "secondary" : "outline"}
+                        onClick={() => toggleFinal.mutate({ id: r.id, next: !r.is_selected })}
+                        disabled={toggleFinal.isPending}
+                      >
+                        <Star className={`mr-1 h-3.5 w-3.5 ${r.is_selected ? "fill-current text-success" : ""}`} />
+                        {r.is_selected ? "ยกเลิก Final" : "เลือกเป็น Final"}
+                      </Button>
+
                       <Button
                         size="sm"
                         variant="ghost"
