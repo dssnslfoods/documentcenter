@@ -57,6 +57,7 @@ function ProjectsList() {
   const canPeekMembers = roles.includes("super_admin") || roles.includes("management");
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
+  const [health, setHealth] = useState<"all" | ProjectHealth>("all");
   const [view, setView] = useState<"pipeline" | "list">("pipeline");
   const [page, setPage] = useState(0);
   const [sort, setSort] = useState<{ field: "created_at" | "status"; direction: "asc" | "desc" }>({
