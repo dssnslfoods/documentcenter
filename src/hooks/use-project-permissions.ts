@@ -82,6 +82,13 @@ export function useProjectPermissions(projectId: string | undefined): {
       // Only super_admin / management may act as project executives.
       const canBeExec = isAdmin || roleList.includes("management");
 
+      const { data: proj } = await sb
+        .from("projects")
+        .select("status")
+        .eq("id", projectId!)
+        .maybeSingle();
+      const isLocked = ((proj as { status?: string } | null)?.status ?? "") === "completed";
+
       const { data: mem } = await sb
         .from("project_members")
         .select("id, project_role")
