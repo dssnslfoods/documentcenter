@@ -475,6 +475,43 @@ function GanttRow({
   );
 }
 
+// ---- จดจำชื่อผู้รับผิดชอบภายนอกที่ผู้ใช้เคยพิมพ์เอง ----
+const ASSIGNEE_LS_KEY = "dh:external-assignees";
+const DEFAULT_ASSIGNEES = ["ลูกค้า", "คู่ค้า", "ผู้รับเหมา", "ที่ปรึกษา"];
+
+function loadRememberedAssignees(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(ASSIGNEE_LS_KEY);
+    const list = raw ? (JSON.parse(raw) as unknown) : [];
+    return Array.isArray(list) ? list.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function rememberAssignee(label: string): string[] {
+  const v = label.trim();
+  if (!v || typeof window === "undefined") return loadRememberedAssignees();
+  const next = [v, ...loadRememberedAssignees().filter((x) => x !== v)].slice(0, 12);
+  try {
+    window.localStorage.setItem(ASSIGNEE_LS_KEY, JSON.stringify(next));
+  } catch {
+    /* ignore quota errors */
+  }
+  return next;
+}
+
+function forgetAssignee(label: string): string[] {
+  const next = loadRememberedAssignees().filter((x) => x !== label);
+  try {
+    window.localStorage.setItem(ASSIGNEE_LS_KEY, JSON.stringify(next));
+  } catch {
+    /* ignore */
+  }
+  return next;
+}
+
 function TaskDialog({
   open, onOpenChange, projectId, task, parents, members, milestones, defaultStart,
 }: {
