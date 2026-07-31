@@ -4,3 +4,5 @@ alter table public.supplier_quotations
 
 alter table public.customer_quotations
   add column if not exists title text;
+
+notify pgrst, 'reload schema';
