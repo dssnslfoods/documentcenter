@@ -502,6 +502,9 @@ function ListView({
                       <td className="px-4 py-3">
                         <Badge variant="outline" className={STATUS_TONE[st]}>{LIFECYCLE_LABEL[st] ?? st}</Badge>
                       </td>
+                      <td className="px-4 py-3">
+                        <HealthBadge health={healthFromString(p.health_status)} />
+                      </td>
                       <td className="px-4 py-3 text-muted-foreground">{fmtDate(p.start_date)}</td>
                       <td className="px-4 py-3 text-muted-foreground">{fmtDate(p.end_date)}</td>
                       <td className="px-4 py-3 text-right font-mono tabular-nums">{canSeeMoney ? fmtCurrency(p.contract_value ?? p.budget, "THB") : MONEY_MASK}</td>
