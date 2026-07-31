@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, Plus } from "lucide-react";
@@ -71,9 +71,15 @@ export function EditProjectDialog({
   );
   const [isInhouse, setIsInhouse] = useState(!!project.is_inhouse);
 
-  // Re-sync the form whenever a different project (or fresh data) is opened.
+  // Re-sync the form only when the dialog opens (or switches project).
+  // Depending on the whole `project` object would reset the user's typing on any
+  // background refetch of the project query.
+  const syncKey = `${open ? "1" : "0"}:${project.id}`;
+  const lastSync = useRef<string | null>(null);
   useEffect(() => {
     if (!open) return;
+    if (lastSync.current === syncKey) return;
+    lastSync.current = syncKey;
     setName(project.name ?? "");
     setDescription(project.description ?? "");
     setCustomerId(project.customer_id ?? "");
@@ -84,7 +90,7 @@ export function EditProjectDialog({
     setContractValue(project.contract_value == null ? "" : String(project.contract_value));
     setVatPercentStr(project.vat_rate == null ? "none" : String(Number(project.vat_rate)));
     setIsInhouse(!!project.is_inhouse);
-  }, [open, project]);
+  }, [open, syncKey, project]);
 
   const net = Number(contractValue) || 0;
   const vatPercent = vatPercentStr === "none" ? 0 : Number(vatPercentStr) || 0;
@@ -116,13 +122,24 @@ export function EditProjectDialog({
         patch.vat_amount = hasValue ? vatAmount : null;
         patch.contract_value_incl_vat = hasValue ? gross : null;
       }
-      const { error } = await sb.from("projects").update(patch).eq("id", project.id);
+      const { data, error } = await sb
+        .from("projects")
+        .update(patch)
+        .eq("id", project.id)
+        .select("id");
       if (error) throw error;
+      // RLS can silently reject the write (0 rows affected) — surface it instead of
+      // showing a success toast with unchanged data.
+      if (!data || data.length === 0)
+        throw new Error("ไม่สามารถบันทึกได้ — คุณอาจไม่มีสิทธิ์แก้ไขโครงการนี้");
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["project", project.id] });
-      qc.invalidateQueries({ queryKey: ["projects"] });
-      qc.invalidateQueries({ queryKey: ["project-last-editor"] });
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["project", project.id], refetchType: "all" }),
+        qc.invalidateQueries({ queryKey: ["projects"], refetchType: "all" }),
+        qc.invalidateQueries({ queryKey: ["project-last-editor"], refetchType: "all" }),
+        qc.invalidateQueries({ queryKey: ["project-history", project.id], refetchType: "all" }),
+      ]);
       toast.success("บันทึกรายละเอียดโครงการแล้ว");
       onOpenChange(false);
     },
