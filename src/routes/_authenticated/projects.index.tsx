@@ -405,6 +405,7 @@ function ListView({
   sort: { field: "created_at" | "status"; direction: "asc" | "desc" };
   onSort: (field: "created_at" | "status") => void;
 }) {
+  const { canSeeMoney } = useCanSeeMoney();
   const SortIcon = sort.field === "status"
     ? (sort.direction === "asc" ? ArrowUp : ArrowDown)
     : ArrowUpDown;
