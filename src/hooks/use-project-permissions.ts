@@ -41,6 +41,8 @@ export type ProjectPermissions = {
   isAdmin: boolean;
   isManager: boolean;
   isMember: boolean;
+  /** โครงการปิดแล้ว — ล็อกการแก้ไขทั้งหมด */
+  isLocked: boolean;
   projectRole: ProjectRole | null;
   keys: Set<PermissionKey>;
   has: (k: PermissionKey) => boolean;
@@ -80,6 +82,13 @@ export function useProjectPermissions(projectId: string | undefined): {
       // Only super_admin / management may act as project executives.
       const canBeExec = isAdmin || roleList.includes("management");
 
+      const { data: proj } = await sb
+        .from("projects")
+        .select("status")
+        .eq("id", projectId!)
+        .maybeSingle();
+      const isLocked = ((proj as { status?: string } | null)?.status ?? "") === "completed";
+
       const { data: mem } = await sb
         .from("project_members")
         .select("id, project_role")
@@ -117,11 +126,13 @@ export function useProjectPermissions(projectId: string | undefined): {
       const timelineOnly = projectRole === "dept_head" || projectRole === "staff";
 
       if (timelineOnly) {
-        const canEditTimeline = projectRole === "dept_head";
+        const canEditTimeline = projectRole === "dept_head" && !isLocked;
         return {
           isAdmin: false,
           isManager: false,
           isMember: !!mem,
+          isLocked,
+
           projectRole,
           keys,
           has: () => false,
@@ -157,10 +168,11 @@ export function useProjectPermissions(projectId: string | undefined): {
         isAdmin,
         isManager: isExec,
         isMember: !!mem,
+        isLocked,
         projectRole,
         keys,
         has,
-        canManageTeam: !outsider && (isAdmin || isExec),
+        canManageTeam: !outsider && !isLocked && (isAdmin || isExec),
         canSeeOverview: isAdmin || has("view_project_info") || !!mem,
         canSeeSpec: has("view_spec_scope") || has("view_all_documents"),
         canSeeSupplier: seeSupplier,
@@ -171,10 +183,10 @@ export function useProjectPermissions(projectId: string | undefined): {
         canSeeMilestones: seeMilestones,
         canSeeMilestonePayment: seeMilestonePayment,
         canSeeTimeline: isAdmin || isExec || seeMilestones,
-        canEditTimeline: !outsider && (isAdmin || isExec || has("edit_milestones")),
-        canEditProject: !outsider && has("edit_project"),
-        canEditMilestones: !outsider && has("edit_milestones"),
-        canUpload: !outsider && has("upload_documents"),
+        canEditTimeline: !outsider && !isLocked && (isAdmin || isExec || has("edit_milestones")),
+        canEditProject: !outsider && !isLocked && has("edit_project"),
+        canEditMilestones: !outsider && !isLocked && has("edit_milestones"),
+        canUpload: !outsider && !isLocked && has("upload_documents"),
       };
 
     },

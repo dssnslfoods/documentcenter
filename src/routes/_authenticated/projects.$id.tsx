@@ -101,11 +101,13 @@ function ProjectDetail() {
   const autoAdvancedRef = useRef<string | null>(null);
 
   const isAdmin = perms?.isAdmin ?? false;
+  const status = (p?.status ?? "draft") as ProjectLifecycleStatus;
+  // โครงการที่ปิดแล้ว = ล็อก ห้ามแก้ไขใดๆ
+  const isLocked = (perms?.isLocked ?? false) || status === "completed";
   // Admin / ผู้บริหาร ที่ไม่ได้เป็นสมาชิกโครงการ = ดูได้อย่างเดียว
-  const editAdmin = isAdmin && (perms?.isMember ?? false);
+  const editAdmin = isAdmin && (perms?.isMember ?? false) && !isLocked;
   const canEditProject = editAdmin || (perms?.canEditProject ?? false);
 
-  const status = (p?.status ?? "draft") as ProjectLifecycleStatus;
 
 
 
@@ -194,6 +196,15 @@ function ProjectDetail() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight">{p.name}</h1>
+            {isLocked && (
+              <Badge
+                variant="outline"
+                title="โครงการปิดแล้ว — ไม่สามารถแก้ไขข้อมูลใดๆ ได้"
+                className="gap-1 border-muted-foreground/30 bg-muted text-muted-foreground"
+              >
+                <Lock className="h-3 w-3" />ปิดโครงการแล้ว · แก้ไขไม่ได้
+              </Badge>
+            )}
             {!perms?.isMember && (
               <Badge
                 variant="outline"
@@ -204,6 +215,7 @@ function ProjectDetail() {
               </Badge>
             )}
           </div>
+
 
           <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
             {p.project_type && <span>ประเภท {p.project_type}</span>}
