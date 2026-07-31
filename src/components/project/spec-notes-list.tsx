@@ -18,6 +18,7 @@ type Note = {
   content: string;
   created_at: string;
   updated_at: string;
+  sort_order: number | null;
 };
 
 export function ProjectSpecNotesList({
