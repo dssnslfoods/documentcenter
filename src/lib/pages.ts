@@ -23,7 +23,7 @@ export const PAGES: { key: PageKey; label: string; to: string; group: string }[]
 export const ROLES: { value: AppRole; label: string }[] = [
   { value: "super_admin", label: "ผู้ดูแลระบบสูงสุด" },
   { value: "management", label: "ผู้บริหาร" },
-  { value: "dept_manager", label: "ผู้จัดการแผนก" },
+  { value: "dept_manager", label: "หัวหน้าแผนก" },
   { value: "staff", label: "พนักงาน" },
   { value: "viewer", label: "ผู้อ่านอย่างเดียว" },
 ];
