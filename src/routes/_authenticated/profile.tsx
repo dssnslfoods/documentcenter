@@ -5,6 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSupabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/use-supabase";
 import { fmtDateTime } from "@/lib/format";
+import { useMyRoles } from "@/hooks/use-page-access";
+import { ROLES } from "@/lib/pages";
+import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/_authenticated/profile")({
   head: () => ({ meta: [{ title: "โปรไฟล์ | Document Hub" }] }),
@@ -13,6 +16,7 @@ export const Route = createFileRoute("/_authenticated/profile")({
 
 function Profile() {
   const { user } = useAuth();
+  const { roles } = useMyRoles();
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
     queryFn: async () => {
@@ -39,6 +43,22 @@ function Profile() {
           <Field label="ตำแหน่ง" value={profile?.position ?? "-"} />
           <Field label="โทรศัพท์" value={profile?.phone ?? "-"} />
           <Field label="สร้างบัญชีเมื่อ" value={fmtDateTime(user?.created_at)} />
+          <Field
+            label="บทบาทผู้ใช้"
+            value={
+              roles.length ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {roles.map((r) => (
+                    <Badge key={r} variant="secondary">
+                      {ROLES.find((x) => x.value === r)?.label ?? r}
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                "-"
+              )
+            }
+          />
         </CardContent>
       </Card>
     </div>

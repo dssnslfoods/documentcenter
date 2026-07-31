@@ -15,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-supabase";
 import { useCanAccess } from "@/hooks/use-page-access";
-import type { PageKey } from "@/lib/pages";
+import { ROLES, type PageKey } from "@/lib/pages";
 
 // Sidebar organized by workflow order: daily work → sales pipeline → post-sale docs → governance
 type NavItem = { to: string; icon: React.ComponentType<{ className?: string }>; label: string; key: PageKey };
@@ -81,7 +81,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const profile = useProfileName(user?.id);
-  const { can } = useCanAccess();
+  const { can, roles } = useCanAccess();
+  const roleLabel =
+    roles.map((r) => ROLES.find((x) => x.value === r)?.label ?? r).join(" · ") || null;
   const displayName =
     profile?.full_name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "ผู้ใช้งาน";
 
@@ -105,6 +107,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           displayName={displayName}
           email={user?.email}
           position={profile?.position ?? null}
+          roleLabel={roleLabel}
           can={can}
         />
       </aside>
@@ -128,6 +131,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               displayName={displayName}
               email={user?.email}
               position={profile?.position ?? null}
+              roleLabel={roleLabel}
               can={can}
             />
 
@@ -229,13 +233,14 @@ function NotificationBell({ userId }: { userId: string | undefined }) {
 }
 
 function SidebarContent({
-  collapsed, pathname, displayName, email, position, can,
+  collapsed, pathname, displayName, email, position, roleLabel, can,
 }: {
   collapsed: boolean;
   pathname: string;
   displayName: string;
   email?: string;
   position?: string | null;
+  roleLabel?: string | null;
   can: (key: PageKey) => boolean;
 }) {
   const sections = NAV_SECTIONS
@@ -299,6 +304,11 @@ function SidebarContent({
           {!collapsed && (
             <div className="min-w-0">
               <div className="truncate text-sm font-medium">{displayName}</div>
+              {roleLabel && (
+                <div className="mt-0.5 inline-flex max-w-full truncate rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                  {roleLabel}
+                </div>
+              )}
               <div className="truncate text-[10px] text-muted-foreground">{position || email}</div>
             </div>
           )}
