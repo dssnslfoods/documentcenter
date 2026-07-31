@@ -101,7 +101,10 @@ function ProjectDetail() {
   const autoAdvancedRef = useRef<string | null>(null);
 
   const isAdmin = perms?.isAdmin ?? false;
-  const canEditProject = isAdmin || (perms?.canEditProject ?? false);
+  // Admin / ผู้บริหาร ที่ไม่ได้เป็นสมาชิกโครงการ = ดูได้อย่างเดียว
+  const editAdmin = isAdmin && (perms?.isMember ?? false);
+  const canEditProject = editAdmin || (perms?.canEditProject ?? false);
+
   const status = (p?.status ?? "draft") as ProjectLifecycleStatus;
 
 
@@ -285,7 +288,7 @@ function ProjectDetail() {
 
         <TabsContent value="rfq" className="mt-5 space-y-4">
           {(() => {
-            const canEditSpec = isAdmin || ((perms?.canSeeSpec ?? false) && (perms?.canUpload ?? false));
+            const canEditSpec = editAdmin || ((perms?.canSeeSpec ?? false) && (perms?.canUpload ?? false));
             return (
               <>
                 {isInhouse && (
@@ -337,7 +340,7 @@ function ProjectDetail() {
               )}
               <SupplierQuotationsTab
                 projectId={id}
-                canEdit={isAdmin || (perms?.canUpload ?? false)}
+                canEdit={editAdmin || (perms?.canUpload ?? false)}
                 canSeePrice={perms?.canSeeSupplierPrice ?? false}
               />
             </>
@@ -349,7 +352,7 @@ function ProjectDetail() {
           {perms?.canSeeCustomer ? (
             <CustomerQuotationsTab
               projectId={id}
-              canEdit={isAdmin || (perms?.canUpload ?? false)}
+              canEdit={editAdmin || (perms?.canUpload ?? false)}
               canSeePrice={perms?.canSeeCustomerPrice ?? false}
             />
           ) : <Denied label="ใบเสนอลูกค้า" />}
@@ -386,7 +389,7 @@ function ProjectDetail() {
             <MilestonesTab
               projectId={id}
               contractValue={p.contract_value ?? p.budget ?? null}
-              canEdit={isAdmin || (perms?.canEditMilestones ?? false)}
+              canEdit={editAdmin || (perms?.canEditMilestones ?? false)}
               canSeePayment={perms?.canSeeMilestonePayment ?? false}
             />
           ) : <Denied label="งวดงาน" />}
