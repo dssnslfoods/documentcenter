@@ -249,7 +249,7 @@ function ProjectDetail() {
       </div>
 
       {/* Workflow tabs */}
-      <Tabs defaultValue="overview" className="w-full">
+      <Tabs defaultValue={perms?.canSeeOverview === false ? "timeline" : "overview"} className="w-full">
         <div className="overflow-x-auto">
           <TabsList className="inline-flex h-auto flex-nowrap gap-1 rounded-full bg-muted p-1">
             {TAB_ORDER.filter((t) => !(isInhouse && (t.value === "rfq" || t.value === "supplier")))
@@ -261,8 +261,9 @@ function ProjectDetail() {
                   case "supplier": return perms?.canSeeSupplier ?? false;
                   case "customer": return perms?.canSeeCustomer ?? false;
                   case "contract": return perms?.canSeeContract ?? false;
-                  case "timeline": return perms?.canSeeMilestones ?? false;
+                  case "timeline": return perms?.canSeeTimeline ?? false;
                   case "milestones": return perms?.canSeeMilestones ?? false;
+
                   default: return true;
                 }
               })
@@ -352,8 +353,8 @@ function ProjectDetail() {
         </TabsContent>
 
         <TabsContent value="timeline" className="mt-5">
-          {perms?.canSeeMilestones ? (
-            <TimelineTab projectId={id} projectName={p?.name ?? p?.title ?? undefined} canEdit={isAdmin || (perms?.canEditMilestones ?? false)} />
+          {perms?.canSeeTimeline ? (
+            <TimelineTab projectId={id} projectName={p?.name ?? p?.title ?? undefined} canEdit={perms?.canEditTimeline ?? false} />
           ) : <Denied label="แผนงาน" />}
         </TabsContent>
 
@@ -369,8 +370,9 @@ function ProjectDetail() {
         </TabsContent>
 
         <TabsContent value="team" className="mt-5">
-          <TeamTab projectId={id} isAdmin={isAdmin} />
+          <TeamTab projectId={id} isAdmin={perms?.canManageTeam ?? false} />
         </TabsContent>
+
 
         <TabsContent value="history" className="mt-5">
           <ProjectHistoryTab projectId={id} />

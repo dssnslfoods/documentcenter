@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getSupabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/use-supabase";
+import type { ProjectRole } from "@/lib/project-roles";
 
 export const ALL_PERMISSIONS = [
   "view_project_info",
@@ -40,9 +41,11 @@ export type ProjectPermissions = {
   isAdmin: boolean;
   isManager: boolean;
   isMember: boolean;
+  projectRole: ProjectRole | null;
   keys: Set<PermissionKey>;
   has: (k: PermissionKey) => boolean;
   // Derived UI gates
+  canManageTeam: boolean;
   canSeeOverview: boolean;
   canSeeSpec: boolean;
   canSeeSupplier: boolean;
@@ -52,6 +55,8 @@ export type ProjectPermissions = {
   canSeeContract: boolean;
   canSeeMilestones: boolean;
   canSeeMilestonePayment: boolean;
+  canSeeTimeline: boolean;
+  canEditTimeline: boolean;
   canEditProject: boolean;
   canEditMilestones: boolean;
   canUpload: boolean;
@@ -72,15 +77,20 @@ export function useProjectPermissions(projectId: string | undefined): {
       const { data: roles } = await sb.from("user_roles").select("role").eq("user_id", uid);
       const roleList = (roles ?? []).map((r) => r.role as string);
       const isAdmin = roleList.includes("super_admin");
-      // Manager-level roles get full project access/editing by default.
-      const isManager = isAdmin || roleList.includes("management") || roleList.includes("dept_manager");
+      // Only super_admin / management may act as project executives.
+      const canBeExec = isAdmin || roleList.includes("management");
 
       const { data: mem } = await sb
         .from("project_members")
-        .select("id")
+        .select("id, project_role")
         .eq("project_id", projectId!)
         .eq("user_id", uid)
         .maybeSingle();
+
+      const memberRole = ((mem as { project_role?: string } | null)?.project_role ?? null) as ProjectRole | null;
+      const projectRole: ProjectRole | null = isAdmin
+        ? "exec"
+        : memberRole ?? (canBeExec ? "exec" : null);
 
       const keys = new Set<PermissionKey>();
       if (mem) {
@@ -93,15 +103,46 @@ export function useProjectPermissions(projectId: string | undefined): {
         });
       }
 
-      const has = (k: PermissionKey) => isAdmin || isManager || keys.has(k);
-      // Price visibility is never auto-granted to managers: admins can hide it
-      // per member via the "ซ่อนราคา" permissions.
+      const isExec = projectRole === "exec";
+      const has = (k: PermissionKey) => isAdmin || isExec || keys.has(k);
+
+      // Price visibility is never auto-granted: admins can hide it per member.
       const priceSet = (priceKey: PermissionKey, noPriceKey: PermissionKey) => {
         if (isAdmin) return true;
         if (keys.has(priceKey)) return true;
         if (keys.has(noPriceKey)) return false;
-        return isManager;
+        return isExec;
       };
+
+      const timelineOnly = projectRole === "dept_head" || projectRole === "staff";
+
+      if (timelineOnly) {
+        const canEditTimeline = projectRole === "dept_head";
+        return {
+          isAdmin: false,
+          isManager: false,
+          isMember: !!mem,
+          projectRole,
+          keys,
+          has: () => false,
+          canManageTeam: false,
+          canSeeOverview: false,
+          canSeeSpec: false,
+          canSeeSupplier: false,
+          canSeeSupplierPrice: false,
+          canSeeCustomer: false,
+          canSeeCustomerPrice: false,
+          canSeeContract: false,
+          canSeeMilestones: false,
+          canSeeMilestonePayment: false,
+          canSeeTimeline: true,
+          canEditTimeline,
+          canEditProject: false,
+          canEditMilestones: false,
+          canUpload: false,
+        };
+      }
+
       const seeCustomerPrice = priceSet("view_customer_quotation", "view_customer_quotation_no_price");
       const seeSupplierPrice = priceSet("view_supplier_quotation", "view_supplier_quotation_no_price");
       const seeMilestonePayment = priceSet("view_milestones", "view_milestones_no_payment");
@@ -111,10 +152,12 @@ export function useProjectPermissions(projectId: string | undefined): {
 
       return {
         isAdmin,
-        isManager,
+        isManager: isExec,
         isMember: !!mem,
+        projectRole,
         keys,
         has,
+        canManageTeam: isAdmin || isExec,
         canSeeOverview: isAdmin || has("view_project_info") || !!mem,
         canSeeSpec: has("view_spec_scope") || has("view_all_documents"),
         canSeeSupplier: seeSupplier,
@@ -124,6 +167,8 @@ export function useProjectPermissions(projectId: string | undefined): {
         canSeeContract: has("view_contract") || has("view_all_documents"),
         canSeeMilestones: seeMilestones,
         canSeeMilestonePayment: seeMilestonePayment,
+        canSeeTimeline: isAdmin || isExec || seeMilestones,
+        canEditTimeline: isAdmin || isExec || has("edit_milestones"),
         canEditProject: has("edit_project"),
         canEditMilestones: has("edit_milestones"),
         canUpload: has("upload_documents"),

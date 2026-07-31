@@ -19,6 +19,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { getSupabase } from "@/lib/supabase";
 import { nextCode } from "@/lib/next-code";
 import { PartnerFormDialog, usePartners } from "@/components/partner-form-dialog";
+import { ROLE_PERMISSIONS, canCreateProjects } from "@/lib/project-roles";
+import { useMyRoles } from "@/hooks/use-page-access";
 
 const AUTOSAVE_KEY = "dochub:new-project-autosave";
 
@@ -48,6 +50,8 @@ export const Route = createFileRoute("/_authenticated/projects/new")({
 });
 
 function NewProject() {
+  const { roles, isLoading: rolesLoading } = useMyRoles();
+  const allowed = canCreateProjects(roles);
   const navigate = useNavigate();
   const qc = useQueryClient();
 
@@ -219,6 +223,24 @@ function NewProject() {
       };
       const { data, error } = await sb.from("projects").insert(payload).select("id").single();
       if (error) throw error;
+
+      // ผู้สร้างโครงการเป็นผู้บริหารโครงการเสมอ (ต้องมีอย่างน้อย 1 คน)
+      const { data: member } = await sb
+        .from("project_members")
+        .insert({
+          project_id: data.id,
+          user_id: user.user.id,
+          added_by: user.user.id,
+          project_role: "exec",
+          role_title: "ผู้บริหารโครงการ",
+        })
+        .select("id")
+        .maybeSingle();
+      if (member?.id) {
+        await sb.from("project_member_permissions").insert(
+          ROLE_PERMISSIONS.exec.map((k) => ({ project_member_id: member.id, permission_key: k, granted: true })),
+        );
+      }
       return data;
     },
     onSuccess: (row) => {
@@ -234,6 +256,20 @@ function NewProject() {
     },
 
   });
+
+  if (rolesLoading) {
+    return <div className="p-8 text-center text-sm text-muted-foreground">กำลังตรวจสอบสิทธิ์...</div>;
+  }
+  if (!allowed) {
+    return (
+      <div className="max-w-3xl space-y-4">
+        <PageHeader title="เพิ่มโครงการใหม่" description="คุณไม่มีสิทธิ์สร้างโครงการ" />
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+          เฉพาะผู้ดูแลระบบสูงสุดและผู้บริหารเท่านั้นที่สามารถสร้างโครงการได้
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl">
