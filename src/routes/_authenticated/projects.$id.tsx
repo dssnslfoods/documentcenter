@@ -196,6 +196,15 @@ function ProjectDetail() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight">{p.name}</h1>
+            {isLocked && (
+              <Badge
+                variant="outline"
+                title="โครงการปิดแล้ว — ไม่สามารถแก้ไขข้อมูลใดๆ ได้"
+                className="gap-1 border-muted-foreground/30 bg-muted text-muted-foreground"
+              >
+                <Lock className="h-3 w-3" />ปิดโครงการแล้ว · แก้ไขไม่ได้
+              </Badge>
+            )}
             {!perms?.isMember && (
               <Badge
                 variant="outline"
@@ -206,6 +215,7 @@ function ProjectDetail() {
               </Badge>
             )}
           </div>
+
 
           <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
             {p.project_type && <span>ประเภท {p.project_type}</span>}
