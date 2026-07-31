@@ -55,8 +55,9 @@ export function ScanQuotationCard({ onScanned }: { onScanned: (d: ScannedQuotati
   const [lastResult, setLastResult] = useState<ScannedQuotation | null>(null);
 
   const handleFile = async (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      toast.error("รองรับเฉพาะไฟล์รูปภาพ", { description: "ถ่ายรูปหรือแปลง PDF เป็นรูปภาพก่อน (JPG / PNG)" });
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    if (!file.type.startsWith("image/") && !isPdf) {
+      toast.error("รองรับเฉพาะไฟล์รูปภาพหรือ PDF", { description: "อัปโหลดไฟล์ JPG, PNG หรือ PDF" });
       return;
     }
     if (file.size > 8 * 1024 * 1024) {
@@ -68,7 +69,7 @@ export function ScanQuotationCard({ onScanned }: { onScanned: (d: ScannedQuotati
     setLastResult(null);
     try {
       const image = await fileToDataUrl(file);
-      const result = await scan({ data: { image } });
+      const result = await scan({ data: { image, filename: file.name } });
       setLastResult(result);
       onScanned(result);
       toast.success("อ่านเอกสารสำเร็จ", { description: "กรุณาตรวจสอบข้อมูลที่ระบบเติมให้ก่อนบันทึก" });
@@ -97,7 +98,7 @@ export function ScanQuotationCard({ onScanned }: { onScanned: (d: ScannedQuotati
           <div>
             <div className="text-sm font-medium">สแกนเอกสารเพื่อกรอกอัตโนมัติ</div>
             <div className="text-xs text-muted-foreground">
-              {fileName ? `ไฟล์ล่าสุด: ${fileName}` : "อัปโหลด/ถ่ายรูปใบเสนอราคา (JPG, PNG) แล้วระบบจะอ่านข้อมูลใส่ในฟอร์มให้"}
+              {fileName ? `ไฟล์ล่าสุด: ${fileName}` : "อัปโหลด/ถ่ายรูปใบเสนอราคา (JPG, PNG หรือ PDF) แล้วระบบจะอ่านข้อมูลใส่ในฟอร์มให้"}
             </div>
           </div>
         </div>
@@ -105,9 +106,8 @@ export function ScanQuotationCard({ onScanned }: { onScanned: (d: ScannedQuotati
           <input
             ref={inputRef}
             type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
+            accept="image/*,application/pdf"
+                        className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];
               e.target.value = "";

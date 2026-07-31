@@ -2,8 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 const input = z.object({
-  /** data URL: data:image/png;base64,.... */
+  /** data URL: data:image/png;base64,.... หรือ data:application/pdf;base64,.... */
   image: z.string().min(20),
+  /** ชื่อไฟล์ (ใช้เมื่อเป็น PDF) */
+  filename: z.string().optional(),
 });
 
 export type ScannedItem = {
@@ -85,7 +87,9 @@ export const scanQuotation = createServerFn({ method: "POST" })
             role: "user",
             content: [
               { type: "text", text: "ดึงข้อมูลจากใบเสนอราคานี้" },
-              { type: "image_url", image_url: { url: data.image } },
+              data.image.startsWith("data:application/pdf")
+                ? { type: "file", file: { filename: data.filename || "quotation.pdf", file_data: data.image } }
+                : { type: "image_url", image_url: { url: data.image } },
             ],
           },
         ],
