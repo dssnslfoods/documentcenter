@@ -476,6 +476,11 @@ function AddDialog({
         <div>
           <Label>ไฟล์แนบ</Label>
           <Input type="file" onChange={(e: ChangeEvent<HTMLInputElement>) => setFile(e.target.files?.[0] ?? null)} />
+          {file && (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              จะจัดเก็บไฟล์: <span className="font-medium text-foreground">{file.name}</span>
+            </p>
+          )}
         </div>
       </div>
       <DialogFooter>
