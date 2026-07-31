@@ -577,6 +577,7 @@ function TaskDialog({
       }
     },
     onSuccess: () => {
+      if (assignee === "external" && assigneeLabel.trim()) setRemembered(rememberAssignee(assigneeLabel));
       toast.success(task ? "บันทึกการแก้ไขแล้ว" : "เพิ่มงานเรียบร้อย");
       qc.invalidateQueries({ queryKey: ["project-tasks", projectId] });
       onOpenChange(false);
