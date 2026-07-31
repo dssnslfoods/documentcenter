@@ -95,7 +95,8 @@ function Partners() {
               {Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-10 animate-pulse rounded bg-muted/60" />)}
             </div>
           ) : rows.length > 0 ? (
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-sm">
               <thead className="border-b bg-muted/30 text-left text-xs uppercase text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3">รหัส</th>
@@ -135,6 +136,7 @@ function Partners() {
                 ))}
               </tbody>
             </table>
+            </div>
           ) : (
             <EmptyState
               icon={Users2}
