@@ -92,7 +92,7 @@ function Dashboard() {
       if (ids.length === 0) return empty;
       const { data } = await sb
         .from("projects")
-        .select("id, code, name, status, updated_at, customer_name")
+        .select("id, code, name, status, health_status, updated_at, customer_name")
         .in("id", ids)
         .in("status", ["in_progress", "completed"])
         .is("archived_at", null)
