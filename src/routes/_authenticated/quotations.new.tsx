@@ -90,7 +90,7 @@ function NewQuotation() {
   });
 
   const [scanConfidence, setScanConfidence] = useState<ScannedQuotation["confidence"] | undefined>(undefined);
-  const confidence = (key: keyof ScannedQuotation["confidence"]) => scanConfidence?.[key];
+  const confidence = (key: keyof NonNullable<ScannedQuotation["confidence"]>) => scanConfidence?.[key];
 
   const amt = Number(form.watch("amount_before_tax")) || 0;
   const disc = Number(form.watch("discount")) || 0;
