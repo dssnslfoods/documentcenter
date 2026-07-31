@@ -221,7 +221,10 @@ function NewQuotation() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>คู่ค้า / ลูกค้า *</Label>
+              <Label>
+                คู่ค้า / ลูกค้า *
+                <FieldConfidence score={confidence("partner_name")} />
+              </Label>
               <div className="flex gap-2">
                 <Select value={form.watch("partner_id") || undefined} onValueChange={(v) => form.setValue("partner_id", v, { shouldValidate: true })}>
                   <SelectTrigger className="flex-1"><SelectValue placeholder="เลือกจากฐานข้อมูลคู่ค้า" /></SelectTrigger>
@@ -249,16 +252,16 @@ function NewQuotation() {
                 <SelectContent>{depts?.map((d: { id: string; name_th: string }) => <SelectItem key={d.id} value={d.id}>{d.name_th}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="space-y-2"><Label>วันที่ออก</Label><Input type="date" {...form.register("issue_date")} /></div>
-            <div className="space-y-2"><Label>วันหมดอายุ</Label><Input type="date" {...form.register("expiry_date")} /></div>
+            <div className="space-y-2"><Label>วันที่ออก<FieldConfidence score={confidence("issue_date")} /></Label><Input type="date" {...form.register("issue_date")} /></div>
+            <div className="space-y-2"><Label>วันหมดอายุ<FieldConfidence score={confidence("expiry_date")} /></Label><Input type="date" {...form.register("expiry_date")} /></div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader><CardTitle>มูลค่า</CardTitle></CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-4">
-            <div className="space-y-2"><Label>มูลค่าก่อน VAT</Label><Input type="number" step="0.01" min="0" {...form.register("amount_before_tax")} /></div>
-            <div className="space-y-2"><Label>ส่วนลด</Label><Input type="number" step="0.01" min="0" {...form.register("discount")} /></div>
+            <div className="space-y-2"><Label>มูลค่าก่อน VAT<FieldConfidence score={confidence("amount_before_tax")} /></Label><Input type="number" step="0.01" min="0" {...form.register("amount_before_tax")} /></div>
+            <div className="space-y-2"><Label>ส่วนลด<FieldConfidence score={confidence("discount")} /></Label><Input type="number" step="0.01" min="0" {...form.register("discount")} /></div>
             <div className="space-y-2">
               <Label>อัตรา VAT</Label>
               <Select value={vatRateId ?? selectedVat?.id ?? "none"} onValueChange={setVatRateId}>
@@ -272,7 +275,7 @@ function NewQuotation() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>สกุลเงิน</Label>
+              <Label>สกุลเงิน<FieldConfidence score={confidence("currency")} /></Label>
               <Select defaultValue="THB" onValueChange={(v) => form.setValue("currency", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent><SelectItem value="THB">THB</SelectItem><SelectItem value="USD">USD</SelectItem></SelectContent>
@@ -290,7 +293,7 @@ function NewQuotation() {
         <Card>
           <CardHeader><CardTitle>รายละเอียด</CardTitle></CardHeader>
           <CardContent className="grid gap-4">
-            <div className="space-y-2"><Label>รายละเอียด</Label><Textarea rows={3} {...form.register("description")} /></div>
+            <div className="space-y-2"><Label>รายละเอียด<FieldConfidence score={confidence("description")} /></Label><Textarea rows={3} {...form.register("description")} /></div>
             <div className="space-y-2"><Label>หมายเหตุ</Label><Textarea rows={2} {...form.register("notes")} /></div>
           </CardContent>
         </Card>
