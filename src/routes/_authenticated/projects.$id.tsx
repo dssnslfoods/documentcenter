@@ -286,7 +286,12 @@ function ProjectDetail() {
         <TabsContent value="rfq" className="mt-5 space-y-4">
           {perms?.canSeeSpec ? (
             <>
-              <SectionCard title="RFQ / Specification (ข้อความ)" description="กรอก spec แบบข้อความอิสระ สะดวกในการ copy ส่งให้ supplier">
+              {isInhouse && (
+                <div className="rounded-lg border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+                  โครงการนี้เป็นงานผลิตภายใน — ไม่บังคับให้มี RFQ / Spec แต่สามารถเพิ่มหรือแก้ไขได้ตลอดระหว่างดำเนินโครงการ
+                </div>
+              )}
+              <SectionCard title="RFQ / Specification (ข้อความ)" description="กรอก spec แบบข้อความอิสระ สะดวกในการ copy ส่งให้ supplier — แก้ไขได้ตลอดโครงการ">
                 <ProjectSpecNotesList
                   projectId={id}
                   type="rfq_spec"
