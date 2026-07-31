@@ -252,7 +252,7 @@ function ProjectDetail() {
       <Tabs defaultValue={perms?.canSeeOverview === false ? "timeline" : "overview"} className="w-full">
         <div className="overflow-x-auto">
           <TabsList className="inline-flex h-auto flex-nowrap gap-1 rounded-full bg-muted p-1">
-            {TAB_ORDER.filter((t) => !(isInhouse && (t.value === "rfq" || t.value === "supplier")))
+            {TAB_ORDER
               .filter((t) => {
                 if (perms?.isAdmin) return true;
                 switch (t.value) {
