@@ -100,6 +100,21 @@ function ProjectsList() {
     },
   });
 
+  const { user } = useAuth();
+  const { data: myProjectIds } = useQuery({
+    queryKey: ["my-project-memberships", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const sb = getSupabase();
+      const { data, error } = await sb.from("project_members").select("project_id").eq("user_id", user!.id);
+      if (error) throw error;
+      return new Set((data ?? []).map((r) => r.project_id as string));
+    },
+  });
+  const memberIds = myProjectIds ?? new Set<string>();
+
+
+
 
   const totalPages = Math.ceil((data?.count ?? 0) / pageSize);
 
