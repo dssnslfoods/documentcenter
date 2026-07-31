@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDateTime } from "@/lib/format";
+import { useState } from "react";
 
 export const Route = createFileRoute("/_authenticated/notifications")({
   head: () => ({ meta: [{ title: "การแจ้งเตือน | Document Hub" }] }),
@@ -12,6 +14,8 @@ export const Route = createFileRoute("/_authenticated/notifications")({
 });
 
 function Notifications() {
+  const queryClient = useQueryClient();
+  const [marking, setMarking] = useState(false);
   const { data, isLoading } = useQuery({
     queryKey: ["notifications"],
     queryFn: async () => {
@@ -27,9 +31,41 @@ function Notifications() {
     },
   });
 
+  const unread = (data ?? []).filter((n: any) => !n.is_read);
+
+  const markAllRead = async () => {
+    const { data: userData } = await getSupabase().auth.getUser();
+    if (!userData.user || unread.length === 0) return;
+    setMarking(true);
+    await getSupabase()
+      .from("notifications")
+      .update({ is_read: true })
+      .eq("user_id", userData.user.id)
+      .eq("is_read", false);
+    queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    queryClient.invalidateQueries({ queryKey: ["notifications-unread", userData.user.id] });
+    setMarking(false);
+  };
+
+  const markOneRead = async (id: string) => {
+    await getSupabase().from("notifications").update({ is_read: true }).eq("id", id);
+    queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    queryClient.invalidateQueries({ queryKey: ["notifications-unread"] });
+  };
+
   return (
     <div className="space-y-6">
-      <PageHeader title="การแจ้งเตือน" description="การแจ้งเตือนทั้งหมดของคุณ" />
+      <PageHeader
+        title="การแจ้งเตือน"
+        description={`${unread.length > 0 ? `ยังไม่อ่าน ${unread.length} รายการ` : "ไม่มีการแจ้งเตือนใหม่"}`}
+        actions={
+          unread.length > 0 ? (
+            <Button variant="outline" size="sm" onClick={markAllRead} disabled={marking}>
+              {marking ? "กำลังบันทึก..." : "อ่านทั้งหมด"}
+            </Button>
+          ) : null
+        }
+      />
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
@@ -37,7 +73,11 @@ function Notifications() {
           ) : data && data.length > 0 ? (
             <ul className="divide-y">
               {data.map((n: any) => (
-                <li key={n.id} className="flex items-start gap-3 p-4">
+                <li
+                  key={n.id}
+                  className={`flex cursor-pointer items-start gap-3 p-4 transition-colors hover:bg-muted/30 ${n.is_read ? "opacity-70" : ""}`}
+                  onClick={() => !n.is_read && markOneRead(n.id)}
+                >
                   <div className={`mt-1 h-2 w-2 shrink-0 rounded-full ${n.is_read ? "bg-muted-foreground" : "bg-primary"}`} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
@@ -58,3 +98,4 @@ function Notifications() {
     </div>
   );
 }
+
