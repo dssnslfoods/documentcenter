@@ -44,6 +44,27 @@ export const Route = createFileRoute("/_authenticated/quotations/new")({
   component: NewQuotation,
 });
 
+function FieldConfidence({ score }: { score: number | null | undefined }) {
+  if (score == null) return null;
+  const high = score >= 0.9;
+  const medium = score >= 0.7;
+  return (
+    <span
+      className={`ml-2 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+        high
+          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+          : medium
+            ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+            : "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400"
+      }`}
+      title={`ความมั่นใจ ${Math.round(score * 100)}%`}
+    >
+      {high ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
+      {Math.round(score * 100)}%
+    </span>
+  );
+}
+
 function NewQuotation() {
   const navigate = useNavigate();
   const qc = useQueryClient();
