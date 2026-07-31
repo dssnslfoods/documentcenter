@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useVatRates, calcVat, pickVatRate, fmtNum } from "@/lib/vat";
 import { syncContractValueFromFinalQuotation } from "@/lib/contract-value";
 import { AlertTriangle } from "lucide-react";
+import { FilePreviewButton } from "@/components/project/file-preview-dialog";
 
 
 type Row = {
