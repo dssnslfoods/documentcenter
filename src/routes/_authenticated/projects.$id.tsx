@@ -284,39 +284,48 @@ function ProjectDetail() {
         </TabsContent>
 
         <TabsContent value="rfq" className="mt-5 space-y-4">
-          {perms?.canSeeSpec ? (
-            <>
-              {isInhouse && (
-                <div className="rounded-lg border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-                  โครงการนี้เป็นงานผลิตภายใน — ไม่บังคับให้มี RFQ / Spec แต่สามารถเพิ่มหรือแก้ไขได้ตลอดระหว่างดำเนินโครงการ
-                </div>
-              )}
-              <SectionCard title="RFQ / Specification (ข้อความ)" description="กรอก spec แบบข้อความอิสระ สะดวกในการ copy ส่งให้ supplier — แก้ไขได้ตลอดโครงการ">
-                <ProjectSpecNotesList
-                  projectId={id}
-                  type="rfq_spec"
-                  emptyLabel="ยังไม่มีบันทึก spec แบบข้อความ"
-                  canEdit={isAdmin || (perms?.canUpload ?? false)}
-                />
-              </SectionCard>
-              <SectionCard title="Spec Preview (Reference)" description="อัปโหลดรูปแบบ/ตัวอย่าง spec ได้หลายรูปพร้อมกัน ดูตัวอย่างก่อนดาวน์โหลดได้">
-                <ProjectDocumentsList projectId={id} type="rfq_spec" emptyLabel="ยังไม่มีรูป Spec Preview" gallery />
-              </SectionCard>
+          {(() => {
+            const canEditSpec = isAdmin || ((perms?.canSeeSpec ?? false) && (perms?.canUpload ?? false));
+            return (
+              <>
+                {isInhouse && (
+                  <div className="rounded-lg border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+                    โครงการนี้เป็นงานผลิตภายใน — ไม่บังคับให้มี RFQ / Spec แต่สามารถเพิ่มหรือแก้ไขได้ตลอดระหว่างดำเนินโครงการ
+                  </div>
+                )}
+                {!canEditSpec && (
+                  <div className="rounded-lg border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+                    โหมดดูอย่างเดียว — คุณสามารถดู RFQ / Spec ได้ แต่ไม่มีสิทธิ์แก้ไขหรืออัปโหลด
+                  </div>
+                )}
+                <SectionCard title="RFQ / Specification (ข้อความ)" description="กรอก spec แบบข้อความอิสระ สะดวกในการ copy ส่งให้ supplier — แก้ไขได้ตลอดโครงการ">
+                  <ProjectSpecNotesList
+                    projectId={id}
+                    type="rfq_spec"
+                    emptyLabel="ยังไม่มีบันทึก spec แบบข้อความ"
+                    canEdit={canEditSpec}
+                  />
+                </SectionCard>
+                <SectionCard title="Spec Preview (Reference)" description="อัปโหลดรูปแบบ/ตัวอย่าง spec ได้หลายรูปพร้อมกัน ดูตัวอย่างก่อนดาวน์โหลดได้">
+                  <ProjectDocumentsList projectId={id} type="rfq_spec" emptyLabel="ยังไม่มีรูป Spec Preview" gallery canEdit={canEditSpec} />
+                </SectionCard>
 
-              <SectionCard title="TOR / Scope of Work (ข้อความ)" description="รายละเอียดขอบเขตงานแบบข้อความ">
-                <ProjectSpecNotesList
-                  projectId={id}
-                  type="tor"
-                  emptyLabel="ยังไม่มีบันทึก TOR แบบข้อความ"
-                  canEdit={isAdmin || (perms?.canUpload ?? false)}
-                />
-              </SectionCard>
-              <SectionCard title="TOR / Scope of Work (ไฟล์แนบ)" description="ไฟล์ขอบเขตงาน">
-                <ProjectDocumentsList projectId={id} type="tor" emptyLabel="ยังไม่มีไฟล์ TOR" />
-              </SectionCard>
-            </>
-          ) : <Denied label="RFQ / Spec" />}
+                <SectionCard title="TOR / Scope of Work (ข้อความ)" description="รายละเอียดขอบเขตงานแบบข้อความ">
+                  <ProjectSpecNotesList
+                    projectId={id}
+                    type="tor"
+                    emptyLabel="ยังไม่มีบันทึก TOR แบบข้อความ"
+                    canEdit={canEditSpec}
+                  />
+                </SectionCard>
+                <SectionCard title="TOR / Scope of Work (ไฟล์แนบ)" description="ไฟล์ขอบเขตงาน">
+                  <ProjectDocumentsList projectId={id} type="tor" emptyLabel="ยังไม่มีไฟล์ TOR" canEdit={canEditSpec} />
+                </SectionCard>
+              </>
+            );
+          })()}
         </TabsContent>
+
 
         <TabsContent value="supplier" className="mt-5 space-y-4">
           {perms?.canSeeSupplier ? (
