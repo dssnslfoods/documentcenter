@@ -34,6 +34,7 @@ type Row = {
   quotation_amount: number | null;
   received_date: string | null;
   notes: string | null;
+  title?: string | null;
   file_urls: string[];
   version: number;
   is_selected: boolean;
@@ -63,7 +64,7 @@ export function SupplierQuotationsTab({
     queryFn: async () => {
       const { data, error } = await sb
         .from("supplier_quotations")
-        .select("id, supplier_id, supplier_name, quotation_amount, vat_rate, vat_amount, amount_incl_vat, received_date, notes, file_urls, version, is_selected, partners(name)")
+        .select("id, supplier_id, supplier_name, quotation_amount, vat_rate, vat_amount, amount_incl_vat, received_date, notes, title, file_urls, version, is_selected, partners(name)")
         .eq("project_id", projectId)
         .order("supplier_id", { ascending: true })
         .order("version", { ascending: false });
@@ -121,10 +122,12 @@ export function SupplierQuotationsTab({
           </div>
           <div className="space-y-1">
             {selectedRows.map((s) => (
-              <div key={s.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                <span className="font-medium">
-                  {s.partners?.name || s.supplier_name || "-"}
-                  <span className="ml-2 text-xs text-muted-foreground">v{s.version}</span>
+              <div key={s.id} className="flex flex-wrap items-start justify-between gap-2 text-sm">
+                <span className="min-w-0">
+                  <span className="font-medium">{s.title || "ใบเสนอราคา (ไม่ได้ระบุหัวข้องาน)"}</span>
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    {s.partners?.name || s.supplier_name || "-"} · v{s.version}
+                  </span>
                 </span>
                 {canSeePrice && (
                   <span className="font-semibold tabular-nums">{fmtCurrency(s.quotation_amount, "THB")}</span>
@@ -181,8 +184,11 @@ export function SupplierQuotationsTab({
                 <CardContent className="space-y-3 p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{supplierLabel}</span>
+                      <div className="text-sm font-semibold leading-snug">
+                        {r.title || "ใบเสนอราคา (ไม่ได้ระบุหัวข้องาน)"}
+                      </div>
+                      <div className="mt-0.5 flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">{supplierLabel}</span>
                         <Badge variant="outline" className="text-[10px]">v{r.version}</Badge>
                       </div>
                       <div className="text-xs text-muted-foreground">{fmtDate(r.received_date)}</div>
@@ -323,6 +329,7 @@ function AddDialog({
   const [supplierName, setSupplierName] = useState("");
   const [partnerOpen, setPartnerOpen] = useState(false);
 
+  const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("");
   const [notes, setNotes] = useState("");
@@ -358,6 +365,7 @@ function AddDialog({
         amount_incl_vat: amount ? total : null,
         received_date: date || null,
         notes: notes || null,
+        title: title || null,
         version: nextVersion,
         file_urls,
       });
@@ -393,8 +401,19 @@ function AddDialog({
             }
             const noteParts = [d.quotation_no ? `เลขที่ ${d.quotation_no}` : null, d.description].filter(Boolean);
             if (noteParts.length) setNotes(noteParts.join(" · "));
+            // เดาหัวข้องานจากคำอธิบาย หรือรายการแรกในใบเสนอราคา
+            const guess = d.description || d.items?.find((it) => it.description)?.description || "";
+            if (guess) setTitle(String(guess).slice(0, 120));
           }}
         />
+        <div>
+          <Label>หัวข้องาน / ชื่อรายการ</Label>
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="เช่น งานพิมพ์กล่องของขวัญ Premium Gift"
+          />
+        </div>
         <div>
           <Label>Supplier (จากรายชื่อคู่ค้า)</Label>
           <div className="flex gap-2">
