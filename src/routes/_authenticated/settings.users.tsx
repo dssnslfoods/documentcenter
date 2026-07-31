@@ -275,7 +275,7 @@ function UsersPage() {
                       </Button>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
                     <div>
                       <Label>บทบาท</Label>
                       <Select value={invForm.role} onValueChange={(v) => setInvForm({ ...invForm, role: v as Role })}>
