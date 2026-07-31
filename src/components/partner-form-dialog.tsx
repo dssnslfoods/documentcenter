@@ -120,19 +120,35 @@ export function PartnerFormDialog({
       };
 
       if (editing) {
-        const { data, error } = await sb.from("partners").update(payload).eq("id", editing.id).select("id, name").single();
+        const { data, error } = await sb.from("partners").update(payload).eq("id", editing.id).select("id, code, name, type, status").single();
         if (error) throw error;
         return data;
       }
       const { data: all, error: readErr } = await sb.from("partners").select("code");
       if (readErr) throw readErr;
       const newCode = nextCode("PT-", (all ?? []).map((r: { code: string }) => r.code), 4);
-      const { data, error } = await sb.from("partners").insert({ ...payload, code: newCode }).select("id, name").single();
+      const { data, error } = await sb.from("partners").insert({ ...payload, code: newCode }).select("id, code, name, type, status").single();
       if (error) throw error;
       return data;
     },
     onSuccess: (row) => {
       toast.success(editing ? "บันทึกข้อมูลแล้ว" : "เพิ่มคู่ค้า/ลูกค้าแล้ว");
+
+      // เติมรายการใหม่เข้า cache ทันที เพื่อให้เลือกใช้ได้เลยโดยไม่ต้องรอโหลดใหม่
+      const r = row as { id: string; code: string; name: string; type: string; status: string };
+      if (r?.id && r.status === "active") {
+        qc.setQueriesData<{ id: string; code: string; name: string; type: string }[]>(
+          { queryKey: ["partners-active"] },
+          (old) => {
+            if (!old) return old;
+            const rest = old.filter((p) => p.id !== r.id);
+            return [...rest, { id: r.id, code: r.code, name: r.name, type: r.type }].sort((a, b) =>
+              a.name.localeCompare(b.name),
+            );
+          },
+        );
+      }
+
       qc.invalidateQueries({ queryKey: ["partners-list"] });
       qc.invalidateQueries({ queryKey: ["partners-active"] });
       onOpenChange(false);
@@ -140,6 +156,7 @@ export function PartnerFormDialog({
     },
     onError: (e: Error) => toast.error("ไม่สำเร็จ", { description: e.message }),
   });
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
