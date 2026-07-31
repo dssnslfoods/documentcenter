@@ -19,6 +19,9 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { getSupabase } from "@/lib/supabase";
 import { nextCode } from "@/lib/next-code";
 import { PartnerFormDialog, usePartners } from "@/components/partner-form-dialog";
+import { ROLE_PERMISSIONS, canCreateProjects } from "@/lib/project-roles";
+import { useMyRoles } from "@/hooks/use-page-access";
+import { PageHeader as _PH } from "@/components/page-header";
 
 const AUTOSAVE_KEY = "dochub:new-project-autosave";
 
@@ -219,6 +222,24 @@ function NewProject() {
       };
       const { data, error } = await sb.from("projects").insert(payload).select("id").single();
       if (error) throw error;
+
+      // ผู้สร้างโครงการเป็นผู้บริหารโครงการเสมอ (ต้องมีอย่างน้อย 1 คน)
+      const { data: member } = await sb
+        .from("project_members")
+        .insert({
+          project_id: data.id,
+          user_id: user.user.id,
+          added_by: user.user.id,
+          project_role: "exec",
+          role_title: "ผู้บริหารโครงการ",
+        })
+        .select("id")
+        .maybeSingle();
+      if (member?.id) {
+        await sb.from("project_member_permissions").insert(
+          ROLE_PERMISSIONS.exec.map((k) => ({ project_member_id: member.id, permission_key: k, granted: true })),
+        );
+      }
       return data;
     },
     onSuccess: (row) => {
