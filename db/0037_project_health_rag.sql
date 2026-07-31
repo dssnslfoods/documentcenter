@@ -33,23 +33,22 @@ declare
   v_upcoming_milestones int;
   v_total_tasks int;
   v_done_tasks int;
-  v_progress numeric;
+  v_progress int;
   v_expected_progress numeric;
   v_days_total int;
   v_days_elapsed int;
   v_result public.project_health_status;
 begin
-  select status, end_date into v_status, v_end_date
+  select status, end_date, progress
+  into v_status, v_end_date, v_progress
   from public.projects where id = _project_id;
 
   if v_status is null then return 'green'; end if;
 
   -- Completed / lost projects: grey
-  if v_status in ('completed','lost') then
-    return 'grey';
-  end if;
+  if v_status in ('completed','lost') then return 'grey'; end if;
 
-  -- Count overdue/upcoming tasks
+  -- Count task health
   select
     count(*) filter (where status <> 'done' and end_date < v_now),
     count(*) filter (where status <> 'done' and end_date between v_now and v_now + interval '7 days'),
@@ -59,7 +58,7 @@ begin
   from public.project_tasks
   where project_id = _project_id;
 
-  -- Count overdue/upcoming milestones
+  -- Count milestone health
   select
     count(*) filter (where status not in ('completed','approved') and due_date < v_now),
     count(*) filter (where status not in ('completed','approved') and due_date between v_now and v_now + interval '7 days')
@@ -67,7 +66,7 @@ begin
   from public.project_milestones
   where project_id = _project_id;
 
-  -- Red: overdue items or project end_date passed
+  -- Red conditions
   if v_overdue_tasks > 0 or v_overdue_milestones > 0 then
     return 'red';
   end if;
@@ -76,25 +75,17 @@ begin
     return 'red';
   end if;
 
-  -- Yellow: upcoming due dates OR progress behind schedule
+  -- Yellow: upcoming due dates
   if v_upcoming_tasks > 0 or v_upcoming_milestones > 0 then
     return 'yellow';
   end if;
 
-  -- Progress vs expected timeline
-  if v_total_tasks > 0 then
-    v_progress := (v_done_tasks::numeric / v_total_tasks::numeric) * 100;
-  else
-    v_progress := 0;
-  end if;
-
+  -- Yellow/Red: progress behind schedule for in-progress projects
   if v_status = 'in_progress' then
-    -- Compare against project start/end date window
     select
       (coalesce(p.end_date, v_now) - p.start_date)::int,
-      (v_now - p.start_date)::int,
-      p.progress
-    into v_days_total, v_days_elapsed, v_progress
+      (v_now - p.start_date)::int
+    into v_days_total, v_days_elapsed
     from public.projects p
     where p.id = _project_id;
 
@@ -112,7 +103,7 @@ begin
 end;
 $$;
 
--- Helper to update project health reason text
+-- Helper to update project health + reason text
 create or replace function public.update_project_health(_project_id uuid)
 returns void
 language plpgsql
@@ -133,23 +124,24 @@ declare
   v_expected_progress numeric;
   v_days_total int;
   v_days_elapsed int;
+  v_total_tasks int;
+  v_done_tasks int;
 begin
   v_health := public.compute_project_health(_project_id);
 
-  select status, end_date, progress into v_status, v_end_date, v_progress
+  select status, end_date, progress
+  into v_status, v_end_date, v_progress
   from public.projects where id = _project_id;
 
   select
     count(*) filter (where status <> 'done' and end_date < v_now),
     count(*) filter (where status <> 'done' and end_date between v_now and v_now + interval '7 days'),
-    count(*) filter (where status not in ('completed','approved') and due_date < v_now),
-    count(*) filter (where status not in ('completed','approved') and due_date between v_now and v_now + interval '7 days')
-  into v_overdue_tasks, v_upcoming_tasks, v_overdue_milestones, v_upcoming_milestones
-  from public.project_tasks t
-  left join public.project_milestones m on m.project_id = _project_id
-  where t.project_id = _project_id;
+    count(*),
+    count(*) filter (where status = 'done')
+  into v_overdue_tasks, v_upcoming_tasks, v_total_tasks, v_done_tasks
+  from public.project_tasks
+  where project_id = _project_id;
 
-  -- Recalculate for milestones separately
   select
     count(*) filter (where status not in ('completed','approved') and due_date < v_now),
     count(*) filter (where status not in ('completed','approved') and due_date between v_now and v_now + interval '7 days')
@@ -194,14 +186,12 @@ begin
 
   update public.projects
   set health_status = v_health,
-      health_reason = v_reason,
-      updated_at = now()
+      health_reason = v_reason
   where id = _project_id;
 end;
 $$;
 
 -- ---------- 3) Triggers to keep health in sync ----------
--- Recompute when tasks change
 create or replace function public.trg_recompute_project_health()
 returns trigger
 language plpgsql
@@ -229,7 +219,6 @@ create trigger trg_project_milestones_health
   after insert or update or delete on public.project_milestones
   for each row execute function public.trg_recompute_project_health();
 
--- Recompute when project dates/progress change
 create or replace function public.trg_project_health_self()
 returns trigger
 language plpgsql
@@ -332,7 +321,6 @@ create trigger trg_project_status_notify
   for each row execute function public.trg_notify_project_status_change();
 
 -- ---------- 6) Daily reminder scanner ----------
--- Call this via a server function or cron endpoint to generate reminders.
 create or replace function public.scan_due_date_notifications()
 returns void
 language plpgsql
@@ -340,25 +328,15 @@ security definer
 set search_path = public
 as $$
 declare
-  v_project_id uuid;
-  v_project_name text;
   v_member_id uuid;
-  v_count int;
-  v_item_type text;
-  v_due_date date;
   v_title text;
+  v_body text;
   v_link text;
   rec record;
 begin
-  -- Clear old pending reminders first (optional, idempotent)
-  delete from public.notifications
-  where type in ('milestone_due_soon','task_due_soon','milestone_overdue','task_overdue')
-    and created_at < current_date;
-
   -- Milestones due within 3 days
   for rec in
-    select m.project_id, p.name as project_name, m.description, m.due_date,
-           count(*) over (partition by m.project_id) as project_count
+    select m.project_id, p.name as project_name, m.description, m.due_date
     from public.project_milestones m
     join public.projects p on p.id = m.project_id
     where m.status not in ('completed','approved')
