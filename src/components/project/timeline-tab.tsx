@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, Loader2, Trash2, Pencil, GanttChartSquare, CalendarRange, FileSpreadsheet } from "lucide-react";
+import { Plus, Loader2, Trash2, Pencil, GanttChartSquare, CalendarRange, FileSpreadsheet, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -475,6 +475,43 @@ function GanttRow({
   );
 }
 
+// ---- จดจำชื่อผู้รับผิดชอบภายนอกที่ผู้ใช้เคยพิมพ์เอง ----
+const ASSIGNEE_LS_KEY = "dh:external-assignees";
+const DEFAULT_ASSIGNEES = ["ลูกค้า", "คู่ค้า", "ผู้รับเหมา", "ที่ปรึกษา"];
+
+function loadRememberedAssignees(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(ASSIGNEE_LS_KEY);
+    const list = raw ? (JSON.parse(raw) as unknown) : [];
+    return Array.isArray(list) ? list.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function rememberAssignee(label: string): string[] {
+  const v = label.trim();
+  if (!v || typeof window === "undefined") return loadRememberedAssignees();
+  const next = [v, ...loadRememberedAssignees().filter((x) => x !== v)].slice(0, 12);
+  try {
+    window.localStorage.setItem(ASSIGNEE_LS_KEY, JSON.stringify(next));
+  } catch {
+    /* ignore quota errors */
+  }
+  return next;
+}
+
+function forgetAssignee(label: string): string[] {
+  const next = loadRememberedAssignees().filter((x) => x !== label);
+  try {
+    window.localStorage.setItem(ASSIGNEE_LS_KEY, JSON.stringify(next));
+  } catch {
+    /* ignore */
+  }
+  return next;
+}
+
 function TaskDialog({
   open, onOpenChange, projectId, task, parents, members, milestones, defaultStart,
 }: {
@@ -504,6 +541,10 @@ function TaskDialog({
     task?.assignee_label ? "external" : task?.assignee_id ?? "none",
   );
   const [assigneeLabel, setAssigneeLabel] = useState(task?.assignee_label ?? "");
+  const [remembered, setRemembered] = useState<string[]>(() => loadRememberedAssignees());
+  useEffect(() => {
+    if (open) setRemembered(loadRememberedAssignees());
+  }, [open]);
   const [milestoneId, setMilestoneId] = useState(task?.milestone_id ?? "none");
   const [sortOrder, setSortOrder] = useState(String(task?.sort_order ?? 0));
 
@@ -536,6 +577,7 @@ function TaskDialog({
       }
     },
     onSuccess: () => {
+      if (assignee === "external" && assigneeLabel.trim()) setRemembered(rememberAssignee(assigneeLabel));
       toast.success(task ? "บันทึกการแก้ไขแล้ว" : "เพิ่มงานเรียบร้อย");
       qc.invalidateQueries({ queryKey: ["project-tasks", projectId] });
       onOpenChange(false);
@@ -611,7 +653,7 @@ function TaskDialog({
                   placeholder="เช่น ลูกค้า / คู่ค้า / ผู้รับเหมา"
                 />
                 <div className="flex flex-wrap gap-1.5">
-                  {["ลูกค้า", "คู่ค้า", "ผู้รับเหมา", "ที่ปรึกษา"].map((p) => (
+                  {DEFAULT_ASSIGNEES.map((p) => (
                     <Button
                       key={p}
                       type="button"
@@ -624,6 +666,35 @@ function TaskDialog({
                     </Button>
                   ))}
                 </div>
+                {remembered.filter((r) => !DEFAULT_ASSIGNEES.includes(r)).length > 0 && (
+                  <div className="space-y-1">
+                    <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      เคยใช้ล่าสุด
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {remembered
+                        .filter((r) => !DEFAULT_ASSIGNEES.includes(r))
+                        .map((r) => (
+                          <span
+                            key={r}
+                            className="inline-flex h-7 items-center gap-1 rounded-full border bg-muted/40 pl-3 pr-1 text-xs"
+                          >
+                            <button type="button" onClick={() => setAssigneeLabel(r)} className="max-w-[140px] truncate">
+                              {r}
+                            </button>
+                            <button
+                              type="button"
+                              title="ลบออกจากรายการที่จดจำ"
+                              className="rounded-full p-0.5 text-muted-foreground hover:text-destructive"
+                              onClick={() => setRemembered(forgetAssignee(r))}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </span>
+                        ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
