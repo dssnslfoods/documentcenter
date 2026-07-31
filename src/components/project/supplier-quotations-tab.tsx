@@ -15,6 +15,8 @@ import { useVatRates, calcVat, pickVatRate, fmtNum } from "@/lib/vat";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDate, fmtCurrency } from "@/lib/format";
 import { uploadProjectFile, getProjectFileUrl } from "@/lib/project-files";
+import { PartnerFormDialog, usePartners } from "@/components/partner-form-dialog";
+
 
 type Row = {
   vat_rate?: number | null;
