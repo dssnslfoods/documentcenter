@@ -16,14 +16,14 @@ const items: { to: string; label: string; icon: typeof Users; exact?: boolean }[
 export function SettingsNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   return (
-    <div className="flex flex-wrap gap-1 rounded-lg border bg-card p-1">
+    <div className="-mx-1 flex gap-1 overflow-x-auto rounded-lg border bg-card p-1 sm:mx-0 sm:flex-wrap sm:overflow-visible">
       {items.map((it) => {
         const active = it.exact ? pathname === it.to || pathname === "/settings/" : pathname.startsWith(it.to);
         return (
           <Link
             key={it.to}
             to={it.to as "/settings"}
-            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
               active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
           >
