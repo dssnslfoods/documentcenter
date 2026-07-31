@@ -352,7 +352,7 @@ export function TimelineTab({
         <div className="tile overflow-hidden">
           <div className="flex">
             {/* Left: task list */}
-            <div className="w-[260px] shrink-0 border-r">
+            <div className="w-[132px] shrink-0 border-r sm:w-[260px]">
               <div className="flex h-12 items-center border-b bg-muted/40 px-3 text-xs font-semibold text-muted-foreground">
                 รายการงาน
               </div>
