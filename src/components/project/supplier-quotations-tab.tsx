@@ -368,9 +368,10 @@ function AddDialog({
   };
 
   return (
-    <DialogContent className="max-w-lg">
+    <DialogContent className="flex max-h-[85vh] max-w-lg flex-col">
       <DialogHeader><DialogTitle>เพิ่มใบเสนอราคา Supplier</DialogTitle></DialogHeader>
-      <div className="space-y-3">
+      <div className="-mx-1 flex-1 space-y-3 overflow-y-auto px-1">
+
         <ScanQuotationCard
           onFile={(f) => setFile(f)}
           onScanned={(d) => {

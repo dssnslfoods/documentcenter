@@ -248,9 +248,10 @@ function AddDialog({
   };
 
   return (
-    <DialogContent className="max-w-lg">
+    <DialogContent className="flex max-h-[85vh] max-w-lg flex-col">
       <DialogHeader><DialogTitle>เพิ่มใบเสนอราคาให้ลูกค้า</DialogTitle></DialogHeader>
-      <div className="space-y-3">
+      <div className="-mx-1 flex-1 space-y-3 overflow-y-auto px-1">
+
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label>ยอดเสนอก่อน VAT (บาท)</Label>
