@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, FolderKanban, Search, Filter, LayoutGrid, Rows3, ArrowRight, ArrowUpDown, ArrowUp, ArrowDown, Eye, Users } from "lucide-react";
+import { Plus, FolderKanban, Search, Filter, LayoutGrid, Rows3, ArrowRight, ArrowUpDown, ArrowUp, ArrowDown, Eye, Users, HeartPulse } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import {
   LIFECYCLE_LABEL, LIFECYCLE_PHASES, STATUS_TONE,
   type ProjectLifecycleStatus,
 } from "@/lib/project-lifecycle";
+import { HEALTH_LABEL, HEALTH_DOT, healthFromString, type ProjectHealth } from "@/lib/project-health";
 
 export const Route = createFileRoute("/_authenticated/projects/")({
   head: () => ({
@@ -35,6 +36,7 @@ type ProjectRow = {
   code: string;
   name: string;
   status: string | null;
+  health_status: string | null;
   customer_name: string | null;
   customer_aka: string | null;
   customer_aka_color: string | null;
@@ -49,12 +51,27 @@ type ProjectRow = {
 type PipelineSortField = "updated_at" | "end_date";
 type PipelineSortDir = "asc" | "desc";
 
+function HealthBadge({ health, size = "sm" }: { health: ProjectHealth; size?: "sm" | "xs" }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border font-medium ${
+        size === "xs" ? "px-1.5 py-0 text-[10px]" : "px-2 py-0.5 text-[11px]"
+      } ${health === "green" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : health === "yellow" ? "bg-amber-50 text-amber-700 border-amber-200" : health === "red" ? "bg-red-50 text-red-700 border-red-200" : "bg-slate-100 text-slate-600 border-slate-200"}`}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${HEALTH_DOT[health]}`} />
+      {HEALTH_LABEL[health]}
+    </span>
+  );
+}
+
+
 function ProjectsList() {
   const { roles } = useMyRoles();
   const canCreate = canCreateProjects(roles);
   const canPeekMembers = roles.includes("super_admin") || roles.includes("management");
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
+  const [health, setHealth] = useState<"all" | ProjectHealth>("all");
   const [view, setView] = useState<"pipeline" | "list">("pipeline");
   const [page, setPage] = useState(0);
   const [sort, setSort] = useState<{ field: "created_at" | "status"; direction: "asc" | "desc" }>({
@@ -78,12 +95,12 @@ function ProjectsList() {
   };
 
   const { data, isLoading } = useQuery({
-    queryKey: ["projects", q, status, view, page, sort.field, sort.direction, pipelineSort.field, pipelineSort.direction],
+    queryKey: ["projects", q, status, health, view, page, sort.field, sort.direction, pipelineSort.field, pipelineSort.direction],
     queryFn: async () => {
       const sb = getSupabase();
       let query = sb
         .from("projects")
-        .select("id, code, name, status, customer_name, customer_aka, customer_aka_color, project_type, contract_value, start_date, end_date, budget, updated_at", { count: "exact" })
+        .select("id, code, name, status, health_status, customer_name, customer_aka, customer_aka_color, project_type, contract_value, start_date, end_date, budget, updated_at", { count: "exact" })
         .is("archived_at", null);
       if (view === "pipeline") {
         query = query.order(pipelineSort.field, { ascending: pipelineSort.direction === "asc", nullsFirst: false });
@@ -99,6 +116,7 @@ function ProjectsList() {
       }
       if (q.trim()) query = query.or(`name.ilike.%${q}%,code.ilike.%${q}%,customer_name.ilike.%${q}%,description.ilike.%${q}%`);
       if (status !== "all" && view === "list") query = query.eq("status", status);
+      if (health !== "all") query = query.eq("health_status", health);
       const { data, count, error } = await query;
       if (error) throw error;
       return { data: (data ?? []) as ProjectRow[], count: count ?? 0 };
@@ -149,18 +167,33 @@ function ProjectsList() {
             />
           </div>
           {view === "list" && (
-            <Select value={status} onValueChange={(v) => { setStatus(v); setPage(0); }}>
-              <SelectTrigger className="w-full rounded-full md:w-56">
-                <Filter className="mr-2 h-4 w-4" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">สถานะทั้งหมด</SelectItem>
-                {Object.entries(LIFECYCLE_LABEL).map(([k, v]) => (
-                  <SelectItem key={k} value={k}>{v}</SelectItem>
-                ))}
-            </SelectContent>
-            </Select>
+            <>
+              <Select value={status} onValueChange={(v) => { setStatus(v); setPage(0); }}>
+                <SelectTrigger className="w-full rounded-full md:w-56">
+                  <Filter className="mr-2 h-4 w-4" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">สถานะทั้งหมด</SelectItem>
+                  {Object.entries(LIFECYCLE_LABEL).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{v}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={health} onValueChange={(v) => { setHealth(v as "all" | ProjectHealth); setPage(0); }}>
+                <SelectTrigger className="w-full rounded-full md:w-48">
+                  <HeartPulse className="mr-2 h-4 w-4" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">สุขภาพทั้งหมด</SelectItem>
+                  <SelectItem value="green">ตามแผน</SelectItem>
+                  <SelectItem value="yellow">ใกล้เสี่ยง</SelectItem>
+                  <SelectItem value="red">ล่าช้า</SelectItem>
+                  <SelectItem value="grey">ปิดโครงการ</SelectItem>
+                </SelectContent>
+              </Select>
+            </>
           )}
           {view === "pipeline" && (
             <Select
@@ -307,6 +340,7 @@ function PipelineView({ rows, isLoading, memberIds, canPeekMembers }: { rows: Pr
                     </div>
                     <div className="mt-1 line-clamp-2 text-sm font-medium leading-snug">{p.name}</div>
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      <HealthBadge health={healthFromString(p.health_status)} size="xs" />
                       {memberIds.has(p.id) ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
                           <Users className="h-3 w-3" />สมาชิกโครงการ
@@ -443,6 +477,7 @@ function ListView({
                       สถานะ <SortIcon className="h-3 w-3" />
                     </button>
                   </th>
+                  <th className="px-4 py-3">สุขภาพ</th>
                   <th className="px-4 py-3">เริ่ม</th>
                   <th className="px-4 py-3">สิ้นสุด</th>
                   <th className="px-4 py-3 text-right">มูลค่าสัญญา</th>
@@ -466,6 +501,9 @@ function ListView({
                       </td>
                       <td className="px-4 py-3">
                         <Badge variant="outline" className={STATUS_TONE[st]}>{LIFECYCLE_LABEL[st] ?? st}</Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <HealthBadge health={healthFromString(p.health_status)} />
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">{fmtDate(p.start_date)}</td>
                       <td className="px-4 py-3 text-muted-foreground">{fmtDate(p.end_date)}</td>

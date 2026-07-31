@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   FileText, FileSignature, AlertTriangle, Clock, CheckCircle2, DollarSign,
-  Plus, ArrowRight,
+  Plus, ArrowRight, HeartPulse,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
@@ -16,6 +16,7 @@ import { fmtCurrency, fmtDate, fmtNumber } from "@/lib/format";
 import { ContractStatusBadge } from "@/components/status-badge";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { HEALTH_LABEL, HEALTH_DOT, healthFromString, type ProjectHealth } from "@/lib/project-health";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -35,6 +36,19 @@ const CHART_COLORS = [
   "var(--color-chart-1)", "var(--color-chart-2)", "var(--color-chart-3)",
   "var(--color-chart-4)", "var(--color-chart-5)",
 ];
+
+function HealthBadge({ health, size = "sm" }: { health: ProjectHealth; size?: "sm" | "xs" }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border font-medium ${
+        size === "xs" ? "px-1.5 py-0 text-[10px]" : "px-2 py-0.5 text-[11px]"
+      } ${health === "green" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : health === "yellow" ? "bg-amber-50 text-amber-700 border-amber-200" : health === "red" ? "bg-red-50 text-red-700 border-red-200" : "bg-slate-100 text-slate-600 border-slate-200"}`}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${HEALTH_DOT[health]}`} />
+      {HEALTH_LABEL[health]}
+    </span>
+  );
+}
 
 function Dashboard() {
   const { roles } = useMyRoles();
@@ -91,7 +105,7 @@ function Dashboard() {
       if (ids.length === 0) return empty;
       const { data } = await sb
         .from("projects")
-        .select("id, code, name, status, updated_at, customer_name")
+        .select("id, code, name, status, health_status, updated_at, customer_name")
         .in("id", ids)
         .in("status", ["in_progress", "completed"])
         .is("archived_at", null)
@@ -167,6 +181,30 @@ function Dashboard() {
         .order("end_date", { ascending: true })
         .limit(10);
       return data ?? [];
+    },
+  });
+
+  const { data: healthSummary } = useQuery({
+    queryKey: ["project-health-summary", isExec, scopedIds.join(",")],
+    enabled: scopeReady,
+    queryFn: async () => {
+      let q = getSupabase()
+        .from("projects")
+        .select("id, code, name, status, health_status, health_reason, end_date, customer_name")
+        .is("archived_at", null)
+        .neq("status", "lost")
+        .in("health_status", ["red", "yellow"]);
+      if (!isExec) {
+        if (scopedIds.length === 0) return { red: [] as any[], yellow: [] as any[] };
+        q = q.in("id", scopedIds);
+      }
+      const { data, error } = await q.order("health_status", { ascending: false }).order("end_date", { ascending: true }).limit(50);
+      if (error) throw error;
+      const rows = data ?? [];
+      return {
+        red: rows.filter((r: any) => r.health_status === "red"),
+        yellow: rows.filter((r: any) => r.health_status === "yellow"),
+      };
     },
   });
 
@@ -286,6 +324,12 @@ function Dashboard() {
         {can("quotations") && (
           <KpiCard icon={FileSignature} label="ใบเสนอราคารอพิจารณา" value={fmtNumber(kpi?.quotPending)} loading={isLoading} href="/quotations" />
         )}
+        {scopeReady && (
+          <>
+            <KpiCard icon={HeartPulse} label="โครงการล่าช้า" value={fmtNumber(healthSummary?.red.length)} loading={!healthSummary} tone="destructive" href="/projects" />
+            <KpiCard icon={HeartPulse} label="โครงการใกล้เสี่ยง" value={fmtNumber(healthSummary?.yellow.length)} loading={!healthSummary} tone="warning" href="/projects" />
+          </>
+        )}
       </div>
 
       {/* Secondary KPI row */}
@@ -318,8 +362,39 @@ function Dashboard() {
         </CardContent>
       </Card>
 
+      {/* Project health / at-risk */}
+      {scopeReady && (healthSummary?.red.length || healthSummary?.yellow.length) ? (
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Card className="tile lg:col-span-3">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <div>
+                <CardTitle className="text-base">โครงการที่ต้องติดตาม</CardTitle>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  โครงการที่ล่าช้า (แดง) และใกล้เสี่ยง (เหลือง){isExec ? "" : " · เฉพาะโครงการของคุณ"}
+                </p>
+              </div>
+              <Link to="/projects" className="text-xs text-primary hover:underline">ดูทั้งหมด →</Link>
+            </CardHeader>
+            <CardContent className="grid gap-6 md:grid-cols-2">
+              <div>
+                <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-red-700">
+                  <span className="h-2 w-2 rounded-full bg-red-500" />
+                  ล่าช้า ({healthSummary?.red.length ?? 0})
+                </div>
+                <AtRiskProjectList items={healthSummary?.red ?? []} tone="destructive" />
+              </div>
+              <div>
+                <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-amber-700">
+                  <span className="h-2 w-2 rounded-full bg-amber-500" />
+                  ใกล้เสี่ยง ({healthSummary?.yellow.length ?? 0})
+                </div>
+                <AtRiskProjectList items={healthSummary?.yellow ?? []} tone="warning" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
 
-      {/* Analytics */}
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className={`tile ${can("documents") ? "lg:col-span-2" : "lg:col-span-3"}`}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -482,11 +557,42 @@ function MyProjectGroup({ title, tone, items }: { title: string; tone: "primary"
                   {p.code}{p.customer_name ? ` · ${p.customer_name}` : ""}
                 </div>
               </div>
-              <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+              <div className="flex shrink-0 items-center gap-2">
+                <HealthBadge health={healthFromString(p.health_status)} size="xs" />
+                <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+              </div>
             </Link>
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function AtRiskProjectList({ items, tone }: { items: any[]; tone: "warning" | "destructive" }) {
+  if (items.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      {items.slice(0, 5).map((p) => (
+        <Link
+          key={p.id}
+          to="/projects/$id"
+          params={{ id: p.id }}
+          className="group flex items-center justify-between gap-3 rounded-lg border px-3 py-2 transition-colors hover:bg-muted/50"
+        >
+          <div className="min-w-0">
+            <div className="truncate text-sm font-medium">{p.name}</div>
+            <div className="truncate text-xs text-muted-foreground">
+              {p.code}{p.customer_name ? ` · ${p.customer_name}` : ""}
+              {p.health_reason ? ` · ${p.health_reason}` : ""}
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <HealthBadge health={healthFromString(p.health_status)} size="xs" />
+            <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+          </div>
+        </Link>
+      ))}
     </div>
   );
 }
