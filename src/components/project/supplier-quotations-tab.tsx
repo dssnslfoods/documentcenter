@@ -241,6 +241,8 @@ function AddDialog({
   const sb = getSupabase();
   const [supplierId, setSupplierId] = useState<string>("");
   const [supplierName, setSupplierName] = useState("");
+  const [partnerOpen, setPartnerOpen] = useState(false);
+
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("");
   const [notes, setNotes] = useState("");
