@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   FileText, FileSignature, AlertTriangle, Clock, CheckCircle2, DollarSign,
-  Plus, ArrowRight,
+  Plus, ArrowRight, HeartPulse,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
@@ -16,6 +16,7 @@ import { fmtCurrency, fmtDate, fmtNumber } from "@/lib/format";
 import { ContractStatusBadge } from "@/components/status-badge";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { HEALTH_LABEL, HEALTH_DOT, healthFromString, type ProjectHealth } from "@/lib/project-health";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
