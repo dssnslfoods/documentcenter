@@ -477,6 +477,7 @@ function ListView({
                       สถานะ <SortIcon className="h-3 w-3" />
                     </button>
                   </th>
+                  <th className="px-4 py-3">สุขภาพ</th>
                   <th className="px-4 py-3">เริ่ม</th>
                   <th className="px-4 py-3">สิ้นสุด</th>
                   <th className="px-4 py-3 text-right">มูลค่าสัญญา</th>
