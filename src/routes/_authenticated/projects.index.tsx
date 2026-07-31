@@ -153,18 +153,33 @@ function ProjectsList() {
             />
           </div>
           {view === "list" && (
-            <Select value={status} onValueChange={(v) => { setStatus(v); setPage(0); }}>
-              <SelectTrigger className="w-full rounded-full md:w-56">
-                <Filter className="mr-2 h-4 w-4" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">สถานะทั้งหมด</SelectItem>
-                {Object.entries(LIFECYCLE_LABEL).map(([k, v]) => (
-                  <SelectItem key={k} value={k}>{v}</SelectItem>
-                ))}
-            </SelectContent>
-            </Select>
+            <>
+              <Select value={status} onValueChange={(v) => { setStatus(v); setPage(0); }}>
+                <SelectTrigger className="w-full rounded-full md:w-56">
+                  <Filter className="mr-2 h-4 w-4" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">สถานะทั้งหมด</SelectItem>
+                  {Object.entries(LIFECYCLE_LABEL).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{v}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={health} onValueChange={(v) => { setHealth(v as "all" | ProjectHealth); setPage(0); }}>
+                <SelectTrigger className="w-full rounded-full md:w-48">
+                  <HeartPulse className="mr-2 h-4 w-4" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">สุขภาพทั้งหมด</SelectItem>
+                  <SelectItem value="green">ตามแผน</SelectItem>
+                  <SelectItem value="yellow">ใกล้เสี่ยง</SelectItem>
+                  <SelectItem value="red">ล่าช้า</SelectItem>
+                  <SelectItem value="grey">ปิดโครงการ</SelectItem>
+                </SelectContent>
+              </Select>
+            </>
           )}
           {view === "pipeline" && (
             <Select
