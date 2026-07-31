@@ -288,7 +288,7 @@ function ProjectDetail() {
 
         <TabsContent value="rfq" className="mt-5 space-y-4">
           {(() => {
-            const canEditSpec = isAdmin || ((perms?.canSeeSpec ?? false) && (perms?.canUpload ?? false));
+            const canEditSpec = editAdmin || ((perms?.canSeeSpec ?? false) && (perms?.canUpload ?? false));
             return (
               <>
                 {isInhouse && (
@@ -340,7 +340,7 @@ function ProjectDetail() {
               )}
               <SupplierQuotationsTab
                 projectId={id}
-                canEdit={isAdmin || (perms?.canUpload ?? false)}
+                canEdit={editAdmin || (perms?.canUpload ?? false)}
                 canSeePrice={perms?.canSeeSupplierPrice ?? false}
               />
             </>
@@ -352,7 +352,7 @@ function ProjectDetail() {
           {perms?.canSeeCustomer ? (
             <CustomerQuotationsTab
               projectId={id}
-              canEdit={isAdmin || (perms?.canUpload ?? false)}
+              canEdit={editAdmin || (perms?.canUpload ?? false)}
               canSeePrice={perms?.canSeeCustomerPrice ?? false}
             />
           ) : <Denied label="ใบเสนอลูกค้า" />}
@@ -389,7 +389,7 @@ function ProjectDetail() {
             <MilestonesTab
               projectId={id}
               contractValue={p.contract_value ?? p.budget ?? null}
-              canEdit={isAdmin || (perms?.canEditMilestones ?? false)}
+              canEdit={editAdmin || (perms?.canEditMilestones ?? false)}
               canSeePayment={perms?.canSeeMilestonePayment ?? false}
             />
           ) : <Denied label="งวดงาน" />}
