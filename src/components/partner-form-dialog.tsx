@@ -14,6 +14,7 @@ export type Partner = {
   id: string;
   code: string;
   name: string;
+  aka: string | null;
   type: "customer" | "supplier" | "both";
   tax_id: string | null;
   address: string | null;
@@ -28,6 +29,7 @@ export type Partner = {
 
 export type PartnerFormValues = {
   name: string;
+  aka: string;
   type: Partner["type"];
   tax_id: string;
   address: string;
@@ -41,7 +43,7 @@ export type PartnerFormValues = {
 };
 
 const empty: PartnerFormValues = {
-  name: "", type: "both", tax_id: "", address: "", phone: "", email: "", website: "",
+  name: "", aka: "", type: "both", tax_id: "", address: "", phone: "", email: "", website: "",
   business_type: "", credit_terms: "", notes: "", status: "active",
 };
 
@@ -49,10 +51,10 @@ export function usePartners(type?: "customer" | "supplier") {
   return useQuery({
     queryKey: ["partners-active", type ?? "all"],
     queryFn: async () => {
-      let q = getSupabase().from("partners").select("id, code, name, type").eq("status", "active");
+      let q = getSupabase().from("partners").select("id, code, name, aka, type").eq("status", "active");
       if (type) q = q.in("type", [type, "both"]);
       const { data } = await q.order("name");
-      return (data ?? []) as { id: string; code: string; name: string; type: string }[];
+      return (data ?? []) as { id: string; code: string; name: string; aka: string | null; type: string }[];
     },
   });
 }
@@ -81,6 +83,7 @@ export function PartnerFormDialog({
     if (editing) {
       setForm({
         name: editing.name,
+        aka: editing.aka ?? "",
         type: editing.type,
         tax_id: editing.tax_id ?? "",
         address: editing.address ?? "",
@@ -109,6 +112,7 @@ export function PartnerFormDialog({
 
       const payload = {
         name,
+        aka: form.aka.trim() || null,
         type: form.type,
         tax_id: form.tax_id.trim() || null,
         address: form.address.trim() || null,
@@ -122,14 +126,14 @@ export function PartnerFormDialog({
       };
 
       if (editing) {
-        const { data, error } = await sb.from("partners").update(payload).eq("id", editing.id).select("id, code, name, type, status").single();
+        const { data, error } = await sb.from("partners").update(payload).eq("id", editing.id).select("id, code, name, aka, type, status").single();
         if (error) throw error;
         return data;
       }
       const { data: all, error: readErr } = await sb.from("partners").select("code");
       if (readErr) throw readErr;
       const newCode = nextCode("PT-", (all ?? []).map((r: { code: string }) => r.code), 4);
-      const { data, error } = await sb.from("partners").insert({ ...payload, code: newCode }).select("id, code, name, type, status").single();
+      const { data, error } = await sb.from("partners").insert({ ...payload, code: newCode }).select("id, code, name, aka, type, status").single();
       if (error) throw error;
       return data;
     },
@@ -137,15 +141,15 @@ export function PartnerFormDialog({
       toast.success(editing ? "บันทึกข้อมูลแล้ว" : "เพิ่มคู่ค้า/ลูกค้าแล้ว");
 
       // เติมรายการใหม่เข้า cache ทันที เพื่อให้เลือกใช้ได้เลยโดยไม่ต้องรอโหลดใหม่
-      const r = row as { id: string; code: string; name: string; type: string; status: string };
+      const r = row as { id: string; code: string; name: string; aka: string | null; type: string; status: string };
       if (r?.id && r.status === "active") {
-        type PRow = { id: string; code: string; name: string; type: string };
+        type PRow = { id: string; code: string; name: string; aka: string | null; type: string };
         qc.getQueriesData<PRow[]>({ queryKey: ["partners-active"] }).forEach(([key, old]) => {
           if (!old) return;
           const filterType = (key as unknown[])[1] as string | undefined;
           const matches = !filterType || filterType === "all" || r.type === filterType || r.type === "both";
           const rest = old.filter((p) => p.id !== r.id);
-          const next = matches ? [...rest, { id: r.id, code: r.code, name: r.name, type: r.type }] : rest;
+          const next = matches ? [...rest, { id: r.id, code: r.code, name: r.name, aka: r.aka, type: r.type }] : rest;
           qc.setQueryData(key, next.sort((a, b) => a.name.localeCompare(b.name)));
         });
       }
@@ -177,6 +181,16 @@ export function PartnerFormDialog({
           <div className="space-y-1 sm:col-span-2">
             <Label>ชื่อ (บริษัท/หน่วยงาน) *</Label>
             <Input maxLength={200} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          </div>
+          <div className="space-y-1 sm:col-span-2">
+            <Label>AKA / ชื่อเรียกย่อ</Label>
+            <Input
+              maxLength={20}
+              placeholder="เช่น KBANK, SET"
+              value={form.aka}
+              onChange={(e) => setForm({ ...form, aka: e.target.value })}
+            />
+            <p className="text-[11px] text-muted-foreground">ใช้แสดงเป็นสัญลักษณ์เด่นบนการ์ดโครงการ (สูงสุด 20 ตัวอักษร)</p>
           </div>
           <div className="space-y-1">
             <Label>ประเภท *</Label>
