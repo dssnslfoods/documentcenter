@@ -45,13 +45,8 @@ export function SupplierQuotationsTab({
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
 
-  const { data: partners } = useQuery({
-    queryKey: ["partners-suppliers"],
-    queryFn: async () => {
-      const { data } = await sb.from("partners").select("id, name").eq("kind", "vendor").order("name");
-      return data ?? [];
-    },
-  });
+  const { data: partners } = usePartners("supplier");
+
 
   const { data: rows, isLoading } = useQuery({
     queryKey: ["supplier-quotations", projectId],
