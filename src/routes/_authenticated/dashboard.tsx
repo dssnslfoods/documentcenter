@@ -171,6 +171,30 @@ function Dashboard() {
     },
   });
 
+  const { data: healthSummary } = useQuery({
+    queryKey: ["project-health-summary", isExec, scopedIds.join(",")],
+    enabled: scopeReady,
+    queryFn: async () => {
+      let q = getSupabase()
+        .from("projects")
+        .select("id, code, name, status, health_status, health_reason, end_date, customer_name")
+        .is("archived_at", null)
+        .neq("status", "lost")
+        .in("health_status", ["red", "yellow"]);
+      if (!isExec) {
+        if (scopedIds.length === 0) return { red: [] as any[], yellow: [] as any[] };
+        q = q.in("id", scopedIds);
+      }
+      const { data, error } = await q.order("health_status", { ascending: false }).order("end_date", { ascending: true }).limit(50);
+      if (error) throw error;
+      const rows = data ?? [];
+      return {
+        red: rows.filter((r: any) => r.health_status === "red"),
+        yellow: rows.filter((r: any) => r.health_status === "yellow"),
+      };
+    },
+  });
+
   const { data: pipeline } = useQuery({
     queryKey: ["project-pipeline", isExec, scopedIds.join(",")],
     enabled: scopeReady,
