@@ -7,7 +7,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { useMyRoles } from "@/hooks/use-page-access";
+import { useMyRoles, useCanAccess } from "@/hooks/use-page-access";
+import { ROLES } from "@/lib/pages";
 import { canCreateProjects } from "@/lib/project-roles";
 import { getSupabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/use-supabase";
@@ -38,7 +39,39 @@ const CHART_COLORS = [
 function Dashboard() {
   const { roles } = useMyRoles();
   const canCreate = canCreateProjects(roles);
+  const isExec = canCreate;
+  const { can } = useCanAccess();
   const { user } = useAuth();
+  const roleLabel = roles.map((r) => ROLES.find((x) => x.value === r)?.label ?? r).join(" · ");
+
+  const { data: profile } = useQuery({
+    queryKey: ["dashboard-profile", user?.id],
+    queryFn: async () => {
+      const { data } = await getSupabase().from("profiles").select("full_name").eq("id", user!.id).maybeSingle();
+      return data;
+    },
+    enabled: !!user,
+  });
+  const displayName =
+    profile?.full_name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "ผู้ใช้งาน";
+
+  /** โครงการที่ผู้ใช้เกี่ยวข้อง — ใช้จำกัดขอบเขตข้อมูลของผู้ที่ไม่ใช่ผู้บริหาร */
+  const { data: myProjectIds } = useQuery({
+    queryKey: ["my-project-ids", user?.id],
+    queryFn: async () => {
+      const sb = getSupabase();
+      const [{ data: memberships }, { data: owned }] = await Promise.all([
+        sb.from("project_members").select("project_id").eq("user_id", user!.id),
+        sb.from("projects").select("id").eq("owner_id", user!.id),
+      ]);
+      const ids = new Set<string>((memberships ?? []).map((m: any) => m.project_id));
+      (owned ?? []).forEach((p: any) => ids.add(p.id));
+      return Array.from(ids);
+    },
+    enabled: !!user,
+  });
+  const scopedIds = myProjectIds ?? [];
+  const scopeReady = isExec || !!myProjectIds;
 
   const { data: myProjects } = useQuery({
     queryKey: ["my-projects", user?.id],
@@ -72,7 +105,8 @@ function Dashboard() {
 
 
   const { data: kpi, isLoading } = useQuery({
-    queryKey: ["dashboard-kpi"],
+    queryKey: ["dashboard-kpi", isExec],
+    enabled: can("documents") || can("contracts") || can("quotations"),
     queryFn: async () => {
       const sb = getSupabase();
       const in30 = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
@@ -102,6 +136,7 @@ function Dashboard() {
 
   const { data: docsByType } = useQuery({
     queryKey: ["docs-by-type"],
+    enabled: can("documents"),
     queryFn: async () => {
       const { data } = await getSupabase()
         .from("documents")
@@ -119,6 +154,7 @@ function Dashboard() {
 
   const { data: upcomingContracts } = useQuery({
     queryKey: ["upcoming-contracts"],
+    enabled: can("contracts"),
     queryFn: async () => {
       const today = new Date().toISOString().slice(0, 10);
       const in90 = new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10);
@@ -134,12 +170,15 @@ function Dashboard() {
   });
 
   const { data: pipeline } = useQuery({
-    queryKey: ["project-pipeline"],
+    queryKey: ["project-pipeline", isExec, scopedIds.join(",")],
+    enabled: scopeReady,
     queryFn: async () => {
-      const { data } = await getSupabase()
-        .from("projects")
-        .select("status")
-        .is("archived_at", null);
+      let q = getSupabase().from("projects").select("status").is("archived_at", null);
+      if (!isExec) {
+        if (scopedIds.length === 0) return [];
+        q = q.in("id", scopedIds);
+      }
+      const { data } = await q;
       const labels: Record<string, string> = {
         draft: "ร่าง", rfq_sent: "RFQ", quotation_received: "Supplier",
         proposal_submitted: "Proposal", won: "ชนะ", lost: "แพ้",
@@ -155,18 +194,22 @@ function Dashboard() {
   });
 
   const { data: upcomingMilestones } = useQuery({
-    queryKey: ["upcoming-milestones"],
+    queryKey: ["upcoming-milestones", isExec, scopedIds.join(",")],
+    enabled: scopeReady,
     queryFn: async () => {
       const today = new Date().toISOString().slice(0, 10);
       const in30 = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
-      const { data } = await getSupabase()
+      let q = getSupabase()
         .from("project_milestones")
         .select("id, description, due_date, status, project_id, projects(code, name)")
         .eq("status", "pending")
         .gte("due_date", today)
-        .lte("due_date", in30)
-        .order("due_date", { ascending: true })
-        .limit(6);
+        .lte("due_date", in30);
+      if (!isExec) {
+        if (scopedIds.length === 0) return [];
+        q = q.in("project_id", scopedIds);
+      }
+      const { data } = await q.order("due_date", { ascending: true }).limit(6);
       return data ?? [];
     },
   });
@@ -174,8 +217,12 @@ function Dashboard() {
   return (
     <div className="space-y-8">
       <PageHeader
-        title="ภาพรวม"
-        description="เริ่มต้นวันด้วยงานที่ต้องทำ · ตามด้วยสถานะโครงการและสัญญา"
+        title={`สวัสดี, ${displayName}`}
+        description={
+          roleLabel
+            ? `${roleLabel} · ${isExec ? "ภาพรวมทั้งองค์กร" : "แสดงเฉพาะโครงการที่คุณมีส่วนร่วม"}`
+            : isExec ? "ภาพรวมทั้งองค์กร" : "แสดงเฉพาะโครงการที่คุณมีส่วนร่วม"
+        }
         actions={
           canCreate ? (
             <Button asChild size="lg" className="rounded-full shadow-sm">
@@ -192,7 +239,9 @@ function Dashboard() {
           <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
           <div className="relative">
             <div className="text-xs font-semibold uppercase tracking-widest opacity-80">งานที่ต้องทำก่อน</div>
-            <div className="mt-1 font-display text-2xl font-semibold tracking-tight">งวดงานครบกำหนดใน 30 วัน</div>
+            <div className="mt-1 font-display text-2xl font-semibold tracking-tight">
+              งวดงานครบกำหนดใน 30 วัน{isExec ? "" : " (โครงการของคุณ)"}
+            </div>
             <div className="mt-4 space-y-2">
               {upcomingMilestones && upcomingMilestones.length > 0 ? (
                 upcomingMilestones.map((m: any) => {
@@ -227,18 +276,31 @@ function Dashboard() {
           </div>
         </div>
 
-        <KpiCard icon={Clock} label="สัญญาใกล้หมดอายุ (30 วัน)" value={fmtNumber(kpi?.expiring30)} loading={isLoading} tone="warning" href="/contracts" />
-        <KpiCard icon={AlertTriangle} label="สัญญาหมดอายุแล้ว" value={fmtNumber(kpi?.expired)} loading={isLoading} tone="destructive" href="/contracts" />
-        <KpiCard icon={FileSignature} label="ใบเสนอราคารอพิจารณา" value={fmtNumber(kpi?.quotPending)} loading={isLoading} href="/quotations" />
+        {can("contracts") && (
+          <>
+            <KpiCard icon={Clock} label="สัญญาใกล้หมดอายุ (30 วัน)" value={fmtNumber(kpi?.expiring30)} loading={isLoading} tone="warning" href="/contracts" />
+            <KpiCard icon={AlertTriangle} label="สัญญาหมดอายุแล้ว" value={fmtNumber(kpi?.expired)} loading={isLoading} tone="destructive" href="/contracts" />
+          </>
+        )}
+        {can("quotations") && (
+          <KpiCard icon={FileSignature} label="ใบเสนอราคารอพิจารณา" value={fmtNumber(kpi?.quotPending)} loading={isLoading} href="/quotations" />
+        )}
       </div>
 
       {/* Secondary KPI row */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard icon={FileText} label="เอกสารทั้งหมด" value={fmtNumber(kpi?.totalDocs)} loading={isLoading} href="/documents" />
-        <KpiCard icon={CheckCircle2} label="เอกสารกำลังใช้งาน" value={fmtNumber(kpi?.activeDocs)} loading={isLoading} tone="success" href="/documents" />
-        <KpiCard icon={DollarSign} label="มูลค่าสัญญาที่ใช้งาน" value={fmtCurrency(kpi?.totalContractValue)} loading={isLoading} tone="accent" href="/contracts" />
-        
-      </div>
+      {(can("documents") || can("contracts")) && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {can("documents") && (
+            <>
+              <KpiCard icon={FileText} label="เอกสารทั้งหมด" value={fmtNumber(kpi?.totalDocs)} loading={isLoading} href="/documents" />
+              <KpiCard icon={CheckCircle2} label="เอกสารกำลังใช้งาน" value={fmtNumber(kpi?.activeDocs)} loading={isLoading} tone="success" href="/documents" />
+            </>
+          )}
+          {can("contracts") && (
+            <KpiCard icon={DollarSign} label="มูลค่าสัญญาที่ใช้งาน" value={fmtCurrency(kpi?.totalContractValue)} loading={isLoading} tone="accent" href="/contracts" />
+          )}
+        </div>
+      )}
 
       {/* โครงการที่ฉันมีส่วนร่วม */}
       <Card className="tile">
