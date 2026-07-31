@@ -1,10 +1,40 @@
 import { useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Loader2, ScanLine } from "lucide-react";
+import { Loader2, ScanLine, AlertCircle, CheckCircle2, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { scanQuotation, type ScannedQuotation } from "@/lib/scan-quotation.functions";
+
+const LABELS: Record<keyof ScannedQuotation, string> = {
+  title: "หัวข้อ",
+  quotation_no: "เลขที่ใบเสนอราคา",
+  partner_name: "คู่ค้า/ลูกค้า",
+  issue_date: "วันที่ออก",
+  expiry_date: "วันหมดอายุ",
+  amount_before_tax: "มูลค่าก่อน VAT",
+  discount: "ส่วนลด",
+  tax: "VAT",
+  total_amount: "ยอดรวม",
+  currency: "สกุลเงิน",
+  description: "รายละเอียด",
+  confidence: "ความมั่นใจ",
+};
+
+function confidenceColor(score: number | null | undefined) {
+  if (score == null) return "bg-muted text-muted-foreground";
+  if (score >= 0.9) return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400";
+  if (score >= 0.7) return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
+  return "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400";
+}
+
+function confidenceIcon(score: number | null | undefined) {
+  if (score == null) return <HelpCircle className="h-3.5 w-3.5" />;
+  if (score >= 0.9) return <CheckCircle2 className="h-3.5 w-3.5" />;
+  if (score >= 0.7) return <AlertCircle className="h-3.5 w-3.5" />;
+  return <AlertCircle className="h-3.5 w-3.5" />;
+}
 
 function fileToDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
