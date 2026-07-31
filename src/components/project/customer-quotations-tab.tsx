@@ -168,9 +168,12 @@ export function CustomerQuotationsTab({
                 </div>
                 <div className="flex gap-1">
                   {r.file_url && (
-                    <Button size="sm" variant="outline" onClick={() => openFile(r.file_url!)}>
-                      <Download className="h-4 w-4" />
-                    </Button>
+                    <>
+                      <FilePreviewButton path={r.file_url} label="ดูใบเสนอราคา" />
+                      <Button size="sm" variant="outline" onClick={() => openFile(r.file_url!)} title="ดาวน์โหลด">
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </>
                   )}
                   {canEdit && !r.is_final && (
                     <Button size="sm" variant="ghost" onClick={() => markFinal.mutate(r.id)}>
