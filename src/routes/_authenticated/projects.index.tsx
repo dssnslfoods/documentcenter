@@ -429,7 +429,7 @@ function ListView({
           </div>
         ) : rows.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[900px] text-sm">
               <thead className="border-b bg-muted/30 text-left text-xs uppercase text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3">รหัส</th>

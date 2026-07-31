@@ -111,7 +111,7 @@ function DocumentsList() {
             <div className="space-y-2 p-4">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-12 animate-pulse rounded bg-muted/60" />)}</div>
           ) : rows.length > 0 ? (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[760px] text-sm">
                 <thead className="border-b bg-muted/30 text-left text-xs uppercase text-muted-foreground">
                   <tr>
                     <th className="px-4 py-3">ชื่อเอกสาร</th>

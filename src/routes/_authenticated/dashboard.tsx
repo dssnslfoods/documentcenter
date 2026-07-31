@@ -236,11 +236,11 @@ function Dashboard() {
       {/* Bento — What's next hero + KPI stack */}
       <div className="grid gap-4 lg:grid-cols-3">
         {/* Hero: งานที่ต้องทำก่อน */}
-        <div className="tile relative overflow-hidden bg-gradient-to-br from-primary to-primary/70 p-6 text-primary-foreground lg:col-span-2 lg:row-span-2">
+        <div className="tile relative overflow-hidden bg-gradient-to-br from-primary to-primary/70 p-4 text-primary-foreground sm:p-6 lg:col-span-2 lg:row-span-2">
           <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
           <div className="relative">
             <div className="text-xs font-semibold uppercase tracking-widest opacity-80">งานที่ต้องทำก่อน</div>
-            <div className="mt-1 font-display text-2xl font-semibold tracking-tight">
+            <div className="mt-1 font-display text-lg font-semibold tracking-tight sm:text-2xl">
               งวดงานครบกำหนดใน 30 วัน{isExec ? "" : " (โครงการของคุณ)"}
             </div>
             <div className="mt-4 space-y-2">

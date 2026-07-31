@@ -263,7 +263,7 @@ function CalendarPage() {
                     key={key}
                     onClick={() => setSelected(key)}
                     className={cn(
-                      "min-h-28 border-b border-r p-1.5 text-left align-top transition hover:bg-muted/40",
+                      "min-h-16 border-b border-r p-1 text-left align-top transition hover:bg-muted/40 sm:min-h-28 sm:p-1.5",
                       outside && "bg-muted/20 text-muted-foreground",
                       selected === key && "ring-2 ring-inset ring-primary",
                     )}
@@ -276,7 +276,14 @@ function CalendarPage() {
                     >
                       {d.getDate()}
                     </span>
-                    <div className="space-y-0.5">
+                    {/* Mobile: compact dots */}
+                    <div className="flex flex-wrap gap-0.5 sm:hidden">
+                      {evs.slice(0, 4).map((ev) => (
+                        <span key={ev.id} className={cn("h-1.5 w-1.5 rounded-full", KIND_META[ev.kind].bar)} />
+                      ))}
+                    </div>
+                    {/* Tablet & desktop: event titles */}
+                    <div className="hidden space-y-0.5 sm:block">
                       {evs.slice(0, 3).map((ev) => (
                         <div
                           key={ev.id}
@@ -291,6 +298,7 @@ function CalendarPage() {
                       )}
                     </div>
                   </button>
+
                 );
               })}
             </div>

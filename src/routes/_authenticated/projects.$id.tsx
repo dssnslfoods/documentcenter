@@ -183,7 +183,7 @@ function ProjectDetail() {
       </Button>
 
       {/* Header + auto-detect status banner */}
-      <div className="tile grid gap-5 p-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+      <div className="tile grid gap-4 p-4 sm:p-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-5">
         <div className="min-w-0 space-y-2">
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span className="font-mono uppercase tracking-wider">{p.code}</span>
@@ -195,7 +195,7 @@ function ProjectDetail() {
 
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight">{p.name}</h1>
+            <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{p.name}</h1>
             {isLocked && (
               <Badge
                 variant="outline"

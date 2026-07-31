@@ -72,13 +72,14 @@ function Partners() {
         }
       />
 
-      <div className="flex flex-wrap gap-2">
-        <div className="relative min-w-[240px] flex-1">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <div className="relative min-w-0 flex-1 sm:min-w-[240px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input className="pl-9" placeholder="ค้นหาชื่อ, รหัส, เลขผู้เสียภาษี, อีเมล" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
+
           <SelectContent>
             <SelectItem value="all">ทุกประเภท</SelectItem>
             <SelectItem value="customer">ลูกค้า</SelectItem>
@@ -94,7 +95,8 @@ function Partners() {
               {Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-10 animate-pulse rounded bg-muted/60" />)}
             </div>
           ) : rows.length > 0 ? (
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-sm">
               <thead className="border-b bg-muted/30 text-left text-xs uppercase text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3">รหัส</th>
@@ -134,6 +136,7 @@ function Partners() {
                 ))}
               </tbody>
             </table>
+            </div>
           ) : (
             <EmptyState
               icon={Users2}
