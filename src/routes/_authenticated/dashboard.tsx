@@ -324,6 +324,12 @@ function Dashboard() {
         {can("quotations") && (
           <KpiCard icon={FileSignature} label="ใบเสนอราคารอพิจารณา" value={fmtNumber(kpi?.quotPending)} loading={isLoading} href="/quotations" />
         )}
+        {scopeReady && (
+          <>
+            <KpiCard icon={HeartPulse} label="โครงการล่าช้า" value={fmtNumber(healthSummary?.red.length)} loading={!healthSummary} tone="destructive" href="/projects" />
+            <KpiCard icon={HeartPulse} label="โครงการใกล้เสี่ยง" value={fmtNumber(healthSummary?.yellow.length)} loading={!healthSummary} tone="warning" href="/projects" />
+          </>
+        )}
       </div>
 
       {/* Secondary KPI row */}
