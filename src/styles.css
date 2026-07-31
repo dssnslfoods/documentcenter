@@ -185,18 +185,27 @@
 @layer base {
   * {
     border-color: var(--color-border);
+    min-width: 0;
   }
   html, body {
     font-family: var(--font-sans);
     background-color: var(--color-background);
     color: var(--color-foreground);
     -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  /* Thai has no word spaces — allow long strings to wrap instead of overflowing */
+  body, p, span, div, h1, h2, h3, h4, h5, h6, td, th, li, label, button, a {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-break: loose;
   }
   h1, h2, h3, h4 {
     font-family: var(--font-display);
     letter-spacing: -0.02em;
   }
 }
+
 
 /* Confidentiality badges */
 @utility badge-public {
