@@ -116,13 +116,24 @@ export function EditProjectDialog({
         patch.vat_amount = hasValue ? vatAmount : null;
         patch.contract_value_incl_vat = hasValue ? gross : null;
       }
-      const { error } = await sb.from("projects").update(patch).eq("id", project.id);
+      const { data, error } = await sb
+        .from("projects")
+        .update(patch)
+        .eq("id", project.id)
+        .select("id");
       if (error) throw error;
+      // RLS can silently reject the write (0 rows affected) — surface it instead of
+      // showing a success toast with unchanged data.
+      if (!data || data.length === 0)
+        throw new Error("ไม่สามารถบันทึกได้ — คุณอาจไม่มีสิทธิ์แก้ไขโครงการนี้");
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["project", project.id] });
-      qc.invalidateQueries({ queryKey: ["projects"] });
-      qc.invalidateQueries({ queryKey: ["project-last-editor"] });
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["project", project.id], refetchType: "all" }),
+        qc.invalidateQueries({ queryKey: ["projects"], refetchType: "all" }),
+        qc.invalidateQueries({ queryKey: ["project-last-editor"], refetchType: "all" }),
+        qc.invalidateQueries({ queryKey: ["project-history", project.id], refetchType: "all" }),
+      ]);
       toast.success("บันทึกรายละเอียดโครงการแล้ว");
       onOpenChange(false);
     },
