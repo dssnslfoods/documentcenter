@@ -6,7 +6,16 @@ const input = z.object({
   image: z.string().min(20),
 });
 
+export type ScannedItem = {
+  description?: string | null;
+  qty?: number | null;
+  unit?: string | null;
+  unit_price?: number | null;
+  amount?: number | null;
+};
+
 export type ScannedQuotation = {
+  items?: ScannedItem[] | null;
   title?: string | null;
   quotation_no?: string | null;
   partner_name?: string | null;
@@ -41,7 +50,8 @@ const SYSTEM = `คุณคือผู้ช่วยอ่านเอกส�
     "title":string|null,"quotation_no":string|null,"partner_name":string|null,
     "issue_date":"YYYY-MM-DD"|null,"expiry_date":"YYYY-MM-DD"|null,
     "amount_before_tax":number|null,"discount":number|null,"tax":number|null,
-    "total_amount":number|null,"currency":string|null,"description":string|null
+    "total_amount":number|null,"currency":string|null,"description":string|null,
+    "items":[{"description":string,"qty":number|null,"unit":string|null,"unit_price":number|null,"amount":number|null}]
   },
   "confidence": {
     "title":0.0-1.0,"quotation_no":0.0-1.0,"partner_name":0.0-1.0,
@@ -55,6 +65,7 @@ const SYSTEM = `คุณคือผู้ช่วยอ่านเอกส�
 amount_before_tax คือยอดก่อน VAT, tax คือยอด VAT, total_amount คือยอดรวมสุทธิ
 confidence คือความมั่นใจของแต่ละช่อง ใส่เป็นทศนิยมระหว่าง 0.0 ถึง 1.0 (1.0 = มั่นใจสูงสุด)
 หากช่องใดอ่านไม่ได้หรือไม่แน่ใจ ให้ใส่ค่า null ทั้ง data และ confidence ของช่องนั้น
+items คือรายการสินค้า/บริการในตารางของใบเสนอราคา (เรียงตามเอกสาร) หากไม่มีให้ใส่ []
 ข้อมูลที่ไม่พบให้ใส่ null`;
 
 export const scanQuotation = createServerFn({ method: "POST" })

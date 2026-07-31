@@ -20,6 +20,7 @@ const LABELS: Record<keyof ScannedQuotation, string> = {
   currency: "สกุลเงิน",
   description: "รายละเอียด",
   confidence: "ความมั่นใจ",
+  items: "รายการสินค้า/บริการ",
 };
 
 function confidenceColor(score: number | null | undefined) {
