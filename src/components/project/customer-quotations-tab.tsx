@@ -54,14 +54,26 @@ export function CustomerQuotationsTab({
     },
   });
 
+  const afterChange = async () => {
+    try {
+      await syncContractValueFromFinalQuotation(projectId);
+    } catch {
+      /* keep the UI responsive even if the project row is not writable */
+    }
+    qc.invalidateQueries({ queryKey: ["customer-quotations", projectId] });
+    qc.invalidateQueries({ queryKey: ["project", projectId], refetchType: "all" });
+    qc.invalidateQueries({ queryKey: ["projects"], refetchType: "all" });
+    qc.invalidateQueries({ queryKey: ["final-quotation", projectId] });
+  };
+
   const remove = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await sb.from("customer_quotations").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("ลบเรียบร้อย");
-      qc.invalidateQueries({ queryKey: ["customer-quotations", projectId] });
+      await afterChange();
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -72,11 +84,12 @@ export function CustomerQuotationsTab({
       const { error } = await sb.from("customer_quotations").update({ is_final: true }).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      toast.success("กำหนดเป็นฉบับสุดท้ายแล้ว");
-      qc.invalidateQueries({ queryKey: ["customer-quotations", projectId] });
+    onSuccess: async () => {
+      toast.success("กำหนดเป็นฉบับสุดท้ายแล้ว — อัปเดตมูลค่าสัญญาของโครงการให้อัตโนมัติ");
+      await afterChange();
     },
   });
+
 
   const openFile = async (path: string) => {
     const url = await getProjectFileUrl(path);
