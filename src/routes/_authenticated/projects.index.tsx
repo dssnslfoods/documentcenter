@@ -35,6 +35,7 @@ type ProjectRow = {
   name: string;
   status: string | null;
   customer_name: string | null;
+  customer_aka: string | null;
   project_type: string | null;
   contract_value: number | null;
   start_date: string | null;
@@ -80,7 +81,7 @@ function ProjectsList() {
       const sb = getSupabase();
       let query = sb
         .from("projects")
-        .select("id, code, name, status, customer_name, project_type, contract_value, start_date, end_date, budget, updated_at", { count: "exact" })
+        .select("id, code, name, status, customer_name, customer_aka, project_type, contract_value, start_date, end_date, budget, updated_at", { count: "exact" })
         .is("archived_at", null);
       if (view === "pipeline") {
         query = query.order(pipelineSort.field, { ascending: pipelineSort.direction === "asc", nullsFirst: false });
@@ -288,7 +289,14 @@ function PipelineView({ rows, isLoading, memberIds, canPeekMembers }: { rows: Pr
                     className={`tile tile-interactive block rounded-lg border-l-4 p-3 ${c.card}`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div className="font-mono text-[10px] uppercase text-muted-foreground">{p.code}</div>
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        {p.customer_aka && (
+                          <span className="shrink-0 rounded-md bg-primary px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide text-primary-foreground shadow-sm">
+                            {p.customer_aka}
+                          </span>
+                        )}
+                        <div className="truncate font-mono text-[10px] uppercase text-muted-foreground">{p.code}</div>
+                      </div>
                       {canSeeMoney && p.contract_value != null && (
                         <div className={`shrink-0 text-[10px] font-semibold tabular-nums ${c.text}`}>
                           {fmtCurrency(p.contract_value, "THB")}
@@ -448,7 +456,12 @@ function ListView({
                         <Link to="/projects/$id" params={{ id: p.id }} className="text-primary hover:underline">{p.code}</Link>
                       </td>
                       <td className="px-4 py-3 font-medium">{p.name}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{p.customer_name ?? "-"}</td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {p.customer_aka && (
+                          <span className="mr-1.5 rounded bg-primary px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase text-primary-foreground">{p.customer_aka}</span>
+                        )}
+                        {p.customer_name ?? "-"}
+                      </td>
                       <td className="px-4 py-3">
                         <Badge variant="outline" className={STATUS_TONE[st]}>{LIFECYCLE_LABEL[st] ?? st}</Badge>
                       </td>
