@@ -147,9 +147,9 @@ export function SupplierQuotationsTab({
               onSaved={(scanned) => {
                 setOpen(false);
                 qc.invalidateQueries({ queryKey: ["supplier-quotations", projectId] });
-                // ถามเฉพาะครั้งแรกของโครงการ ที่สแกนแล้วได้รายการสินค้า/บริการ
+                // ถามทุกครั้งที่สแกนแล้วได้รายการสินค้า/บริการ
                 const items = scanned?.items ?? [];
-                if ((rows ?? []).length === 0 && items.length > 0) {
+                if (items.length > 0) {
                   setRfqPrompt({ supplier: scanned?.supplier ?? "Supplier", items });
                 }
               }}
@@ -285,14 +285,13 @@ export function SupplierQuotationsTab({
   );
 }
 
-/** แปลงรายการที่สแกนได้เป็นข้อความสำหรับบันทึก RFQ / Spec */
+/** แปลงรายการที่สแกนได้เป็นข้อความสำหรับบันทึก RFQ / Spec (ไม่ใส่ราคา) */
 function itemsToText(items: ScannedItem[]) {
   return items
     .map((it, i) => {
       const parts = [`${i + 1}. ${it.description ?? "-"}`];
       if (it.qty != null) parts.push(`จำนวน ${it.qty}${it.unit ? " " + it.unit : ""}`);
-      if (it.unit_price != null) parts.push(`ราคา/หน่วย ${it.unit_price}`);
-      if (it.amount != null) parts.push(`รวม ${it.amount}`);
+      else if (it.unit) parts.push(`หน่วย ${it.unit}`);
       return parts.join(" | ");
     })
     .join("\n");
@@ -373,7 +372,9 @@ function AddDialog({
       <DialogHeader><DialogTitle>เพิ่มใบเสนอราคา Supplier</DialogTitle></DialogHeader>
       <div className="space-y-3">
         <ScanQuotationCard
+          onFile={(f) => setFile(f)}
           onScanned={(d) => {
+
             setScanned(d);
             if (d.amount_before_tax != null) setAmount(String(d.amount_before_tax));
             if (d.issue_date) setDate(d.issue_date);
@@ -475,6 +476,11 @@ function AddDialog({
         <div>
           <Label>ไฟล์แนบ</Label>
           <Input type="file" onChange={(e: ChangeEvent<HTMLInputElement>) => setFile(e.target.files?.[0] ?? null)} />
+          {file && (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              จะจัดเก็บไฟล์: <span className="font-medium text-foreground">{file.name}</span>
+            </p>
+          )}
         </div>
       </div>
       <DialogFooter>

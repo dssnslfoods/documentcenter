@@ -48,7 +48,14 @@ function fileToDataUrl(file: File) {
 }
 
 /** สแกนรูปใบเสนอราคาแล้วเติมข้อมูลลงฟอร์มอัตโนมัติ พร้อมแสดงค่า confidence */
-export function ScanQuotationCard({ onScanned }: { onScanned: (d: ScannedQuotation) => void }) {
+export function ScanQuotationCard({
+  onScanned,
+  onFile,
+}: {
+  onScanned: (d: ScannedQuotation) => void;
+  /** ไฟล์ที่ใช้สแกน — ส่งกลับเพื่อให้ผู้เรียกเก็บไฟล์แนบไว้ด้วย */
+  onFile?: (file: File) => void;
+}) {
   const scan = useServerFn(scanQuotation);
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -73,6 +80,7 @@ export function ScanQuotationCard({ onScanned }: { onScanned: (d: ScannedQuotati
       const result = await scan({ data: { image, filename: file.name } });
       setLastResult(result);
       onScanned(result);
+      onFile?.(file);
       toast.success("อ่านเอกสารสำเร็จ", { description: "กรุณาตรวจสอบข้อมูลที่ระบบเติมให้ก่อนบันทึก" });
     } catch (e) {
       toast.error("สแกนไม่สำเร็จ", { description: (e as Error).message });
