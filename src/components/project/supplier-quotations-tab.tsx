@@ -403,13 +403,36 @@ function AddDialog({
             open={partnerOpen}
             onOpenChange={setPartnerOpen}
             defaultType="supplier"
+            defaultName={supplierName}
             onSaved={(row) => { setSupplierId(row.id); setSupplierName(""); }}
           />
         </div>
 
         <div>
           <Label>หรือ พิมพ์ชื่อ Supplier</Label>
-          <Input value={supplierName} onChange={(e) => setSupplierName(e.target.value)} placeholder="ชื่อ Supplier" />
+          <div className="flex gap-2">
+            <Input
+              className="flex-1"
+              value={supplierName}
+              onChange={(e) => setSupplierName(e.target.value)}
+              placeholder="ชื่อ Supplier"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              title="บันทึกชื่อนี้เข้ารายชื่อคู่ค้าในระบบ"
+              disabled={!supplierName.trim()}
+              onClick={() => setPartnerOpen(true)}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+          {supplierName.trim() && !supplierId && (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              ชื่อนี้ยังไม่มีในระบบ · กด + เพื่อบันทึกเข้ารายชื่อคู่ค้า แล้วระบบจะเลือกให้อัตโนมัติ
+            </p>
+          )}
         </div>
         {(supplierId || supplierName) && (
           <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">

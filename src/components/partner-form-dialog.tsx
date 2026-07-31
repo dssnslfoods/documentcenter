@@ -62,12 +62,14 @@ export function PartnerFormDialog({
   onOpenChange,
   editing,
   defaultType,
+  defaultName,
   onSaved,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   editing?: Partner | null;
   defaultType?: Partner["type"];
+  defaultName?: string;
   onSaved?: (row: { id: string; name: string }) => void;
 }) {
   const qc = useQueryClient();
@@ -92,10 +94,10 @@ export function PartnerFormDialog({
       });
       setCode(editing.code);
     } else {
-      setForm({ ...empty, type: defaultType ?? "both" });
+      setForm({ ...empty, type: defaultType ?? "both", name: defaultName ?? "" });
       setCode("");
     }
-  }, [open, editing, defaultType]);
+  }, [open, editing, defaultType, defaultName]);
 
   const save = useMutation({
     mutationFn: async () => {
