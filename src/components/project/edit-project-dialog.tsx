@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Plus } from "lucide-react";
+import { AlertTriangle, Info, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { getSupabase } from "@/lib/supabase";
 import { PartnerFormDialog, usePartners } from "@/components/partner-form-dialog";
 import { useAuth } from "@/hooks/use-supabase";
+import { fetchFinalQuotationSummary } from "@/lib/contract-value";
 
 export type EditableProject = {
   id: string;
@@ -50,10 +51,10 @@ export function EditProjectDialog({
     queryFn: async () =>
       (await sb.from("work_types").select("id, code, name_th").eq("is_active", true).order("sort_order").order("name_th")).data ?? [],
   });
-  const { data: vatRates } = useQuery({
-    queryKey: ["vat-rates"],
-    queryFn: async () =>
-      (await sb.from("vat_rates").select("id, label, rate, is_default").eq("is_active", true).order("sort_order").order("rate")).data ?? [],
+  const { data: finalQuote } = useQuery({
+    queryKey: ["final-quotation", project.id],
+    enabled: open && canEditPrice,
+    queryFn: () => fetchFinalQuotationSummary(project.id),
   });
 
   const [name, setName] = useState(project.name ?? "");
@@ -63,12 +64,6 @@ export function EditProjectDialog({
   const [projectType, setProjectType] = useState(project.project_type ?? "");
   const [startDate, setStartDate] = useState(project.start_date ?? "");
   const [endDate, setEndDate] = useState(project.end_date ?? "");
-  const [contractValue, setContractValue] = useState(
-    project.contract_value == null ? "" : String(project.contract_value),
-  );
-  const [vatPercentStr, setVatPercentStr] = useState(
-    project.vat_rate == null ? "none" : String(Number(project.vat_rate)),
-  );
   const [isInhouse, setIsInhouse] = useState(!!project.is_inhouse);
 
   // Re-sync the form only when the dialog opens (or switches project).
@@ -87,22 +82,20 @@ export function EditProjectDialog({
     setProjectType(project.project_type ?? "");
     setStartDate(project.start_date ?? "");
     setEndDate(project.end_date ?? "");
-    setContractValue(project.contract_value == null ? "" : String(project.contract_value));
-    setVatPercentStr(project.vat_rate == null ? "none" : String(Number(project.vat_rate)));
     setIsInhouse(!!project.is_inhouse);
   }, [open, syncKey, project]);
 
-  const net = Number(contractValue) || 0;
-  const vatPercent = vatPercentStr === "none" ? 0 : Number(vatPercentStr) || 0;
-  const vatAmount = Math.round(net * vatPercent) / 100;
-  const gross = Math.round((net + vatAmount) * 100) / 100;
+  // Contract value is derived from the FINAL customer quotation — never typed here.
+  const net = Number(finalQuote?.final?.quotation_amount ?? 0);
+  const vatPercent = Number(finalQuote?.final?.vat_rate ?? 0);
+  const vatAmount = Number(finalQuote?.final?.vat_amount ?? Math.round(net * vatPercent) / 100);
+  const gross = Number(finalQuote?.final?.amount_incl_vat ?? Math.round((net + vatAmount) * 100) / 100);
 
   const save = useMutation({
     mutationFn: async () => {
       if (!name.trim()) throw new Error("กรุณากรอกชื่อโครงการ");
       if (startDate && endDate && new Date(endDate) < new Date(startDate))
         throw new Error("วันสิ้นสุดต้องไม่น้อยกว่าวันเริ่ม");
-      const hasValue = contractValue !== "";
       const patch: Record<string, unknown> = {
         name: name.trim(),
         description: description || null,
@@ -115,13 +108,6 @@ export function EditProjectDialog({
         updated_by: user?.id ?? null,
         updated_at: new Date().toISOString(),
       };
-      if (canEditPrice) {
-        patch.contract_value = hasValue ? net : null;
-        patch.budget = hasValue ? net : null;
-        patch.vat_rate = vatPercentStr === "none" ? null : vatPercent;
-        patch.vat_amount = hasValue ? vatAmount : null;
-        patch.contract_value_incl_vat = hasValue ? gross : null;
-      }
       const { data, error } = await sb
         .from("projects")
         .update(patch)
