@@ -257,7 +257,7 @@ function ProjectDetail() {
                 if (perms?.isAdmin) return true;
                 switch (t.value) {
                   case "overview": return perms?.canSeeOverview ?? false;
-                  case "rfq": return perms?.canSeeSpec ?? false;
+                  case "rfq": return true;
                   case "supplier": return perms?.canSeeSupplier ?? false;
                   case "customer": return perms?.canSeeCustomer ?? false;
                   case "contract": return perms?.canSeeContract ?? false;
