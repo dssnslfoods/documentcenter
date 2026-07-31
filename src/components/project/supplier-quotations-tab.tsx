@@ -15,6 +15,7 @@ import { useVatRates, calcVat, pickVatRate, fmtNum } from "@/lib/vat";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDate, fmtCurrency } from "@/lib/format";
 import { uploadProjectFile, getProjectFileUrl } from "@/lib/project-files";
+import { FilePreviewButton } from "@/components/project/file-preview-dialog";
 import { PartnerFormDialog, usePartners } from "@/components/partner-form-dialog";
 import { ScanQuotationCard } from "@/components/scan-quotation-card";
 import type { ScannedItem, ScannedQuotation } from "@/lib/scan-quotation.functions";
