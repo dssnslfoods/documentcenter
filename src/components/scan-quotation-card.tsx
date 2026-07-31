@@ -10,7 +10,8 @@ import { scanQuotation, type ScannedQuotation } from "@/lib/scan-quotation.funct
 const LABELS: Record<keyof ScannedQuotation, string> = {
   title: "หัวข้อ",
   quotation_no: "เลขที่ใบเสนอราคา",
-  partner_name: "คู่ค้า/ลูกค้า",
+  partner_name: "ผู้ออกใบเสนอราคา (ผู้ขาย)",
+  buyer_name: "ผู้รับ (ลูกค้า)",
   issue_date: "วันที่ออก",
   expiry_date: "วันหมดอายุ",
   amount_before_tax: "มูลค่าก่อน VAT",
