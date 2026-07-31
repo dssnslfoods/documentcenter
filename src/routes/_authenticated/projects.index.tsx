@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, FolderKanban, Search, Filter, LayoutGrid, Rows3, ArrowRight, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, FolderKanban, Search, Filter, LayoutGrid, Rows3, ArrowRight, ArrowUpDown, ArrowUp, ArrowDown, Eye, Users } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useMyRoles } from "@/hooks/use-page-access";
+import { useAuth } from "@/hooks/use-supabase";
 import { canCreateProjects } from "@/lib/project-roles";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDate, fmtCurrency } from "@/lib/format";
@@ -99,6 +100,21 @@ function ProjectsList() {
     },
   });
 
+  const { user } = useAuth();
+  const { data: myProjectIds } = useQuery({
+    queryKey: ["my-project-memberships", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const sb = getSupabase();
+      const { data, error } = await sb.from("project_members").select("project_id").eq("user_id", user!.id);
+      if (error) throw error;
+      return new Set((data ?? []).map((r) => r.project_id as string));
+    },
+  });
+  const memberIds = myProjectIds ?? new Set<string>();
+
+
+
 
   const totalPages = Math.ceil((data?.count ?? 0) / pageSize);
 
@@ -183,7 +199,7 @@ function ProjectsList() {
       </Card>
 
       {view === "pipeline" ? (
-        <PipelineView rows={data?.data ?? []} isLoading={isLoading} />
+        <PipelineView rows={data?.data ?? []} isLoading={isLoading} memberIds={memberIds} />
       ) : (
         <ListView
           rows={data?.data ?? []}
@@ -208,7 +224,7 @@ const PIPELINE_COLUMNS: { key: ProjectLifecycleStatus; label: string; short: str
   { key: "completed", label: "ปิดโครงการ", short: "Closed" },
 ];
 
-function PipelineView({ rows, isLoading }: { rows: ProjectRow[]; isLoading: boolean }) {
+function PipelineView({ rows, isLoading, memberIds }: { rows: ProjectRow[]; isLoading: boolean; memberIds: Set<string> }) {
   if (isLoading) {
     return (
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -277,6 +293,17 @@ function PipelineView({ rows, isLoading }: { rows: ProjectRow[]; isLoading: bool
                       )}
                     </div>
                     <div className="mt-1 line-clamp-2 text-sm font-medium leading-snug">{p.name}</div>
+                    <div className="mt-1.5">
+                      {memberIds.has(p.id) ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                          <Users className="h-3 w-3" />สมาชิกโครงการ
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                          <Eye className="h-3 w-3" />โหมดดูอย่างเดียว
+                        </span>
+                      )}
+                    </div>
                     <div className="mt-2 truncate text-xs text-muted-foreground">{p.customer_name ?? "—"}</div>
                     {p.end_date && (
                       <div className="mt-1.5 text-[10px] text-muted-foreground">ครบ {fmtDate(p.end_date)}</div>
