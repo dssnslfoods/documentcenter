@@ -45,12 +45,13 @@ function fileToDataUrl(file: File) {
   });
 }
 
-/** สแกนรูปใบเสนอราคาแล้วเติมข้อมูลลงฟอร์มอัตโนมัติ */
+/** สแกนรูปใบเสนอราคาแล้วเติมข้อมูลลงฟอร์มอัตโนมัติ พร้อมแสดงค่า confidence */
 export function ScanQuotationCard({ onScanned }: { onScanned: (d: ScannedQuotation) => void }) {
   const scan = useServerFn(scanQuotation);
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [lastResult, setLastResult] = useState<ScannedQuotation | null>(null);
 
   const handleFile = async (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -63,9 +64,11 @@ export function ScanQuotationCard({ onScanned }: { onScanned: (d: ScannedQuotati
     }
     setBusy(true);
     setFileName(file.name);
+    setLastResult(null);
     try {
       const image = await fileToDataUrl(file);
       const result = await scan({ data: { image } });
+      setLastResult(result);
       onScanned(result);
       toast.success("อ่านเอกสารสำเร็จ", { description: "กรุณาตรวจสอบข้อมูลที่ระบบเติมให้ก่อนบันทึก" });
     } catch (e) {
@@ -75,9 +78,19 @@ export function ScanQuotationCard({ onScanned }: { onScanned: (d: ScannedQuotati
     }
   };
 
+  const confidenceFields = lastResult?.confidence
+    ? (Object.entries(lastResult.confidence) as [keyof ScannedQuotation["confidence"], number | null | undefined][])
+        .filter(([key]) => key !== "confidence")
+        .map(([key, score]) => ({ key, label: LABELS[key] ?? key, score, value: lastResult[key as keyof ScannedQuotation] }))
+        .filter((item) => item.value != null || item.score != null)
+        .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+    : [];
+
+  const lowConfidenceCount = confidenceFields.filter((f) => (f.score ?? 0) < 0.7).length;
+
   return (
     <Card className="border-dashed">
-      <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
           <div className="rounded-lg bg-primary/10 p-2 text-primary"><ScanLine className="h-5 w-5" /></div>
           <div>
@@ -105,6 +118,36 @@ export function ScanQuotationCard({ onScanned }: { onScanned: (d: ScannedQuotati
           </Button>
         </div>
       </CardContent>
+
+      {lastResult && confidenceFields.length > 0 && (
+        <CardContent className="border-t px-4 pb-4 pt-3">
+          <div className="mb-2 flex items-center justify-between">
+            <div className="text-sm font-medium">ผลการอ่านเอกสาร — ค่าความมั่นใจ</div>
+            {lowConfidenceCount > 0 && (
+              <Badge variant="outline" className="text-rose-600">
+                มี {lowConfidenceCount} ช่องที่ควรตรวจสอบ
+              </Badge>
+            )}
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {confidenceFields.map(({ key, label, score, value }) => (
+              <div key={key} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">{label}</span>
+                  <span className="font-medium">{value == null ? "-" : String(value)}</span>
+                </div>
+                <div className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${confidenceColor(score)}`}>
+                  {confidenceIcon(score)}
+                  {score == null ? "ไม่ระบุ" : `${Math.round(score * 100)}%`}
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            ค่าความมั่นใจ 90% ขึ้นไป = น่าเชื่อถือ, 70-89% = ควรตรวจสอบ, ต่ำกว่า 70% = ควรแก้ไขก่อนบันทึก
+          </p>
+        </CardContent>
+      )}
     </Card>
   );
 }
