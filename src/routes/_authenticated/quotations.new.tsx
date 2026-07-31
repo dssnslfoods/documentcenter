@@ -68,6 +68,9 @@ function NewQuotation() {
     defaultValues: { type: "outgoing", currency: "THB", amount_before_tax: 0, discount: 0, tax: 0, project_id: search.project ?? "" },
   });
 
+  const [scanConfidence, setScanConfidence] = useState<ScannedQuotation["confidence"] | undefined>(undefined);
+  const confidence = (key: keyof ScannedQuotation["confidence"]) => scanConfidence?.[key];
+
   const amt = Number(form.watch("amount_before_tax")) || 0;
   const disc = Number(form.watch("discount")) || 0;
   const [vatRateId, setVatRateId] = useState<string | undefined>(undefined);
