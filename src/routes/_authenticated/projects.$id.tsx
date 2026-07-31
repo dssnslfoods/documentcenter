@@ -101,11 +101,13 @@ function ProjectDetail() {
   const autoAdvancedRef = useRef<string | null>(null);
 
   const isAdmin = perms?.isAdmin ?? false;
+  const status = (p?.status ?? "draft") as ProjectLifecycleStatus;
+  // โครงการที่ปิดแล้ว = ล็อก ห้ามแก้ไขใดๆ
+  const isLocked = (perms?.isLocked ?? false) || status === "completed";
   // Admin / ผู้บริหาร ที่ไม่ได้เป็นสมาชิกโครงการ = ดูได้อย่างเดียว
-  const editAdmin = isAdmin && (perms?.isMember ?? false);
+  const editAdmin = isAdmin && (perms?.isMember ?? false) && !isLocked;
   const canEditProject = editAdmin || (perms?.canEditProject ?? false);
 
-  const status = (p?.status ?? "draft") as ProjectLifecycleStatus;
 
 
 
