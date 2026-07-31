@@ -299,9 +299,10 @@ function ProjectDetail() {
                   canEdit={isAdmin || (perms?.canUpload ?? false)}
                 />
               </SectionCard>
-              <SectionCard title="RFQ / Specification (ไฟล์แนบ)" description="เอกสารข้อกำหนดที่ส่งให้ Supplier">
-                <ProjectDocumentsList projectId={id} type="rfq_spec" emptyLabel="ยังไม่มีไฟล์ RFQ / Spec" />
+              <SectionCard title="Spec Preview (Reference)" description="อัปโหลดรูปแบบ/ตัวอย่าง spec ได้หลายรูปพร้อมกัน ดูตัวอย่างก่อนดาวน์โหลดได้">
+                <ProjectDocumentsList projectId={id} type="rfq_spec" emptyLabel="ยังไม่มีรูป Spec Preview" gallery />
               </SectionCard>
+
               <SectionCard title="TOR / Scope of Work (ข้อความ)" description="รายละเอียดขอบเขตงานแบบข้อความ">
                 <ProjectSpecNotesList
                   projectId={id}

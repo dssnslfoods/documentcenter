@@ -30,3 +30,20 @@ export async function removeProjectFile(path: string): Promise<void> {
   const sb = getSupabase();
   await sb.storage.from("project-files").remove([path]);
 }
+
+export async function getProjectFileUrls(
+  paths: string[],
+): Promise<Record<string, string>> {
+  const clean = paths.filter(Boolean);
+  if (clean.length === 0) return {};
+  const sb = getSupabase();
+  const { data, error } = await sb.storage
+    .from("project-files")
+    .createSignedUrls(clean, 60 * 30);
+  if (error || !data) return {};
+  const map: Record<string, string> = {};
+  data.forEach((d) => {
+    if (d.path && d.signedUrl) map[d.path] = d.signedUrl;
+  });
+  return map;
+}
