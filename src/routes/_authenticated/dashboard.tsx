@@ -520,11 +520,42 @@ function MyProjectGroup({ title, tone, items }: { title: string; tone: "primary"
                   {p.code}{p.customer_name ? ` · ${p.customer_name}` : ""}
                 </div>
               </div>
-              <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+              <div className="flex shrink-0 items-center gap-2">
+                <HealthBadge health={healthFromString(p.health_status)} size="xs" />
+                <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+              </div>
             </Link>
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function AtRiskProjectList({ items, tone }: { items: any[]; tone: "warning" | "destructive" }) {
+  if (items.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      {items.slice(0, 5).map((p) => (
+        <Link
+          key={p.id}
+          to="/projects/$id"
+          params={{ id: p.id }}
+          className="group flex items-center justify-between gap-3 rounded-lg border px-3 py-2 transition-colors hover:bg-muted/50"
+        >
+          <div className="min-w-0">
+            <div className="truncate text-sm font-medium">{p.name}</div>
+            <div className="truncate text-xs text-muted-foreground">
+              {p.code}{p.customer_name ? ` · ${p.customer_name}` : ""}
+              {p.health_reason ? ` · ${p.health_reason}` : ""}
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <HealthBadge health={healthFromString(p.health_status)} size="xs" />
+            <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+          </div>
+        </Link>
+      ))}
     </div>
   );
 }
