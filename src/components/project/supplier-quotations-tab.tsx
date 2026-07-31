@@ -365,6 +365,7 @@ function AddDialog({
         amount_incl_vat: amount ? total : null,
         received_date: date || null,
         notes: notes || null,
+        title: title || null,
         version: nextVersion,
         file_urls,
       });
