@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getSupabase } from "@/lib/supabase";
 import { PartnerFormDialog } from "@/components/partner-form-dialog";
 import { useVatRates, calcVat, pickVatRate } from "@/lib/vat";
+import { ScanQuotationCard } from "@/components/scan-quotation-card";
 
 const schema = z.object({
   project_id: z.string().uuid("กรุณาเลือกโครงการ"),
@@ -130,6 +131,25 @@ function NewQuotation() {
     <div className="max-w-4xl">
       <PageHeader title="เพิ่มใบเสนอราคา" description="ใบเสนอราคาผูกกับโครงการ — ระบบจะสร้างเลขที่อัตโนมัติ" />
       <form onSubmit={form.handleSubmit((v) => create.mutate(v))} className="space-y-6">
+        <ScanQuotationCard
+          onScanned={(d) => {
+            if (d.title) form.setValue("title", d.title, { shouldValidate: true });
+            if (d.issue_date) form.setValue("issue_date", d.issue_date);
+            if (d.expiry_date) form.setValue("expiry_date", d.expiry_date);
+            if (d.currency) form.setValue("currency", d.currency);
+            if (d.description) form.setValue("description", d.description);
+            if (d.amount_before_tax != null) form.setValue("amount_before_tax", Number(d.amount_before_tax));
+            if (d.discount != null) form.setValue("discount", Number(d.discount));
+            if (d.partner_name) {
+              const hit = partners?.find((x: { id: string; name: string }) =>
+                x.name.toLowerCase().includes(d.partner_name!.toLowerCase()) ||
+                d.partner_name!.toLowerCase().includes(x.name.toLowerCase()),
+              );
+              if (hit) form.setValue("partner_id", hit.id, { shouldValidate: true });
+            }
+          }}
+        />
+
         <Card>
           <CardHeader><CardTitle>โครงการที่เกี่ยวข้อง</CardTitle></CardHeader>
           <CardContent className="space-y-2">
