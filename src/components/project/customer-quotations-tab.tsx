@@ -15,6 +15,9 @@ import { fmtDate, fmtCurrency } from "@/lib/format";
 import { uploadProjectFile, getProjectFileUrl } from "@/lib/project-files";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useVatRates, calcVat, pickVatRate, fmtNum } from "@/lib/vat";
+import { syncContractValueFromFinalQuotation } from "@/lib/contract-value";
+import { AlertTriangle } from "lucide-react";
+
 
 type Row = {
   id: string;
