@@ -178,7 +178,7 @@ export function ProjectSpecNotesList({
           <EmptyState title={emptyLabel} icon={FileText} />
         ) : (
           <div className="space-y-3">
-            {notes.map((n) => (
+            {notes.map((n, i) => (
               <div key={n.id} className="rounded-md border p-3">
                 {editingId === n.id ? (
                   <div className="space-y-2">
