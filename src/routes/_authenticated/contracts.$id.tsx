@@ -203,6 +203,7 @@ function MilestoneList({ title, icon: Icon, items, currency, showTotal }: {
   currency: string;
   showTotal?: boolean;
 }) {
+  const { canSeeMoney } = useCanSeeMoney();
   const total = items.reduce((s, m) => s + (Number(m.amount) || 0), 0);
   return (
     <Card>
