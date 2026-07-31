@@ -207,6 +207,28 @@ export function ProjectSpecNotesList({
                           อัปเดต {fmtDateTime(n.updated_at)}
                         </div>
                       </div>
+                      {canEdit && notes.length > 1 && (
+                        <div className="flex items-center">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            title="เลื่อนขึ้น"
+                            disabled={i === 0 || reorder.isPending}
+                            onClick={() => reorder.mutate({ index: i, dir: -1 })}
+                          >
+                            <ArrowUp className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            title="เลื่อนลง"
+                            disabled={i === notes.length - 1 || reorder.isPending}
+                            onClick={() => reorder.mutate({ index: i, dir: 1 })}
+                          >
+                            <ArrowDown className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
                       <Button size="sm" variant="ghost" title="คัดลอกเนื้อหา" onClick={() => copy(n.content)}>
                         <Copy className="h-4 w-4" />
                       </Button>
