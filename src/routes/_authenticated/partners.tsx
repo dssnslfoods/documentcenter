@@ -72,13 +72,14 @@ function Partners() {
         }
       />
 
-      <div className="flex flex-wrap gap-2">
-        <div className="relative min-w-[240px] flex-1">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <div className="relative min-w-0 flex-1 sm:min-w-[240px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input className="pl-9" placeholder="ค้นหาชื่อ, รหัส, เลขผู้เสียภาษี, อีเมล" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
+
           <SelectContent>
             <SelectItem value="all">ทุกประเภท</SelectItem>
             <SelectItem value="customer">ลูกค้า</SelectItem>
