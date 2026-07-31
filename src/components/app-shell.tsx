@@ -140,7 +140,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-40 flex h-16 items-center gap-3 border-b bg-card/80 px-4 backdrop-blur">
+        <header className="sticky top-0 z-40 flex h-16 items-center gap-1.5 border-b bg-card/80 px-2 backdrop-blur sm:gap-3 sm:px-4">
           <button
             onClick={() => setMobileOpen(true)}
             className="rounded-md p-2 hover:bg-muted lg:hidden"
