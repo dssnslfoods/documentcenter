@@ -36,6 +36,8 @@ const CHART_COLORS = [
 ];
 
 function Dashboard() {
+  const { roles } = useMyRoles();
+  const canCreate = canCreateProjects(roles);
   const { user } = useAuth();
 
   const { data: myProjects } = useQuery({

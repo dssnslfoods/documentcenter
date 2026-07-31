@@ -45,6 +45,8 @@ type PipelineSortField = "updated_at" | "end_date";
 type PipelineSortDir = "asc" | "desc";
 
 function ProjectsList() {
+  const { roles } = useMyRoles();
+  const canCreate = canCreateProjects(roles);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
   const [view, setView] = useState<"pipeline" | "list">("pipeline");
