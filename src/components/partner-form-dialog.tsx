@@ -137,17 +137,17 @@ export function PartnerFormDialog({
       // เติมรายการใหม่เข้า cache ทันที เพื่อให้เลือกใช้ได้เลยโดยไม่ต้องรอโหลดใหม่
       const r = row as { id: string; code: string; name: string; type: string; status: string };
       if (r?.id && r.status === "active") {
-        qc.setQueriesData<{ id: string; code: string; name: string; type: string }[]>(
-          { queryKey: ["partners-active"] },
-          (old) => {
-            if (!old) return old;
-            const rest = old.filter((p) => p.id !== r.id);
-            return [...rest, { id: r.id, code: r.code, name: r.name, type: r.type }].sort((a, b) =>
-              a.name.localeCompare(b.name),
-            );
-          },
-        );
+        type PRow = { id: string; code: string; name: string; type: string };
+        qc.getQueriesData<PRow[]>({ queryKey: ["partners-active"] }).forEach(([key, old]) => {
+          if (!old) return;
+          const filterType = (key as unknown[])[1] as string | undefined;
+          const matches = !filterType || filterType === "all" || r.type === filterType || r.type === "both";
+          const rest = old.filter((p) => p.id !== r.id);
+          const next = matches ? [...rest, { id: r.id, code: r.code, name: r.name, type: r.type }] : rest;
+          qc.setQueryData(key, next.sort((a, b) => a.name.localeCompare(b.name)));
+        });
       }
+
 
       qc.invalidateQueries({ queryKey: ["partners-list"] });
       qc.invalidateQueries({ queryKey: ["partners-active"] });
