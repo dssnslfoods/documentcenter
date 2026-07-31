@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSupabase } from "@/lib/supabase";
 import { fmtCurrency, fmtNumber } from "@/lib/format";
+import { usePageGuard } from "@/hooks/use-page-access";
 
 export const Route = createFileRoute("/_authenticated/reports")({
   head: () => ({ meta: [{ title: "รายงาน | Document Hub" }] }),
@@ -26,7 +27,9 @@ const CONTRACT_STATUS_LABELS: Record<string, string> = {
 };
 
 function ReportsPage() {
+  const guard = usePageGuard("reports", "รายงาน");
   const { data, isLoading } = useQuery({
+    enabled: guard.allowed,
     queryKey: ["reports-data"],
     queryFn: async () => {
       const sb = getSupabase();
@@ -111,6 +114,8 @@ function ReportsPage() {
       };
     },
   });
+
+  if (!guard.allowed) return guard.node;
 
   if (isLoading || !data) {
     return (
