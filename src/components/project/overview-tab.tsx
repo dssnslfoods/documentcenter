@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Building2, Calendar, Wallet, User, FileType2, Loader2, Pencil, ArrowRight, Trophy, XCircle } from "lucide-react";
+import { Building2, Calendar, Wallet, User, FileType2, Loader2, Pencil, ArrowRight, Trophy, XCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -13,6 +13,7 @@ import { getSupabase } from "@/lib/supabase";
 import { fmtDate, fmtDateTime, fmtCurrency } from "@/lib/format";
 import { LIFECYCLE_LABEL, nextStatuses, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 import { EditProjectDialog } from "@/components/project/edit-project-dialog";
+import { fetchFinalQuotationSummary } from "@/lib/contract-value";
 
 type Project = {
   id: string;
@@ -65,6 +66,11 @@ export function OverviewTab({
     },
   });
 
+  const { data: finalQuote } = useQuery({
+    queryKey: ["final-quotation", project.id],
+    queryFn: () => fetchFinalQuotationSummary(project.id),
+  });
+
   const updateStatus = useMutation({
     mutationFn: async ({ status, extra }: { status: ProjectLifecycleStatus; extra?: Record<string, unknown> }) => {
       const patch: Record<string, unknown> = { status, ...extra };
@@ -110,9 +116,35 @@ export function OverviewTab({
             <InfoRow icon={User} label="ลูกค้า" value={project.customer_name ?? "-"} />
             <InfoRow icon={FileType2} label="ประเภท" value={project.project_type ?? "-"} />
             <InfoRow icon={Wallet} label="งบประมาณ" value={canSeePrice ? fmtCurrency(project.budget, "THB") : "฿ ••••••"} />
-            <InfoRow icon={Wallet} label="มูลค่าสัญญา" value={canSeePrice ? fmtCurrency(project.contract_value, "THB") : "฿ ••••••"} />
+            <InfoRow
+              icon={Wallet}
+              label="มูลค่าสัญญา (จากใบเสนอราคา Final)"
+              value={
+                !canSeePrice
+                  ? "฿ ••••••"
+                  : finalQuote?.final
+                    ? fmtCurrency(project.contract_value, "THB")
+                    : <span className="text-muted-foreground">ยังไม่ระบุ</span>
+              }
+            />
             <InfoRow icon={Calendar} label="ระยะเวลา" value={`${fmtDate(project.start_date)} → ${fmtDate(project.end_date)}`} />
           </div>
+          {canSeePrice && !finalQuote?.final && (
+            <div className="flex items-start gap-3 rounded-xl border border-warning/40 bg-warning/10 p-3 text-sm">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+              <div>
+                <div className="font-medium">
+                  {finalQuote?.hasQuotations
+                    ? "ใบเสนอราคาลูกค้ายังไม่ตกลง"
+                    : "ยังไม่มีใบเสนอราคาลูกค้า"}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  มูลค่าสัญญาจะถูกดึงมาจากใบเสนอราคาลูกค้าฉบับสุดท้าย (Final) โดยอัตโนมัติ —
+                  กำหนดฉบับ Final ได้ที่แท็บ “ใบเสนอราคาลูกค้า”
+                </p>
+              </div>
+            </div>
+          )}
           {project.description && (
             <div className="border-t pt-4">
               <div className="mb-1 text-xs uppercase text-muted-foreground">รายละเอียด</div>
