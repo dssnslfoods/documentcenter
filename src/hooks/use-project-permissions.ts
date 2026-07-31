@@ -126,11 +126,13 @@ export function useProjectPermissions(projectId: string | undefined): {
       const timelineOnly = projectRole === "dept_head" || projectRole === "staff";
 
       if (timelineOnly) {
-        const canEditTimeline = projectRole === "dept_head";
+        const canEditTimeline = projectRole === "dept_head" && !isLocked;
         return {
           isAdmin: false,
           isManager: false,
           isMember: !!mem,
+          isLocked,
+
           projectRole,
           keys,
           has: () => false,
