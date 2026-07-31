@@ -53,6 +53,16 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
 
+  /* Project lifecycle phase colors */
+  --color-phase-draft: var(--phase-draft);
+  --color-phase-rfq: var(--phase-rfq);
+  --color-phase-supplier: var(--phase-supplier);
+  --color-phase-proposal: var(--phase-proposal);
+  --color-phase-progress: var(--phase-progress);
+  --color-phase-done: var(--phase-done);
+
+
+
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
