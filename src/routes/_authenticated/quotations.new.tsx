@@ -203,7 +203,10 @@ function NewQuotation() {
           <CardHeader><CardTitle>ข้อมูลใบเสนอราคา</CardTitle></CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2 space-y-2">
-              <Label>หัวข้อ *</Label>
+              <Label>
+                หัวข้อ *
+                <FieldConfidence score={confidence("title")} />
+              </Label>
               <Input {...form.register("title")} />
               {form.formState.errors.title && <p className="text-xs text-destructive">{form.formState.errors.title.message}</p>}
             </div>
