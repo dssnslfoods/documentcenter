@@ -22,9 +22,14 @@ begin
   on conflict (id) do nothing;
 
   -- platform_owner ไม่ผูกกับองค์กรใดองค์กรหนึ่ง (เห็นทุกองค์กร)
-  update public.profiles
-     set active_organization_id = null
-   where id = _uid;
+  -- ข้ามได้ถ้ายังไม่ได้รัน 0041_multi_tenancy.sql
+  if exists (
+    select 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'profiles'
+       and column_name = 'active_organization_id'
+  ) then
+    update public.profiles set active_organization_id = null where id = _uid;
+  end if;
 
   -- ให้บทบาท platform_owner
   insert into public.user_roles (user_id, role)
