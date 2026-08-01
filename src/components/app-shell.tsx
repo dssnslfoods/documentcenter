@@ -253,7 +253,7 @@ function NotificationBell({ userId }: { userId: string | undefined }) {
 }
 
 function SidebarContent({
-  collapsed, pathname, displayName, email, position, roleLabel, can,
+  collapsed, pathname, displayName, email, position, roleLabel, can, isPlatformOwner,
 }: {
   collapsed: boolean;
   pathname: string;
