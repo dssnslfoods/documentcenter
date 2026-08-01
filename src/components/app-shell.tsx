@@ -174,10 +174,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               roleLabel={roleLabel}
               can={can}
               isPlatformOwner={platformOnly}
-              supportActive={support.active}
-              supportOrgName={support.org?.name ?? null}
-              onExitSupport={exitSupport}
             />
+
 
 
           </aside>
