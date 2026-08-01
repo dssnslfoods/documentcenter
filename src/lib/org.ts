@@ -25,8 +25,10 @@ export function useIsPlatformOwner() {
 /** องค์กรที่ผู้ใช้สังกัด + องค์กรที่กำลังสลับเข้าไปดู (สำหรับ platform owner) */
 export function useMyOrg() {
   const { user } = useAuth();
+  const { roles } = useMyRoles();
+  const isPlatformOwner = roles.includes("platform_owner");
   return useQuery({
-    queryKey: ["my-org", user?.id],
+    queryKey: ["my-org", user?.id, isPlatformOwner],
     enabled: !!user,
     staleTime: 60_000,
     queryFn: async () => {
@@ -38,7 +40,10 @@ export function useMyOrg() {
       if (error) return null;
       const row = data as { organization_id: string | null; active_organization_id: string | null } | null;
       if (!row) return null;
-      const activeId = row.active_organization_id ?? row.organization_id;
+      // ผู้ดูแลแพลตฟอร์ม: อยู่ในองค์กรก็ต่อเมื่อ "สลับ" เข้าไปเท่านั้น (ไม่ fallback ไปองค์กรที่สังกัด)
+      const activeId = isPlatformOwner
+        ? row.active_organization_id
+        : row.active_organization_id ?? row.organization_id;
       let org: Organization | null = null;
       if (activeId) {
         const { data: o } = await getSupabase()
