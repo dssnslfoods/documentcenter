@@ -91,33 +91,61 @@ function OrgAdminsPage() {
       if (!email) throw new Error("กรุณากรอกอีเมล");
       if (form.password.length < 8) throw new Error("รหัสผ่านต้องยาวอย่างน้อย 8 ตัวอักษร");
       if (!form.organizationId) throw new Error("กรุณาเลือกองค์กร");
-      const res = await adminInviteUser({
-        email,
-        password: form.password,
-        fullName: form.fullName || email,
-        organizationId: form.organizationId,
-      });
-      if (res.userId) {
-        await sb.from("user_roles").delete().eq("user_id", res.userId);
-        const { error } = await sb.from("user_roles").insert({ user_id: res.userId, role: "super_admin" });
+
+      const promote = async (userId: string) => {
+        await sb.from("user_roles").delete().eq("user_id", userId).neq("role", "platform_owner");
+        const { error } = await sb.from("user_roles").insert({ user_id: userId, role: "super_admin" });
         if (error) throw error;
         await sb
           .from("profiles")
-          .update({ organization_id: form.organizationId, full_name: form.fullName || email })
-          .eq("id", res.userId);
+          .update({
+            organization_id: form.organizationId,
+            ...(form.fullName ? { full_name: form.fullName } : {}),
+            is_active: true,
+          })
+          .eq("id", userId);
+      };
+
+      let res: { userId: string | null; needsConfirmation: boolean };
+      try {
+        res = await adminInviteUser({
+          email,
+          password: form.password,
+          fullName: form.fullName || email,
+          organizationId: form.organizationId,
+        });
+      } catch (e) {
+        const msg = (e as Error).message ?? "";
+        if (!/already registered|already been registered|user_exists/i.test(msg)) throw e;
+        // มีบัญชีนี้อยู่แล้ว → เลื่อนบทบาทเป็นผู้ดูแลองค์กรแทนการสร้างใหม่
+        const { data: existing } = await sb
+          .from("profiles").select("id").ilike("email", email).maybeSingle();
+        if (!existing) {
+          throw new Error("อีเมลนี้มีบัญชีอยู่แล้วในระบบยืนยันตัวตน แต่ยังไม่มีโปรไฟล์ — ให้ผู้ใช้เข้าสู่ระบบ 1 ครั้งก่อน แล้วลองใหม่");
+        }
+        await promote((existing as { id: string }).id);
+        return { email, password: "", needsConfirmation: false, existed: true };
       }
-      return { email, password: form.password, needsConfirmation: res.needsConfirmation };
+
+      if (res.userId) await promote(res.userId);
+      return { email, password: form.password, needsConfirmation: res.needsConfirmation, existed: false };
     },
     onSuccess: (r) => {
-      setCreated({ email: r.email, password: r.password });
-      toast.success(
-        r.needsConfirmation ? "สร้างบัญชีแล้ว — ผู้ใช้ต้องยืนยันอีเมลก่อนเข้าใช้งาน" : "สร้างผู้ดูแลองค์กรเรียบร้อย",
-      );
+      if (r.existed) {
+        toast.success("อีเมลนี้มีบัญชีอยู่แล้ว — ตั้งเป็นผู้ดูแลองค์กรให้เรียบร้อยแล้ว");
+        setOpen(false);
+      } else {
+        setCreated({ email: r.email, password: r.password });
+        toast.success(
+          r.needsConfirmation ? "สร้างบัญชีแล้ว — ผู้ใช้ต้องยืนยันอีเมลก่อนเข้าใช้งาน" : "สร้างผู้ดูแลองค์กรเรียบร้อย",
+        );
+      }
       setForm({ email: "", fullName: "", password: genPassword(), organizationId: "" });
       qc.invalidateQueries({ queryKey: ["platform-org-admins"] });
     },
     onError: (e: Error) => toast.error(e.message ?? "สร้างบัญชีไม่สำเร็จ"),
   });
+
 
   const toggleActive = useMutation({
     mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
