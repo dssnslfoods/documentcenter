@@ -341,6 +341,25 @@ function OrgAdminsPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2 rounded-md bg-muted/50 p-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={mode === "existing" ? "default" : "ghost"}
+                      onClick={() => setMode("existing")}
+                    >
+                      เลือกผู้ใช้ที่มีอยู่
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={mode === "new" ? "default" : "ghost"}
+                      onClick={() => setMode("new")}
+                    >
+                      สร้างบัญชีใหม่
+                    </Button>
+                  </div>
+
                   <div className="space-y-1.5">
                     <Label>องค์กร *</Label>
                     <Select value={form.organizationId} onValueChange={(v) => setForm({ ...form, organizationId: v })}>
@@ -352,28 +371,69 @@ function OrgAdminsPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>อีเมล *</Label>
-                    <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>ชื่อ-นามสกุล</Label>
-                    <Input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>รหัสผ่านเริ่มต้น *</Label>
-                    <div className="flex gap-2">
-                      <Input value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
-                      <Button type="button" variant="outline" onClick={() => setForm({ ...form, password: genPassword() })}>
-                        สุ่ม
-                      </Button>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setOpen(false)}>ยกเลิก</Button>
-                    <Button onClick={() => create.mutate()} disabled={create.isPending}>สร้างบัญชี</Button>
-                  </DialogFooter>
+
+                  {mode === "existing" ? (
+                    <>
+                      <div className="space-y-1.5">
+                        <Label>เลือกผู้ใช้ *</Label>
+                        <Select value={pickUserId} onValueChange={setPickUserId}>
+                          <SelectTrigger>
+                            <SelectValue placeholder={candidatesLoading ? "กำลังโหลดผู้ใช้..." : "เลือกบัญชีผู้ใช้"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {candidateList.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {(c.full_name || c.email) ?? c.id} {c.email && c.full_name ? `· ${c.email}` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {!candidatesLoading && !candidateList.length && (
+                          <p className="text-xs text-muted-foreground">
+                            {form.organizationId ? "องค์กรนี้ยังไม่มีผู้ใช้อื่น" : "เลือกองค์กรเพื่อกรองผู้ใช้ หรือดูผู้ใช้ทั้งหมด"}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          ผู้ใช้ที่เลือกจะถูกกำหนดบทบาท super_admin และย้ายเข้าองค์กรที่เลือก
+                        </p>
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setOpen(false)}>ยกเลิก</Button>
+                        <Button
+                          disabled={!pickUserId || !form.organizationId || promoteExisting.isPending}
+                          onClick={() => promoteExisting.mutate(pickUserId)}
+                        >
+                          แต่งตั้งเป็นผู้ดูแลองค์กร
+                        </Button>
+                      </DialogFooter>
+                    </>
+                  ) : (
+                    <>
+                      <div className="space-y-1.5">
+                        <Label>อีเมล *</Label>
+                        <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>ชื่อ-นามสกุล</Label>
+                        <Input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>รหัสผ่านเริ่มต้น *</Label>
+                        <div className="flex gap-2">
+                          <Input value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+                          <Button type="button" variant="outline" onClick={() => setForm({ ...form, password: genPassword() })}>
+                            สุ่ม
+                          </Button>
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setOpen(false)}>ยกเลิก</Button>
+                        <Button onClick={() => create.mutate()} disabled={create.isPending}>สร้างบัญชี</Button>
+                      </DialogFooter>
+                    </>
+                  )}
                 </div>
+
               )}
             </DialogContent>
           </Dialog>
