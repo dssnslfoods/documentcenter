@@ -1,7 +1,8 @@
 import { useState, type ChangeEvent } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Trash2, Download, Plus, Loader2, FileSpreadsheet, Star, CheckCircle2 } from "lucide-react";
+import { Trash2, Download, Plus, Loader2, FileSpreadsheet, Star, CheckCircle2, Pencil } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
