@@ -96,13 +96,21 @@ export function SupplierQuotationsTab({
         .update({ is_selected: next })
         .eq("id", id);
       if (error) throw error;
+      // เมื่อมีใบเสนอราคา Supplier เป็น Final แล้ว โครงการนี้ถือว่ามีการใช้ Supplier
+      // จึงไม่ใช่งานผลิตภายในอีกต่อไป
+      if (next) {
+        await sb.from("projects").update({ is_inhouse: false }).eq("id", projectId).eq("is_inhouse", true);
+      }
     },
     onSuccess: (_d, v) => {
       toast.success(v.next ? "เพิ่มเป็น Final แล้ว" : "ยกเลิก Final แล้ว");
       qc.invalidateQueries({ queryKey: ["supplier-quotations", projectId] });
+      qc.invalidateQueries({ queryKey: ["supplier-final-count", projectId] });
+      qc.invalidateQueries({ queryKey: ["project", projectId], refetchType: "all" });
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   const openFile = async (path: string) => {
     const url = await getProjectFileUrl(path);

@@ -56,6 +56,22 @@ export function EditProjectDialog({
     enabled: open && canEditPrice,
     queryFn: () => fetchFinalQuotationSummary(project.id),
   });
+  // มีใบเสนอราคาจาก Supplier ที่เลือกเป็น Final แล้วหรือไม่ → ล็อกตัวเลือก "งานผลิตภายใน"
+  const { data: finalSupplierCount } = useQuery({
+    queryKey: ["supplier-final-count", project.id],
+    enabled: open,
+    queryFn: async () => {
+      const { count, error } = await sb
+        .from("supplier_quotations")
+        .select("id", { count: "exact", head: true })
+        .eq("project_id", project.id)
+        .eq("is_selected", true);
+      if (error) return 0;
+      return count ?? 0;
+    },
+  });
+  const inhouseLocked = (finalSupplierCount ?? 0) > 0;
+
 
   const [name, setName] = useState(project.name ?? "");
   const [description, setDescription] = useState(project.description ?? "");
@@ -104,7 +120,7 @@ export function EditProjectDialog({
         project_type: projectType || null,
         start_date: startDate || null,
         end_date: endDate || null,
-        is_inhouse: isInhouse,
+        is_inhouse: inhouseLocked ? false : isInhouse,
         updated_by: user?.id ?? null,
         updated_at: new Date().toISOString(),
       };
@@ -219,13 +235,29 @@ export function EditProjectDialog({
           )}
 
 
-          <div className="sm:col-span-2 flex items-start gap-3 rounded-xl border bg-muted/30 p-3">
-            <Checkbox id="edit_is_inhouse" checked={isInhouse} onCheckedChange={(c) => setIsInhouse(c === true)} className="mt-0.5" />
-            <div className="space-y-0.5">
-              <Label htmlFor="edit_is_inhouse" className="cursor-pointer">งานผลิตภายใน (ไม่ใช้ Supplier / Outsource)</Label>
+          <div className={`sm:col-span-2 flex items-start gap-3 rounded-xl border bg-muted/30 p-3 ${inhouseLocked ? "opacity-80" : ""}`}>
+            <Checkbox
+              id="edit_is_inhouse"
+              checked={inhouseLocked ? false : isInhouse}
+              disabled={inhouseLocked}
+              onCheckedChange={(c) => setIsInhouse(c === true)}
+              className="mt-0.5"
+            />
+            <div className="min-w-0 space-y-0.5">
+              <Label htmlFor="edit_is_inhouse" className={inhouseLocked ? "" : "cursor-pointer"}>
+                งานผลิตภายใน (ไม่ใช้ Supplier / Outsource)
+              </Label>
               <p className="text-xs text-muted-foreground">เมื่อเลือก ระบบจะข้ามขั้นตอน RFQ / Spec และใบเสนอราคา Supplier</p>
+              {inhouseLocked && (
+                <p className="flex items-start gap-1.5 text-xs font-medium text-warning">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  งานนี้มีการใช้ Supplier แล้ว (มีใบเสนอราคา Supplier ที่เลือกเป็น Final {finalSupplierCount} รายการ)
+                  — จึงไม่สามารถกำหนดเป็นงานผลิตภายในได้ หากต้องการเปลี่ยน ให้ยกเลิก Final ในแท็บใบเสนอราคา Supplier ก่อน
+                </p>
+              )}
             </div>
           </div>
+
 
           <div className="sm:col-span-2 space-y-2">
             <Label>รายละเอียด</Label>
