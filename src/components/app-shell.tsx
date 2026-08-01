@@ -6,6 +6,7 @@ import {
   Search, LogOut, User as UserIcon, Menu, X, ChevronDown, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
+import { OrgSwitcher } from "@/components/org-switcher";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import {
