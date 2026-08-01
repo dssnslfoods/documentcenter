@@ -27,6 +27,7 @@ import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings.index'
 import { Route as AuthenticatedQuotationsIndexRouteImport } from './routes/_authenticated/quotations.index'
 import { Route as AuthenticatedProjectsIndexRouteImport } from './routes/_authenticated/projects.index'
+import { Route as AuthenticatedPlatformIndexRouteImport } from './routes/_authenticated/platform.index'
 import { Route as AuthenticatedDocumentsIndexRouteImport } from './routes/_authenticated/documents.index'
 import { Route as AuthenticatedContractsIndexRouteImport } from './routes/_authenticated/contracts.index'
 import { Route as AuthenticatedSettingsWorkTypesRouteImport } from './routes/_authenticated/settings.work-types'
@@ -141,6 +142,12 @@ const AuthenticatedProjectsIndexRoute =
   AuthenticatedProjectsIndexRouteImport.update({
     id: '/projects/',
     path: '/projects/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedPlatformIndexRoute =
+  AuthenticatedPlatformIndexRouteImport.update({
+    id: '/platform/',
+    path: '/platform/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedDocumentsIndexRoute =
@@ -295,6 +302,7 @@ export interface FileRoutesByFullPath {
   '/settings/work-types': typeof AuthenticatedSettingsWorkTypesRoute
   '/contracts/': typeof AuthenticatedContractsIndexRoute
   '/documents/': typeof AuthenticatedDocumentsIndexRoute
+  '/platform/': typeof AuthenticatedPlatformIndexRoute
   '/projects/': typeof AuthenticatedProjectsIndexRoute
   '/quotations/': typeof AuthenticatedQuotationsIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
@@ -334,6 +342,7 @@ export interface FileRoutesByTo {
   '/settings/work-types': typeof AuthenticatedSettingsWorkTypesRoute
   '/contracts': typeof AuthenticatedContractsIndexRoute
   '/documents': typeof AuthenticatedDocumentsIndexRoute
+  '/platform': typeof AuthenticatedPlatformIndexRoute
   '/projects': typeof AuthenticatedProjectsIndexRoute
   '/quotations': typeof AuthenticatedQuotationsIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
@@ -375,6 +384,7 @@ export interface FileRoutesById {
   '/_authenticated/settings/work-types': typeof AuthenticatedSettingsWorkTypesRoute
   '/_authenticated/contracts/': typeof AuthenticatedContractsIndexRoute
   '/_authenticated/documents/': typeof AuthenticatedDocumentsIndexRoute
+  '/_authenticated/platform/': typeof AuthenticatedPlatformIndexRoute
   '/_authenticated/projects/': typeof AuthenticatedProjectsIndexRoute
   '/_authenticated/quotations/': typeof AuthenticatedQuotationsIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
@@ -416,6 +426,7 @@ export interface FileRouteTypes {
     | '/settings/work-types'
     | '/contracts/'
     | '/documents/'
+    | '/platform/'
     | '/projects/'
     | '/quotations/'
     | '/settings/'
@@ -455,6 +466,7 @@ export interface FileRouteTypes {
     | '/settings/work-types'
     | '/contracts'
     | '/documents'
+    | '/platform'
     | '/projects'
     | '/quotations'
     | '/settings'
@@ -495,6 +507,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/work-types'
     | '/_authenticated/contracts/'
     | '/_authenticated/documents/'
+    | '/_authenticated/platform/'
     | '/_authenticated/projects/'
     | '/_authenticated/quotations/'
     | '/_authenticated/settings/'
@@ -640,6 +653,13 @@ declare module '@tanstack/react-router' {
       path: '/projects'
       fullPath: '/projects/'
       preLoaderRoute: typeof AuthenticatedProjectsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/platform/': {
+      id: '/_authenticated/platform/'
+      path: '/platform'
+      fullPath: '/platform/'
+      preLoaderRoute: typeof AuthenticatedPlatformIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/documents/': {
@@ -811,6 +831,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsWorkTypesRoute: typeof AuthenticatedSettingsWorkTypesRoute
   AuthenticatedContractsIndexRoute: typeof AuthenticatedContractsIndexRoute
   AuthenticatedDocumentsIndexRoute: typeof AuthenticatedDocumentsIndexRoute
+  AuthenticatedPlatformIndexRoute: typeof AuthenticatedPlatformIndexRoute
   AuthenticatedProjectsIndexRoute: typeof AuthenticatedProjectsIndexRoute
   AuthenticatedQuotationsIndexRoute: typeof AuthenticatedQuotationsIndexRoute
   AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
@@ -843,6 +864,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsWorkTypesRoute: AuthenticatedSettingsWorkTypesRoute,
   AuthenticatedContractsIndexRoute: AuthenticatedContractsIndexRoute,
   AuthenticatedDocumentsIndexRoute: AuthenticatedDocumentsIndexRoute,
+  AuthenticatedPlatformIndexRoute: AuthenticatedPlatformIndexRoute,
   AuthenticatedProjectsIndexRoute: AuthenticatedProjectsIndexRoute,
   AuthenticatedQuotationsIndexRoute: AuthenticatedQuotationsIndexRoute,
   AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
