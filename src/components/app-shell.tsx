@@ -4,7 +4,7 @@ import {
   LayoutDashboard, FileText, FileSignature, FileSpreadsheet,
   Users, FolderKanban, Calendar, Bell, BarChart3, History, Settings,
   Search, LogOut, User as UserIcon, Menu, X, ChevronDown, PanelLeftClose, PanelLeftOpen,
-  Building2, ShieldCheck, LayoutGrid,
+  Building2, ShieldCheck, LayoutGrid, LifeBuoy,
 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 import { OrgSwitcher } from "@/components/org-switcher";
@@ -18,7 +18,8 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-supabase";
 import { useCanAccess } from "@/hooks/use-page-access";
 import { ROLES, type PageKey } from "@/lib/pages";
-import { useIsPlatformOwner } from "@/lib/org";
+import { useIsPlatformOwner, useSwitchOrg } from "@/lib/org";
+import { useSupportSession } from "@/lib/support-access";
 
 // Sidebar organized by workflow order: daily work → sales pipeline → post-sale docs → governance
 type NavItem = { to: string; icon: React.ComponentType<{ className?: string }>; label: string; key: PageKey };
@@ -98,13 +99,26 @@ export function AppShell({ children }: { children: ReactNode }) {
   const profile = useProfileName(user?.id);
   const { can, roles } = useCanAccess();
   const { isPlatformOwner } = useIsPlatformOwner();
+  const support = useSupportSession();
+  const switchOrg = useSwitchOrg();
+  const platformOnly = isPlatformOwner && !support.active;
 
-  // ผู้ดูแลแพลตฟอร์มใช้งานได้เฉพาะโซน /platform และหน้าโปรไฟล์
+  // ผู้ดูแลแพลตฟอร์มใช้งานได้เฉพาะโซน /platform (ยกเว้นตอนอยู่ในโหมดสนับสนุน)
   useEffect(() => {
-    if (isPlatformOwner && !pathname.startsWith("/platform") && !pathname.startsWith("/profile")) {
+    if (platformOnly && !pathname.startsWith("/platform") && !pathname.startsWith("/profile")) {
       navigate({ to: "/platform" });
     }
-  }, [isPlatformOwner, pathname, navigate]);
+  }, [platformOnly, pathname, navigate]);
+
+  const exitSupport = () => {
+    switchOrg.mutate(null, {
+      onSuccess: () => {
+        toast.success("ออกจากโหมดสนับสนุนแล้ว");
+        navigate({ to: "/platform" });
+      },
+      onError: (e: Error) => toast.error(e.message),
+    });
+  };
   const roleLabel =
     roles.map((r) => ROLES.find((x) => x.value === r)?.label ?? r).join(" · ") || null;
   const displayName =
@@ -132,7 +146,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           position={profile?.position ?? null}
           roleLabel={roleLabel}
           can={can}
-          isPlatformOwner={isPlatformOwner}
+          isPlatformOwner={platformOnly}
         />
       </aside>
 
@@ -157,7 +171,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               position={profile?.position ?? null}
               roleLabel={roleLabel}
               can={can}
-              isPlatformOwner={isPlatformOwner}
+              isPlatformOwner={platformOnly}
 
             />
 
@@ -166,6 +180,25 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
+        {support.active && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning-foreground sm:px-4">
+            <LifeBuoy className="h-4 w-4 shrink-0 text-warning" />
+            <span className="min-w-0 break-words">
+              โหมดสนับสนุน — คุณกำลังเข้าใช้งานในนามองค์กร{" "}
+              <strong className="font-semibold">{support.org?.name ?? "-"}</strong> ด้วยสิทธิ์เต็ม
+              {support.row?.expires_at
+                ? ` (สิทธิ์หมดอายุ ${new Date(support.row.expires_at).toLocaleString("th-TH")})`
+                : ""}
+            </span>
+            <button
+              onClick={exitSupport}
+              className="ml-auto rounded-md border border-warning/40 bg-card px-2 py-1 font-medium hover:bg-muted"
+            >
+              ออกจากโหมดสนับสนุน
+            </button>
+          </div>
+        )}
+
         <header className="sticky top-0 z-40 flex h-16 items-center gap-1.5 border-b bg-card/80 px-2 backdrop-blur sm:gap-3 sm:px-4">
           <button
             onClick={() => setMobileOpen(true)}
