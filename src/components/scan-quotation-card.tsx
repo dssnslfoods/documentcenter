@@ -103,28 +103,28 @@ export function ScanQuotationCard({
   return (
     <Card className="border-dashed">
       <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-3">
-          <div className="rounded-lg bg-primary/10 p-2 text-primary"><ScanLine className="h-5 w-5" /></div>
-          <div>
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="shrink-0 rounded-lg bg-primary/10 p-2 text-primary"><ScanLine className="h-5 w-5" /></div>
+          <div className="min-w-0">
             <div className="text-sm font-medium">สแกนเอกสารเพื่อกรอกอัตโนมัติ</div>
-            <div className="text-xs text-muted-foreground">
+            <div className="break-words text-xs text-muted-foreground">
               {fileName ? `ไฟล์ล่าสุด: ${fileName}` : "อัปโหลด/ถ่ายรูปใบเสนอราคา (JPG, PNG หรือ PDF) แล้วระบบจะอ่านข้อมูลใส่ในฟอร์มให้"}
             </div>
           </div>
         </div>
-        <div>
+        <div className="w-full shrink-0 sm:w-auto">
           <input
             ref={inputRef}
             type="file"
             accept="image/*,application/pdf"
-                        className="hidden"
+            className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];
               e.target.value = "";
               if (f) void handleFile(f);
             }}
           />
-          <Button type="button" variant="outline" disabled={busy} onClick={() => inputRef.current?.click()}>
+          <Button type="button" variant="outline" className="w-full sm:w-auto" disabled={busy} onClick={() => inputRef.current?.click()}>
             {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />กำลังอ่าน...</> : <><ScanLine className="mr-2 h-4 w-4" />สแกนเอกสาร</>}
           </Button>
         </div>
@@ -132,7 +132,7 @@ export function ScanQuotationCard({
 
       {lastResult && confidenceFields.length > 0 && (
         <CardContent className="border-t px-4 pb-4 pt-3">
-          <div className="mb-2 flex items-center justify-between">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <div className="text-sm font-medium">ผลการอ่านเอกสาร — ค่าความมั่นใจ</div>
             {lowConfidenceCount > 0 && (
               <Badge variant="outline" className="text-rose-600">
@@ -142,12 +142,12 @@ export function ScanQuotationCard({
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             {confidenceFields.map(({ key, label, score, value }) => (
-              <div key={key} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">{label}</span>
-                  <span className="font-medium">{value == null ? "-" : String(value)}</span>
+              <div key={key} className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="shrink-0 text-muted-foreground">{label}</span>
+                  <span className="min-w-0 break-words font-medium">{value == null ? "-" : String(value)}</span>
                 </div>
-                <div className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${confidenceColor(score)}`}>
+                <div className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${confidenceColor(score)}`}>
                   {confidenceIcon(score)}
                   {score == null ? "ไม่ระบุ" : `${Math.round(score * 100)}%`}
                 </div>
