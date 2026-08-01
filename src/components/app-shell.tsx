@@ -190,14 +190,23 @@ export function AppShell({ children }: { children: ReactNode }) {
                 ? ` (สิทธิ์หมดอายุ ${new Date(support.row.expires_at).toLocaleString("th-TH")})`
                 : ""}
             </span>
-            <button
-              onClick={exitSupport}
-              className="ml-auto rounded-md border border-warning/40 bg-card px-2 py-1 font-medium hover:bg-muted"
-            >
-              ออกจากโหมดสนับสนุน
-            </button>
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                onClick={() => navigate({ to: "/platform" })}
+                className="rounded-md border border-warning/40 bg-card px-2 py-1 font-medium hover:bg-muted"
+              >
+                ไปหน้าผู้ดูแลแพลตฟอร์ม
+              </button>
+              <button
+                onClick={exitSupport}
+                className="rounded-md border border-warning/40 bg-card px-2 py-1 font-medium hover:bg-muted"
+              >
+                ออกจากโหมดสนับสนุน
+              </button>
+            </div>
           </div>
         )}
+
 
         <header className="sticky top-0 z-40 flex h-16 items-center gap-1.5 border-b bg-card/80 px-2 backdrop-blur sm:gap-3 sm:px-4">
           <button
