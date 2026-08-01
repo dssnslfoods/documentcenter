@@ -22,6 +22,9 @@ export function useAllSupportAccess(enabled = true) {
   return useQuery({
     queryKey: ["support-access-all"],
     enabled,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data, error } = await getSupabase()
         .from("organization_support_access")
@@ -78,7 +81,7 @@ export function useSetSupportAccess() {
       note?: string | null;
       grantedBy?: string | null;
     }) => {
-      const { error } = await getSupabase()
+      const { data, error } = await getSupabase()
         .from("organization_support_access")
         .upsert(
           {
@@ -91,8 +94,12 @@ export function useSetSupportAccess() {
             updated_at: new Date().toISOString(),
           },
           { onConflict: "organization_id" },
-        );
+        )
+        .select();
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("บันทึกไม่สำเร็จ — เฉพาะผู้ดูแลองค์กรเท่านั้นที่เปิด/ปิดสิทธิ์นี้ได้");
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["support-access"] });
