@@ -81,10 +81,12 @@ export function FilePreviewButton({
               </div>
             ) : isImage(path) ? (
               <div className="flex h-full items-center justify-center overflow-auto p-2">
-                <img src={url} alt={baseName(path)} className="max-h-full max-w-full object-contain" />
+                <img src={blobUrl ?? url} alt={baseName(path)} className="max-h-full max-w-full object-contain" />
               </div>
             ) : previewable ? (
-              <iframe src={url} title={baseName(path)} className="h-full w-full" />
+              <object data={blobUrl ?? url} type="application/pdf" className="h-full w-full">
+                <iframe src={blobUrl ?? url} title={baseName(path)} className="h-full w-full" />
+              </object>
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
                 ไฟล์ประเภทนี้ดูตัวอย่างในหน้าเว็บไม่ได้ — กรุณาดาวน์โหลด
