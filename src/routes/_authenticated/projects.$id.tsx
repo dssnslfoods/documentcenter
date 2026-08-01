@@ -47,11 +47,11 @@ const TAB_ORDER = [
   { value: "rfq", label: "2 · RFQ / Spec" },
   { value: "supplier", label: "3 · ใบเสนอ Supplier" },
   { value: "customer", label: "4 · ยื่นข้อเสนอลูกค้า" },
-  { value: "contract", label: "5 · สัญญา" },
+  { value: "contract", label: "5 · สัญญา / งวดงาน" },
   { value: "timeline", label: "6 · แผนงาน (Timeline)" },
-  { value: "milestones", label: "7 · งวดงาน" },
-  { value: "team", label: "8 · สมาชิกโครงการ" },
-  { value: "history", label: "9 · ประวัติการแก้ไข" },
+  { value: "team", label: "7 · สมาชิกโครงการ" },
+  { value: "history", label: "8 · ประวัติการแก้ไข" },
+
 ] as const;
 
 
@@ -289,7 +289,7 @@ function ProjectDetail() {
                   case "customer": return perms?.canSeeCustomer ?? false;
                   case "contract": return perms?.canSeeContract ?? false;
                   case "timeline": return perms?.canSeeTimeline ?? false;
-                  case "milestones": return perms?.canSeeMilestones ?? false;
+                  
 
                   default: return true;
                 }
@@ -384,18 +384,30 @@ function ProjectDetail() {
 
         <TabsContent value="contract" className="mt-5 space-y-4">
           {perms?.canSeeContract ? (
-            <SectionCard title="สัญญา / ใบสั่งจ้าง" description="อัปโหลดเฉพาะไฟล์สัญญาหรือใบสั่งจ้างที่ลงนามแล้ว">
-              <ProjectDocumentsList
-                projectId={id}
-                type="contract"
-                emptyLabel="ยังไม่มีไฟล์สัญญา / ใบสั่งจ้าง"
-                uploadLabel="อัปโหลดสัญญา / ใบสั่งจ้าง"
-                uploadHint="รองรับไฟล์ PDF, Word และรูปภาพ (เลือกได้หลายไฟล์)"
-                accept="application/pdf,image/*,.doc,.docx"
-              />
-            </SectionCard>
-          ) : <Denied label="สัญญา" />}
+            <>
+              <SectionCard title="สัญญา / ใบสั่งจ้าง" description="อัปโหลดเฉพาะไฟล์สัญญาหรือใบสั่งจ้างที่ลงนามแล้ว">
+                <ProjectDocumentsList
+                  projectId={id}
+                  type="contract"
+                  emptyLabel="ยังไม่มีไฟล์สัญญา / ใบสั่งจ้าง"
+                  uploadLabel="อัปโหลดสัญญา / ใบสั่งจ้าง"
+                  uploadHint="รองรับไฟล์ PDF, Word และรูปภาพ (เลือกได้หลายไฟล์)"
+                  accept="application/pdf,image/*,.doc,.docx"
+                />
+              </SectionCard>
 
+              {(perms?.isAdmin || perms?.canSeeMilestones) ? (
+                <SectionCard title="งวดงาน" description="งวดงานและการวางบิลตามสัญญา">
+                  <MilestonesTab
+                    projectId={id}
+                    contractValue={p.contract_value ?? p.budget ?? null}
+                    canEdit={editAdmin || (perms?.canEditMilestones ?? false)}
+                    canSeePayment={perms?.canSeeMilestonePayment ?? false}
+                  />
+                </SectionCard>
+              ) : null}
+            </>
+          ) : <Denied label="สัญญา" />}
         </TabsContent>
 
         <TabsContent value="timeline" className="mt-5">
@@ -404,16 +416,6 @@ function ProjectDetail() {
           ) : <Denied label="แผนงาน" />}
         </TabsContent>
 
-        <TabsContent value="milestones" className="mt-5">
-          {perms?.canSeeMilestones ? (
-            <MilestonesTab
-              projectId={id}
-              contractValue={p.contract_value ?? p.budget ?? null}
-              canEdit={editAdmin || (perms?.canEditMilestones ?? false)}
-              canSeePayment={perms?.canSeeMilestonePayment ?? false}
-            />
-          ) : <Denied label="งวดงาน" />}
-        </TabsContent>
 
         <TabsContent value="team" className="mt-5">
           <TeamTab projectId={id} isAdmin={perms?.canManageTeam ?? false} />
