@@ -392,20 +392,11 @@ function UsersPage() {
                           ))}
                         </SelectContent>
                       </Select>
-                      {(() => {
-                        const isPO = u.roles.includes("platform_owner" as Role);
-                        return (
-                          <Button
-                            size="sm"
-                            variant={isPO ? "destructive" : "outline"}
-                            className="mt-2 w-full"
-                            disabled={setPlatformOwner.isPending}
-                            onClick={() => setPlatformOwner.mutate({ userId: u.id, enabled: !isPO })}
-                          >
-                            {isPO ? "ถอดสิทธิ์แพลตฟอร์ม" : "ให้สิทธิ์แพลตฟอร์ม"}
-                          </Button>
-                        );
-                      })()}
+                      {u.roles.includes("platform_owner" as Role) && (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          ผู้ดูแลแพลตฟอร์ม — ถอดสิทธิ์ไม่ได้
+                        </p>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Select value={u.department_id ?? "none"}
