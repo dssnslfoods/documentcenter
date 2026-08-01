@@ -421,6 +421,8 @@ function OrgAdminsPage() {
         </CardContent>
       </Card>
 
+      <RoleChangeLogCard orgFilter={orgFilter} orgName={orgName} />
+
       <Dialog open={!!revokeTarget} onOpenChange={(v) => { if (!v) { setRevokeTarget(null); setSuccessorId(""); } }}>
         <DialogContent>
           <DialogHeader>
