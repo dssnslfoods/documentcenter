@@ -33,6 +33,7 @@ import { Route as AuthenticatedSettingsWorkTypesRouteImport } from './routes/_au
 import { Route as AuthenticatedSettingsVatRouteImport } from './routes/_authenticated/settings.vat'
 import { Route as AuthenticatedSettingsUsersRouteImport } from './routes/_authenticated/settings.users'
 import { Route as AuthenticatedSettingsTagsRouteImport } from './routes/_authenticated/settings.tags'
+import { Route as AuthenticatedSettingsOrganizationsRouteImport } from './routes/_authenticated/settings.organizations'
 import { Route as AuthenticatedSettingsGeneralRouteImport } from './routes/_authenticated/settings.general'
 import { Route as AuthenticatedSettingsDepartmentsRouteImport } from './routes/_authenticated/settings.departments'
 import { Route as AuthenticatedSettingsCategoriesRouteImport } from './routes/_authenticated/settings.categories'
@@ -178,6 +179,12 @@ const AuthenticatedSettingsTagsRoute =
     path: '/settings/tags',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedSettingsOrganizationsRoute =
+  AuthenticatedSettingsOrganizationsRouteImport.update({
+    id: '/settings/organizations',
+    path: '/settings/organizations',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSettingsGeneralRoute =
   AuthenticatedSettingsGeneralRouteImport.update({
     id: '/settings/general',
@@ -281,6 +288,7 @@ export interface FileRoutesByFullPath {
   '/settings/categories': typeof AuthenticatedSettingsCategoriesRoute
   '/settings/departments': typeof AuthenticatedSettingsDepartmentsRoute
   '/settings/general': typeof AuthenticatedSettingsGeneralRoute
+  '/settings/organizations': typeof AuthenticatedSettingsOrganizationsRoute
   '/settings/tags': typeof AuthenticatedSettingsTagsRoute
   '/settings/users': typeof AuthenticatedSettingsUsersRoute
   '/settings/vat': typeof AuthenticatedSettingsVatRoute
@@ -319,6 +327,7 @@ export interface FileRoutesByTo {
   '/settings/categories': typeof AuthenticatedSettingsCategoriesRoute
   '/settings/departments': typeof AuthenticatedSettingsDepartmentsRoute
   '/settings/general': typeof AuthenticatedSettingsGeneralRoute
+  '/settings/organizations': typeof AuthenticatedSettingsOrganizationsRoute
   '/settings/tags': typeof AuthenticatedSettingsTagsRoute
   '/settings/users': typeof AuthenticatedSettingsUsersRoute
   '/settings/vat': typeof AuthenticatedSettingsVatRoute
@@ -359,6 +368,7 @@ export interface FileRoutesById {
   '/_authenticated/settings/categories': typeof AuthenticatedSettingsCategoriesRoute
   '/_authenticated/settings/departments': typeof AuthenticatedSettingsDepartmentsRoute
   '/_authenticated/settings/general': typeof AuthenticatedSettingsGeneralRoute
+  '/_authenticated/settings/organizations': typeof AuthenticatedSettingsOrganizationsRoute
   '/_authenticated/settings/tags': typeof AuthenticatedSettingsTagsRoute
   '/_authenticated/settings/users': typeof AuthenticatedSettingsUsersRoute
   '/_authenticated/settings/vat': typeof AuthenticatedSettingsVatRoute
@@ -399,6 +409,7 @@ export interface FileRouteTypes {
     | '/settings/categories'
     | '/settings/departments'
     | '/settings/general'
+    | '/settings/organizations'
     | '/settings/tags'
     | '/settings/users'
     | '/settings/vat'
@@ -437,6 +448,7 @@ export interface FileRouteTypes {
     | '/settings/categories'
     | '/settings/departments'
     | '/settings/general'
+    | '/settings/organizations'
     | '/settings/tags'
     | '/settings/users'
     | '/settings/vat'
@@ -476,6 +488,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/categories'
     | '/_authenticated/settings/departments'
     | '/_authenticated/settings/general'
+    | '/_authenticated/settings/organizations'
     | '/_authenticated/settings/tags'
     | '/_authenticated/settings/users'
     | '/_authenticated/settings/vat'
@@ -671,6 +684,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsTagsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/settings/organizations': {
+      id: '/_authenticated/settings/organizations'
+      path: '/settings/organizations'
+      fullPath: '/settings/organizations'
+      preLoaderRoute: typeof AuthenticatedSettingsOrganizationsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/settings/general': {
       id: '/_authenticated/settings/general'
       path: '/settings/general'
@@ -784,6 +804,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsCategoriesRoute: typeof AuthenticatedSettingsCategoriesRoute
   AuthenticatedSettingsDepartmentsRoute: typeof AuthenticatedSettingsDepartmentsRoute
   AuthenticatedSettingsGeneralRoute: typeof AuthenticatedSettingsGeneralRoute
+  AuthenticatedSettingsOrganizationsRoute: typeof AuthenticatedSettingsOrganizationsRoute
   AuthenticatedSettingsTagsRoute: typeof AuthenticatedSettingsTagsRoute
   AuthenticatedSettingsUsersRoute: typeof AuthenticatedSettingsUsersRoute
   AuthenticatedSettingsVatRoute: typeof AuthenticatedSettingsVatRoute
@@ -814,6 +835,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsCategoriesRoute: AuthenticatedSettingsCategoriesRoute,
   AuthenticatedSettingsDepartmentsRoute: AuthenticatedSettingsDepartmentsRoute,
   AuthenticatedSettingsGeneralRoute: AuthenticatedSettingsGeneralRoute,
+  AuthenticatedSettingsOrganizationsRoute:
+    AuthenticatedSettingsOrganizationsRoute,
   AuthenticatedSettingsTagsRoute: AuthenticatedSettingsTagsRoute,
   AuthenticatedSettingsUsersRoute: AuthenticatedSettingsUsersRoute,
   AuthenticatedSettingsVatRoute: AuthenticatedSettingsVatRoute,
