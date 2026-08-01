@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, FileText, FileSignature, FileSpreadsheet,
@@ -98,6 +98,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   const profile = useProfileName(user?.id);
   const { can, roles } = useCanAccess();
   const { isPlatformOwner } = useIsPlatformOwner();
+
+  // ผู้ดูแลแพลตฟอร์มใช้งานได้เฉพาะโซน /platform และหน้าโปรไฟล์
+  useEffect(() => {
+    if (isPlatformOwner && !pathname.startsWith("/platform") && !pathname.startsWith("/profile")) {
+      navigate({ to: "/platform" });
+    }
+  }, [isPlatformOwner, pathname, navigate]);
   const roleLabel =
     roles.map((r) => ROLES.find((x) => x.value === r)?.label ?? r).join(" · ") || null;
   const displayName =
