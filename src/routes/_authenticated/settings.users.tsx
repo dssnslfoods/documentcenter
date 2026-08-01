@@ -141,6 +141,27 @@ function UsersPage() {
   });
 
 
+  const [demoteTarget, setDemoteTarget] = useState<{ userId: string; role: Role; email: string } | null>(null);
+  const [successorId, setSuccessorId] = useState<string>("");
+
+  const promoteThenChange = useMutation({
+    mutationFn: async ({ userId, role, successor }: { userId: string; role: Role; successor: string }) => {
+      await sb.from("user_roles").delete().eq("user_id", successor).neq("role", "platform_owner");
+      const { error: insErr } = await sb.from("user_roles").insert({ user_id: successor, role: "super_admin" });
+      if (insErr) throw insErr;
+      await sb.from("user_roles").delete().eq("user_id", userId).neq("role", "platform_owner");
+      const { error } = await sb.from("user_roles").insert({ user_id: userId, role });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("แต่งตั้งผู้ดูแลระบบสูงสุดคนใหม่และเปลี่ยนบทบาทเรียบร้อย");
+      setDemoteTarget(null);
+      setSuccessorId("");
+      qc.invalidateQueries({ queryKey: ["users-list"] });
+    },
+    onError: (e: Error) => toast.error(e.message ?? "เกิดข้อผิดพลาด"),
+  });
+
   const changeDept = useMutation({
     mutationFn: async ({ userId, deptId }: { userId: string; deptId: string | null }) => {
       const { error } = await sb.from("profiles").update({ department_id: deptId }).eq("id", userId);
@@ -388,7 +409,19 @@ function UsersPage() {
                     </TableCell>
                     <TableCell>
                       <Select value={u.roles[0] ?? ""}
-                        onValueChange={(v) => changeRole.mutate({ userId: u.id, role: v as Role })}
+                        onValueChange={(v) => {
+                          const role = v as Role;
+                          const wasSuperAdmin = u.roles.includes("super_admin" as Role);
+                          const othersLeft = (rows ?? []).some(
+                            (x) => x.id !== u.id && x.roles.includes("super_admin" as Role),
+                          );
+                          if (wasSuperAdmin && role !== "super_admin" && !othersLeft) {
+                            setSuccessorId("");
+                            setDemoteTarget({ userId: u.id, role, email: u.email ?? "" });
+                            return;
+                          }
+                          changeRole.mutate({ userId: u.id, role });
+                        }}
                         disabled={u.id === user.id}>
                         <SelectTrigger><SelectValue placeholder="เลือกบทบาท" /></SelectTrigger>
                         <SelectContent>
@@ -456,6 +489,43 @@ function UsersPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!demoteTarget} onOpenChange={(v) => { if (!v) { setDemoteTarget(null); setSuccessorId(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>ต้องแต่งตั้งผู้ดูแลระบบสูงสุดคนใหม่</DialogTitle>
+            <DialogDescription>
+              {demoteTarget?.email} เป็นผู้ดูแลระบบสูงสุดคนสุดท้ายขององค์กร — องค์กรต้องมีอย่างน้อย 1 คน
+              กรุณาเลือกผู้ใช้ในองค์กรมารับสิทธิ์แทนก่อน
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label>ผู้ดูแลคนใหม่ *</Label>
+            <Select value={successorId} onValueChange={setSuccessorId}>
+              <SelectTrigger><SelectValue placeholder="เลือกผู้ใช้ในองค์กร" /></SelectTrigger>
+              <SelectContent>
+                {(rows ?? [])
+                  .filter((x) => x.id !== demoteTarget?.userId && x.is_active)
+                  .map((x) => (
+                    <SelectItem key={x.id} value={x.id}>{x.full_name || x.email}</SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDemoteTarget(null)}>ยกเลิก</Button>
+            <Button
+              disabled={!successorId || promoteThenChange.isPending}
+              onClick={() =>
+                demoteTarget &&
+                promoteThenChange.mutate({ userId: demoteTarget.userId, role: demoteTarget.role, successor: successorId })
+              }
+            >
+              แต่งตั้งและเปลี่ยนบทบาท
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
