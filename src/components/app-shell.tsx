@@ -330,7 +330,7 @@ function SidebarContent({
           </div>
         )}
       </div>
-      {!isPlatformOwner && <OrgSwitcher collapsed={collapsed} />}
+      <OrgSwitcher collapsed={collapsed} />
       <nav className="flex-1 space-y-4 overflow-y-auto p-2 py-4">
 
         {sections.map((section) => (
