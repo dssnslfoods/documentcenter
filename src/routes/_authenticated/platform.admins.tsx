@@ -147,6 +147,50 @@ function OrgAdminsPage() {
   });
 
 
+  // ---- แต่งตั้งผู้ใช้ที่มีอยู่แล้วเป็นผู้ดูแลองค์กร
+  const [mode, setMode] = useState<"existing" | "new">("existing");
+  const [pickUserId, setPickUserId] = useState<string>("");
+
+  const { data: candidates, isLoading: candidatesLoading } = useQuery({
+    queryKey: ["platform-candidate-users", form.organizationId],
+    enabled: open && mode === "existing",
+    queryFn: async () => {
+      let q = sb
+        .from("profiles")
+        .select("id, email, full_name, organization_id, is_active")
+        .order("full_name");
+      if (form.organizationId) q = q.eq("organization_id", form.organizationId);
+      const { data } = await q;
+      return (data ?? []) as AdminRow[];
+    },
+  });
+
+  const candidateList = useMemo(
+    () => (candidates ?? []).filter((c) => !(admins ?? []).some((a) => a.id === c.id)),
+    [candidates, admins],
+  );
+
+  const promoteExisting = useMutation({
+    mutationFn: async (userId: string) => {
+      if (!form.organizationId) throw new Error("กรุณาเลือกองค์กร");
+      await sb.from("user_roles").delete().eq("user_id", userId).neq("role", "platform_owner");
+      const { error } = await sb.from("user_roles").insert({ user_id: userId, role: "super_admin" });
+      if (error) throw error;
+      const { error: pErr } = await sb
+        .from("profiles")
+        .update({ organization_id: form.organizationId, is_active: true })
+        .eq("id", userId);
+      if (pErr) throw pErr;
+    },
+    onSuccess: () => {
+      toast.success("แต่งตั้งเป็นผู้ดูแลองค์กรเรียบร้อย");
+      setPickUserId("");
+      setOpen(false);
+      qc.invalidateQueries({ queryKey: ["platform-org-admins"] });
+    },
+    onError: (e: Error) => toast.error(e.message ?? "แต่งตั้งไม่สำเร็จ"),
+  });
+
   const toggleActive = useMutation({
     mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
       const { error } = await sb.from("profiles").update({ is_active: active }).eq("id", id);
