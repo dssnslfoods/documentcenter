@@ -180,6 +180,25 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
+        {support.active && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning-foreground sm:px-4">
+            <LifeBuoy className="h-4 w-4 shrink-0 text-warning" />
+            <span className="min-w-0 break-words">
+              โหมดสนับสนุน — คุณกำลังเข้าใช้งานในนามองค์กร{" "}
+              <strong className="font-semibold">{support.org?.name ?? "-"}</strong> ด้วยสิทธิ์เต็ม
+              {support.row?.expires_at
+                ? ` (สิทธิ์หมดอายุ ${new Date(support.row.expires_at).toLocaleString("th-TH")})`
+                : ""}
+            </span>
+            <button
+              onClick={exitSupport}
+              className="ml-auto rounded-md border border-warning/40 bg-card px-2 py-1 font-medium hover:bg-muted"
+            >
+              ออกจากโหมดสนับสนุน
+            </button>
+          </div>
+        )}
+
         <header className="sticky top-0 z-40 flex h-16 items-center gap-1.5 border-b bg-card/80 px-2 backdrop-blur sm:gap-3 sm:px-4">
           <button
             onClick={() => setMobileOpen(true)}
