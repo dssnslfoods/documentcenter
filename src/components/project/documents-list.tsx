@@ -25,6 +25,9 @@ export function ProjectDocumentsList({
   emptyLabel,
   canEdit = true,
   gallery = false,
+  uploadLabel,
+  uploadHint,
+  accept,
 }: {
   projectId: string;
   type: DocType;
@@ -32,6 +35,9 @@ export function ProjectDocumentsList({
   canEdit?: boolean;
   /** แสดงผลเป็นแกลเลอรีรูปภาพพร้อม preview */
   gallery?: boolean;
+  uploadLabel?: string;
+  uploadHint?: string;
+  accept?: string;
 }) {
   const sb = getSupabase();
   const qc = useQueryClient();
@@ -140,18 +146,20 @@ export function ProjectDocumentsList({
     >
       <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-4 py-2 text-sm hover:bg-muted">
         {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-        {uploading ? "กำลังอัปโหลด..." : gallery ? "อัปโหลดรูป (เลือกได้หลายรูป)" : "อัปโหลดไฟล์"}
+        {uploading
+          ? "กำลังอัปโหลด..."
+          : (uploadLabel ?? (gallery ? "อัปโหลดรูป (เลือกได้หลายรูป)" : "อัปโหลดไฟล์"))}
         <input
           type="file"
           multiple
-          accept={gallery ? "image/*,application/pdf" : undefined}
+          accept={accept ?? (gallery ? "image/*,application/pdf" : undefined)}
           className="hidden"
           onChange={onFile}
           disabled={uploading}
         />
       </label>
       <div className="mt-2 text-xs text-muted-foreground">
-        หรือลากไฟล์มาวางตรงนี้ได้เลย (รองรับหลายไฟล์พร้อมกัน)
+        {uploadHint ?? "หรือลากไฟล์มาวางตรงนี้ได้เลย (รองรับหลายไฟล์พร้อมกัน)"}
       </div>
     </div>
   );

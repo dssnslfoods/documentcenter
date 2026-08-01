@@ -384,22 +384,18 @@ function ProjectDetail() {
 
         <TabsContent value="contract" className="mt-5 space-y-4">
           {perms?.canSeeContract ? (
-            <>
-              <SectionCard title="สัญญา" description="สัญญาที่ลงนามและเอกสารแนบ">
-                <ProjectDocumentsList projectId={id} type="contract" emptyLabel="ยังไม่มีไฟล์สัญญา" />
-              </SectionCard>
-              <SectionCard title="ใบเสนอราคาฉบับสุดท้าย" description="ที่ผูกกับสัญญา">
-                <div className="space-y-4">
-                  <FinalCustomerQuotation
-                    projectId={id}
-                    canSeePrice={perms?.canSeeCustomerPrice ?? false}
-                  />
-                  <ProjectDocumentsList projectId={id} type="final_quotation" emptyLabel="ยังไม่มีไฟล์" />
-                </div>
-              </SectionCard>
-
-            </>
+            <SectionCard title="สัญญา / ใบสั่งจ้าง" description="อัปโหลดเฉพาะไฟล์สัญญาหรือใบสั่งจ้างที่ลงนามแล้ว">
+              <ProjectDocumentsList
+                projectId={id}
+                type="contract"
+                emptyLabel="ยังไม่มีไฟล์สัญญา / ใบสั่งจ้าง"
+                uploadLabel="อัปโหลดสัญญา / ใบสั่งจ้าง"
+                uploadHint="รองรับไฟล์ PDF, Word และรูปภาพ (เลือกได้หลายไฟล์)"
+                accept="application/pdf,image/*,.doc,.docx"
+              />
+            </SectionCard>
           ) : <Denied label="สัญญา" />}
+
         </TabsContent>
 
         <TabsContent value="timeline" className="mt-5">
