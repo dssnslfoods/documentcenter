@@ -1,7 +1,8 @@
 import { useState, type ChangeEvent } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Trash2, Download, Plus, Loader2, FileSpreadsheet, Star, CheckCircle2 } from "lucide-react";
+import { Trash2, Download, Plus, Loader2, FileSpreadsheet, Star, CheckCircle2, Pencil } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -46,6 +47,8 @@ export function CustomerQuotationsTab({
   const sb = getSupabase();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editRow, setEditRow] = useState<Row | null>(null);
+
 
   const { data: rows, isLoading } = useQuery({
     queryKey: ["customer-quotations", projectId],
@@ -218,6 +221,11 @@ export function CustomerQuotationsTab({
                     </>
                   )}
                   {canEdit && (
+                    <Button size="sm" variant="outline" title="แก้ไขรายละเอียด" onClick={() => setEditRow(r)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {canEdit && (
                     <Button
                       size="sm"
                       variant={r.is_final ? "secondary" : "outline"}
@@ -228,6 +236,7 @@ export function CustomerQuotationsTab({
                       {r.is_final ? "ยกเลิก Final" : "เลือกเป็น Final"}
                     </Button>
                   )}
+
                   {canEdit && (
                     <Button
                       size="sm"
@@ -244,9 +253,131 @@ export function CustomerQuotationsTab({
           ))}
         </div>
       )}
+
+      <Dialog open={!!editRow} onOpenChange={(v) => !v && setEditRow(null)}>
+        {editRow && (
+          <EditDialog
+            row={editRow}
+            canSeePrice={canSeePrice}
+            onClose={() => setEditRow(null)}
+            onSaved={async () => {
+              setEditRow(null);
+              await afterChange();
+            }}
+          />
+        )}
+      </Dialog>
     </div>
   );
 }
+
+function EditDialog({
+  row,
+  canSeePrice,
+  onClose,
+  onSaved,
+}: {
+  row: Row;
+  canSeePrice: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const sb = getSupabase();
+  const { data: vatRates } = useVatRates();
+  const [title, setTitle] = useState(row.title ?? "");
+  const [amount, setAmount] = useState(row.quotation_amount != null ? String(row.quotation_amount) : "");
+  const [date, setDate] = useState(row.submitted_date ?? "");
+  const [notes, setNotes] = useState(row.notes ?? "");
+  const [vatRateId, setVatRateId] = useState<string | undefined>(undefined);
+  const [saving, setSaving] = useState(false);
+
+  // เริ่มต้นจากอัตรา VAT เดิมที่บันทึกไว้ (ไม่ย้อนหลังอัตโนมัติ)
+  const currentVat = (vatRates ?? []).find((v) => Number(v.rate) === Number(row.vat_rate ?? 0));
+  const effectiveId = vatRateId ?? currentVat?.id ?? "none";
+  const selectedVat = (vatRates ?? []).find((v) => v.id === effectiveId);
+  const { pct, vatAmount, total } = calcVat(Number(amount) || 0, selectedVat ? Number(selectedVat.rate) : 0);
+
+  const submit = async () => {
+    setSaving(true);
+    try {
+      const payload: Record<string, unknown> = {
+        title: title || null,
+        submitted_date: date || null,
+        notes: notes || null,
+      };
+      if (canSeePrice) {
+        payload.quotation_amount = amount ? Number(amount) : null;
+        payload.vat_rate = selectedVat ? Number(selectedVat.rate) : 0;
+        payload.vat_amount = amount ? vatAmount : null;
+        payload.amount_incl_vat = amount ? total : null;
+      }
+      const { error } = await sb.from("customer_quotations").update(payload).eq("id", row.id);
+      if (error) throw error;
+      toast.success("แก้ไขเรียบร้อย");
+      onSaved();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <DialogContent className="flex max-h-[85vh] max-w-lg flex-col">
+      <DialogHeader><DialogTitle>แก้ไขใบเสนอราคาให้ลูกค้า</DialogTitle></DialogHeader>
+      <div className="-mx-1 flex-1 space-y-3 overflow-y-auto px-1">
+        <div>
+          <Label>หัวข้องาน / ชื่อใบเสนอราคา</Label>
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="เช่น ใบเสนอราคา notebook a5" />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {canSeePrice && (
+            <div>
+              <Label>ยอดเสนอก่อน VAT (บาท)</Label>
+              <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            </div>
+          )}
+          <div>
+            <Label>วันที่ส่ง</Label>
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </div>
+        </div>
+        {canSeePrice && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label>อัตรา VAT</Label>
+              <Select value={effectiveId} onValueChange={setVatRateId}>
+                <SelectTrigger><SelectValue placeholder="ไม่คิด VAT" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">ไม่คิด VAT (0%)</SelectItem>
+                  {(vatRates ?? []).map((v) => (
+                    <SelectItem key={v.id} value={v.id}>{v.label} ({Number(v.rate).toFixed(2)}%)</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs">
+              <div className="flex justify-between"><span className="text-muted-foreground">ก่อน VAT</span><span className="tabular-nums">{fmtNum(Number(amount) || 0)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">VAT {pct.toFixed(2)}%</span><span className="tabular-nums">{fmtNum(vatAmount)}</span></div>
+              <div className="mt-1 flex justify-between border-t pt-1 font-semibold"><span>ยอดสุทธิ</span><span className="tabular-nums">{fmtNum(total)}</span></div>
+            </div>
+          </div>
+        )}
+        <div>
+          <Label>หมายเหตุ</Label>
+          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
+        </div>
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose}>ยกเลิก</Button>
+        <Button onClick={submit} disabled={saving}>
+          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}บันทึก
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+}
+
 
 function AddDialog({
   projectId,
