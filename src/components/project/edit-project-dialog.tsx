@@ -120,7 +120,7 @@ export function EditProjectDialog({
         project_type: projectType || null,
         start_date: startDate || null,
         end_date: endDate || null,
-        is_inhouse: isInhouse,
+        is_inhouse: inhouseLocked ? false : isInhouse,
         updated_by: user?.id ?? null,
         updated_at: new Date().toISOString(),
       };
