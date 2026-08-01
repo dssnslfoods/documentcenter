@@ -150,6 +150,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               position={profile?.position ?? null}
               roleLabel={roleLabel}
               can={can}
+              isPlatformOwner={isPlatformOwner}
+
             />
 
           </aside>
