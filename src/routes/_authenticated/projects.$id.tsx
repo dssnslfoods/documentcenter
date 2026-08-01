@@ -384,18 +384,30 @@ function ProjectDetail() {
 
         <TabsContent value="contract" className="mt-5 space-y-4">
           {perms?.canSeeContract ? (
-            <SectionCard title="สัญญา / ใบสั่งจ้าง" description="อัปโหลดเฉพาะไฟล์สัญญาหรือใบสั่งจ้างที่ลงนามแล้ว">
-              <ProjectDocumentsList
-                projectId={id}
-                type="contract"
-                emptyLabel="ยังไม่มีไฟล์สัญญา / ใบสั่งจ้าง"
-                uploadLabel="อัปโหลดสัญญา / ใบสั่งจ้าง"
-                uploadHint="รองรับไฟล์ PDF, Word และรูปภาพ (เลือกได้หลายไฟล์)"
-                accept="application/pdf,image/*,.doc,.docx"
-              />
-            </SectionCard>
-          ) : <Denied label="สัญญา" />}
+            <>
+              <SectionCard title="สัญญา / ใบสั่งจ้าง" description="อัปโหลดเฉพาะไฟล์สัญญาหรือใบสั่งจ้างที่ลงนามแล้ว">
+                <ProjectDocumentsList
+                  projectId={id}
+                  type="contract"
+                  emptyLabel="ยังไม่มีไฟล์สัญญา / ใบสั่งจ้าง"
+                  uploadLabel="อัปโหลดสัญญา / ใบสั่งจ้าง"
+                  uploadHint="รองรับไฟล์ PDF, Word และรูปภาพ (เลือกได้หลายไฟล์)"
+                  accept="application/pdf,image/*,.doc,.docx"
+                />
+              </SectionCard>
 
+              {(perms?.isAdmin || perms?.canSeeMilestones) ? (
+                <SectionCard title="งวดงาน" description="งวดงานและการวางบิลตามสัญญา">
+                  <MilestonesTab
+                    projectId={id}
+                    contractValue={p.contract_value ?? p.budget ?? null}
+                    canEdit={editAdmin || (perms?.canEditMilestones ?? false)}
+                    canSeePayment={perms?.canSeeMilestonePayment ?? false}
+                  />
+                </SectionCard>
+              ) : null}
+            </>
+          ) : <Denied label="สัญญา" />}
         </TabsContent>
 
         <TabsContent value="timeline" className="mt-5">
@@ -404,16 +416,6 @@ function ProjectDetail() {
           ) : <Denied label="แผนงาน" />}
         </TabsContent>
 
-        <TabsContent value="milestones" className="mt-5">
-          {perms?.canSeeMilestones ? (
-            <MilestonesTab
-              projectId={id}
-              contractValue={p.contract_value ?? p.budget ?? null}
-              canEdit={editAdmin || (perms?.canEditMilestones ?? false)}
-              canSeePayment={perms?.canSeeMilestonePayment ?? false}
-            />
-          ) : <Denied label="งวดงาน" />}
-        </TabsContent>
 
         <TabsContent value="team" className="mt-5">
           <TeamTab projectId={id} isAdmin={perms?.canManageTeam ?? false} />
