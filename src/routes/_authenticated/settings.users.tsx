@@ -412,7 +412,7 @@ function UsersPage() {
                         onValueChange={(v) => {
                           const role = v as Role;
                           const wasSuperAdmin = u.roles.includes("super_admin" as Role);
-                          const othersLeft = (users ?? []).some(
+                          const othersLeft = (rows ?? []).some(
                             (x) => x.id !== u.id && x.roles.includes("super_admin" as Role),
                           );
                           if (wasSuperAdmin && role !== "super_admin" && !othersLeft) {
@@ -504,7 +504,7 @@ function UsersPage() {
             <Select value={successorId} onValueChange={setSuccessorId}>
               <SelectTrigger><SelectValue placeholder="เลือกผู้ใช้ในองค์กร" /></SelectTrigger>
               <SelectContent>
-                {(users ?? [])
+                {(rows ?? [])
                   .filter((x) => x.id !== demoteTarget?.userId && x.is_active)
                   .map((x) => (
                     <SelectItem key={x.id} value={x.id}>{x.full_name || x.email}</SelectItem>
