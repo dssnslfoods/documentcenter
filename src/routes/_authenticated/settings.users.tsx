@@ -30,13 +30,12 @@ export const Route = createFileRoute("/_authenticated/settings/users")({
   component: UsersPage,
 });
 
-type Role = "super_admin" | "management" | "dept_manager" | "staff" | "viewer";
+type Role = "super_admin" | "management" | "dept_manager" | "staff";
 const ROLES: { value: Role; label: string; tone: string }[] = [
   { value: "super_admin", label: "ผู้ดูแลระบบสูงสุด", tone: "bg-destructive/10 text-destructive" },
   { value: "management", label: "ผู้บริหาร", tone: "bg-primary/10 text-primary" },
   { value: "dept_manager", label: "หัวหน้าแผนก", tone: "bg-warning/10 text-warning" },
   { value: "staff", label: "เจ้าหน้าที่", tone: "bg-muted text-foreground" },
-  { value: "viewer", label: "ผู้อ่านอย่างเดียว", tone: "bg-muted text-muted-foreground" },
 ];
 const roleLabel = (r: Role) => ROLES.find((x) => x.value === r)?.label ?? r;
 const roleTone = (r: Role) => ROLES.find((x) => x.value === r)?.tone ?? "bg-muted";

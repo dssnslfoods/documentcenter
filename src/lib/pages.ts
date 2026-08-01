@@ -27,7 +27,6 @@ export const ROLES: { value: AppRole; label: string }[] = [
   { value: "management", label: "ผู้บริหาร" },
   { value: "dept_manager", label: "หัวหน้าแผนก" },
   { value: "staff", label: "พนักงาน" },
-  { value: "viewer", label: "ผู้อ่านอย่างเดียว" },
 ];
 
 /** Fallback matrix used when the role_page_access table has no row (or is missing). */
@@ -40,7 +39,6 @@ export const DEFAULT_ACCESS: Record<AppRole, PageKey[]> = {
     (p) => !["settings", "organizations", "audit-log", "quotations", "partners", "reports"].includes(p.key),
   ).map((p) => p.key),
   staff: ["dashboard", "calendar", "notifications", "projects"],
-  viewer: ["dashboard", "calendar", "notifications", "projects"],
 };
 
 export function defaultAllowed(role: AppRole, key: PageKey) {
