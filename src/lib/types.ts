@@ -1,4 +1,10 @@
-export type AppRole = "super_admin" | "management" | "dept_manager" | "staff" | "viewer";
+export type AppRole =
+  | "platform_owner"
+  | "super_admin"
+  | "management"
+  | "dept_manager"
+  | "staff"
+  | "viewer";
 
 export type ConfidentialityLevel = "public" | "internal" | "confidential" | "highly_confidential";
 
