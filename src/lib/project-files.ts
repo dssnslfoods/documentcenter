@@ -11,6 +11,7 @@ export async function uploadProjectFile(
   const { error } = await sb.storage.from("project-files").upload(path, file, {
     cacheControl: "3600",
     upsert: false,
+    contentType: file.type || guessContentType(file.name),
   });
   if (error) throw error;
   return path;
