@@ -290,6 +290,7 @@ function NotificationBell({ userId }: { userId: string | undefined }) {
 
 function SidebarContent({
   collapsed, pathname, displayName, email, position, roleLabel, can, isPlatformOwner,
+  supportActive, supportOrgName, onExitSupport,
 }: {
   collapsed: boolean;
   pathname: string;
@@ -299,7 +300,11 @@ function SidebarContent({
   roleLabel?: string | null;
   can: (key: PageKey) => boolean;
   isPlatformOwner?: boolean;
+  supportActive?: boolean;
+  supportOrgName?: string | null;
+  onExitSupport?: () => void;
 }) {
+
   const sections = isPlatformOwner
     ? PLATFORM_SECTIONS
     : NAV_SECTIONS
