@@ -131,18 +131,56 @@ function OrgAdminsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const [revokeTarget, setRevokeTarget] = useState<AdminRow | null>(null);
+  const [successorId, setSuccessorId] = useState<string>("");
+
+  const isLastAdminOfOrg = (a: AdminRow) =>
+    (admins ?? []).filter((x) => x.organization_id === a.organization_id && x.id !== a.id).length === 0;
+
+  const { data: orgMembers } = useQuery({
+    queryKey: ["platform-org-members", revokeTarget?.organization_id],
+    enabled: !!revokeTarget?.organization_id,
+    queryFn: async () => {
+      const { data } = await sb
+        .from("profiles")
+        .select("id, email, full_name")
+        .eq("organization_id", revokeTarget!.organization_id!)
+        .neq("id", revokeTarget!.id)
+        .eq("is_active", true);
+      return (data ?? []) as { id: string; email: string | null; full_name: string | null }[];
+    },
+  });
+
   const revoke = useMutation({
-    mutationFn: async (id: string) => {
-      await sb.from("user_roles").delete().eq("user_id", id).eq("role", "super_admin");
+    mutationFn: async ({ id, successor }: { id: string; successor?: string }) => {
+      if (successor) {
+        await sb.from("user_roles").delete().eq("user_id", successor);
+        const { error: insErr } = await sb.from("user_roles").insert({ user_id: successor, role: "super_admin" });
+        if (insErr) throw insErr;
+      }
+      const { error: delErr } = await sb
+        .from("user_roles").delete().eq("user_id", id).eq("role", "super_admin");
+      if (delErr) throw delErr;
       const { error } = await sb.from("user_roles").insert({ user_id: id, role: "staff" });
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("ถอดสิทธิ์ผู้ดูแลองค์กรแล้ว");
+      setRevokeTarget(null);
+      setSuccessorId("");
       qc.invalidateQueries({ queryKey: ["platform-org-admins"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const handleRevokeClick = (a: AdminRow) => {
+    if (isLastAdminOfOrg(a)) {
+      setSuccessorId("");
+      setRevokeTarget(a);
+      return;
+    }
+    revoke.mutate({ id: a.id });
+  };
 
   const moveOrg = useMutation({
     mutationFn: async ({ id, orgId }: { id: string; orgId: string }) => {
@@ -306,7 +344,7 @@ function OrgAdminsPage() {
                           >
                             {a.is_active ? "ปิดใช้งาน" : "เปิดใช้งาน"}
                           </Button>
-                          <Button size="sm" variant="ghost" className="text-destructive" onClick={() => revoke.mutate(a.id)}>
+                          <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleRevokeClick(a)}>
                             <Trash2 className="mr-1 h-3.5 w-3.5" />ถอดสิทธิ์
                           </Button>
                         </div>
@@ -319,6 +357,41 @@ function OrgAdminsPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!revokeTarget} onOpenChange={(v) => { if (!v) { setRevokeTarget(null); setSuccessorId(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>ต้องแต่งตั้งผู้ดูแลองค์กรคนใหม่</DialogTitle>
+            <DialogDescription>
+              {revokeTarget?.email} เป็นผู้ดูแลองค์กรคนสุดท้ายของ {orgName(revokeTarget?.organization_id ?? null)} —
+              องค์กรต้องมีผู้ดูแลอย่างน้อย 1 คน กรุณาเลือกผู้ใช้ในองค์กรมารับสิทธิ์แทน
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label>ผู้ดูแลคนใหม่ *</Label>
+            <Select value={successorId} onValueChange={setSuccessorId}>
+              <SelectTrigger><SelectValue placeholder="เลือกผู้ใช้ในองค์กร" /></SelectTrigger>
+              <SelectContent>
+                {(orgMembers ?? []).map((m) => (
+                  <SelectItem key={m.id} value={m.id}>{m.full_name || m.email}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {!(orgMembers ?? []).length && (
+              <p className="text-xs text-destructive">ไม่มีผู้ใช้อื่นในองค์กรนี้ — ต้องเพิ่มผู้ใช้ก่อนจึงถอดสิทธิ์ได้</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRevokeTarget(null)}>ยกเลิก</Button>
+            <Button
+              disabled={!successorId || revoke.isPending}
+              onClick={() => revokeTarget && revoke.mutate({ id: revokeTarget.id, successor: successorId })}
+            >
+              แต่งตั้งและถอดสิทธิ์
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
