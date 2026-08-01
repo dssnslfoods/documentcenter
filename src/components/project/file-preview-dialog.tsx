@@ -31,14 +31,29 @@ export function FilePreviewButton({
 }) {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState<string | null>(null);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => () => { if (blobUrl) URL.revokeObjectURL(blobUrl); }, [blobUrl]);
 
   const show = async () => {
     setOpen(true);
     if (url) return;
     setLoading(true);
     try {
-      setUrl(await getProjectFileUrl(path));
+      const signed = await getProjectFileUrl(path);
+      setUrl(signed);
+      if (signed) {
+        // Force a correct MIME type so browsers render (some files were stored as octet-stream)
+        try {
+          const res = await fetch(signed);
+          const raw = await res.blob();
+          const typed = new Blob([raw], { type: guessContentType(path) });
+          setBlobUrl(URL.createObjectURL(typed));
+        } catch {
+          setBlobUrl(null);
+        }
+      }
     } finally {
       setLoading(false);
     }
