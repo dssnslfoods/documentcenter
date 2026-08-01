@@ -147,7 +147,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           roleLabel={roleLabel}
           can={can}
           isPlatformOwner={platformOnly}
+          supportActive={support.active}
+          supportOrgName={support.org?.name ?? null}
+          onExitSupport={exitSupport}
         />
+
       </aside>
 
 
@@ -172,8 +176,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               roleLabel={roleLabel}
               can={can}
               isPlatformOwner={platformOnly}
-
+              supportActive={support.active}
+              supportOrgName={support.org?.name ?? null}
+              onExitSupport={exitSupport}
             />
+
 
           </aside>
         </div>
@@ -190,22 +197,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                 ? ` (สิทธิ์หมดอายุ ${new Date(support.row.expires_at).toLocaleString("th-TH")})`
                 : ""}
             </span>
-            <div className="ml-auto flex items-center gap-2">
-              <button
-                onClick={() => navigate({ to: "/platform" })}
-                className="rounded-md border border-warning/40 bg-card px-2 py-1 font-medium hover:bg-muted"
-              >
-                ไปหน้าผู้ดูแลแพลตฟอร์ม
-              </button>
-              <button
-                onClick={exitSupport}
-                className="rounded-md border border-warning/40 bg-card px-2 py-1 font-medium hover:bg-muted"
-              >
-                ออกจากโหมดสนับสนุน
-              </button>
-            </div>
           </div>
         )}
+
 
 
         <header className="sticky top-0 z-40 flex h-16 items-center gap-1.5 border-b bg-card/80 px-2 backdrop-blur sm:gap-3 sm:px-4">
@@ -303,6 +297,7 @@ function NotificationBell({ userId }: { userId: string | undefined }) {
 
 function SidebarContent({
   collapsed, pathname, displayName, email, position, roleLabel, can, isPlatformOwner,
+  supportActive, supportOrgName, onExitSupport,
 }: {
   collapsed: boolean;
   pathname: string;
@@ -312,7 +307,11 @@ function SidebarContent({
   roleLabel?: string | null;
   can: (key: PageKey) => boolean;
   isPlatformOwner?: boolean;
+  supportActive?: boolean;
+  supportOrgName?: string | null;
+  onExitSupport?: () => void;
 }) {
+
   const sections = isPlatformOwner
     ? PLATFORM_SECTIONS
     : NAV_SECTIONS
@@ -365,8 +364,38 @@ function SidebarContent({
             })}
           </div>
         ))}
+
+        {supportActive && (
+          <div className="space-y-0.5 rounded-lg border border-warning/40 bg-warning/10 p-2">
+            {!collapsed && (
+              <div className="px-1 pb-1 text-[10px] font-semibold uppercase tracking-wider text-warning">
+                โหมดสนับสนุน
+              </div>
+            )}
+            {!collapsed && supportOrgName && (
+              <div className="truncate px-1 pb-1 text-[11px] text-muted-foreground">{supportOrgName}</div>
+            )}
+            <Link
+              to="/platform"
+              className="flex items-center gap-3 rounded-md px-2 py-2 text-sm text-sidebar-foreground/90 transition-colors hover:bg-sidebar-accent"
+              title={collapsed ? "ไปหน้าผู้ดูแลแพลตฟอร์ม" : undefined}
+            >
+              <Building2 className="h-4 w-4 shrink-0" />
+              {!collapsed && <span className="truncate">ไปหน้าผู้ดูแลแพลตฟอร์ม</span>}
+            </Link>
+            <button
+              onClick={onExitSupport}
+              className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm text-sidebar-foreground/90 transition-colors hover:bg-sidebar-accent"
+              title={collapsed ? "ออกจากโหมดสนับสนุน" : undefined}
+            >
+              <LifeBuoy className="h-4 w-4 shrink-0" />
+              {!collapsed && <span className="truncate">ออกจากโหมดสนับสนุน</span>}
+            </button>
+          </div>
+        )}
       </nav>
       <div className="border-t border-sidebar-border p-3">
+
         <Link
           to="/profile"
           className={`flex items-center gap-2.5 rounded-md p-2 transition-colors hover:bg-sidebar-accent ${collapsed ? "justify-center" : ""}`}
