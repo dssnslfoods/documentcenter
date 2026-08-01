@@ -29,7 +29,7 @@ function PdfPreview({ data }: { data: Uint8Array }) {
 
     void (async () => {
       try {
-        const pdfjs = await import("pdfjs-dist/build/pdf.mjs");
+        const pdfjs = await import("pdfjs-dist");
         pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
         const pdf = await pdfjs.getDocument({ data: data.slice() }).promise;
 
