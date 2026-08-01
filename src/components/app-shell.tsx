@@ -101,7 +101,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { isPlatformOwner } = useIsPlatformOwner();
   const support = useSupportSession();
   const switchOrg = useSwitchOrg();
-  const platformOnly = isPlatformOwner && !support.active;
+  // ถ้ามีบทบาทในองค์กรด้วย (เช่น super_admin) จะไม่ถูกล็อกอยู่เฉพาะโซนแพลตฟอร์ม
+  const hasOrgRole = roles.some((r) => r !== "platform_owner");
+  const platformOnly = isPlatformOwner && !support.active && !hasOrgRole;
+
 
   // ผู้ดูแลแพลตฟอร์มใช้งานได้เฉพาะโซน /platform (ยกเว้นตอนอยู่ในโหมดสนับสนุน)
   useEffect(() => {
