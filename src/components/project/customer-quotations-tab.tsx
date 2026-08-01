@@ -47,6 +47,8 @@ export function CustomerQuotationsTab({
   const sb = getSupabase();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editRow, setEditRow] = useState<Row | null>(null);
+
 
   const { data: rows, isLoading } = useQuery({
     queryKey: ["customer-quotations", projectId],
