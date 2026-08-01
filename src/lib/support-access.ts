@@ -51,7 +51,24 @@ export function useMySupportAccess() {
   return { orgId, row: q.data ?? null, isLoading: q.isLoading };
 }
 
+/** ถอดสิทธิ์ทันที (ปิดสิทธิ์ + เตะผู้ดูแลแพลตฟอร์มออกจากโหมดสนับสนุน) */
+export function useRevokeSupportAccess() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (organizationId: string) => {
+      const { error } = await getSupabase().rpc("revoke_support_access", { _org: organizationId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["support-access"] });
+      qc.invalidateQueries({ queryKey: ["support-access-all"] });
+      qc.invalidateQueries({ queryKey: ["support-session"] });
+    },
+  });
+}
+
 export function useSetSupportAccess() {
+
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: {
