@@ -23,10 +23,9 @@ begin
 
     -- ระบบคำนวณสถานะสุขภาพโครงการ (RAG) อัตโนมัติ
     if (new.health_status is distinct from old.health_status
-        or new.health_reason is distinct from old.health_reason
-        or new.health_updated_at is distinct from old.health_updated_at)
-       and to_jsonb(new) - 'health_status' - 'health_reason' - 'health_updated_at' - 'updated_at'
-         = to_jsonb(old) - 'health_status' - 'health_reason' - 'health_updated_at' - 'updated_at' then
+        or new.health_reason is distinct from old.health_reason)
+       and to_jsonb(new) - 'health_status' - 'health_reason' - 'updated_at'
+         = to_jsonb(old) - 'health_status' - 'health_reason' - 'updated_at' then
       return new;
     end if;
 
