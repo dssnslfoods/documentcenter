@@ -25,6 +25,9 @@ export function ProjectDocumentsList({
   emptyLabel,
   canEdit = true,
   gallery = false,
+  uploadLabel,
+  uploadHint,
+  accept,
 }: {
   projectId: string;
   type: DocType;
@@ -32,6 +35,9 @@ export function ProjectDocumentsList({
   canEdit?: boolean;
   /** แสดงผลเป็นแกลเลอรีรูปภาพพร้อม preview */
   gallery?: boolean;
+  uploadLabel?: string;
+  uploadHint?: string;
+  accept?: string;
 }) {
   const sb = getSupabase();
   const qc = useQueryClient();
