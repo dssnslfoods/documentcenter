@@ -4,6 +4,7 @@ import {
   LayoutDashboard, FileText, FileSignature, FileSpreadsheet,
   Users, FolderKanban, Calendar, Bell, BarChart3, History, Settings,
   Search, LogOut, User as UserIcon, Menu, X, ChevronDown, PanelLeftClose, PanelLeftOpen,
+  Building2, ShieldCheck, LayoutGrid,
 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 import { OrgSwitcher } from "@/components/org-switcher";
@@ -17,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-supabase";
 import { useCanAccess } from "@/hooks/use-page-access";
 import { ROLES, type PageKey } from "@/lib/pages";
+import { useIsPlatformOwner } from "@/lib/org";
 
 // Sidebar organized by workflow order: daily work → sales pipeline → post-sale docs → governance
 type NavItem = { to: string; icon: React.ComponentType<{ className?: string }>; label: string; key: PageKey };
@@ -58,6 +60,18 @@ const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
+// โซนผู้ดูแลแพลตฟอร์ม — แสดงเฉพาะเมนูบริหารองค์กรเท่านั้น
+const PLATFORM_SECTIONS: NavSection[] = [
+  {
+    label: "ผู้ดูแลแพลตฟอร์ม",
+    items: [
+      { to: "/platform", icon: Building2, label: "องค์กร", key: "organizations" },
+      { to: "/platform/admins", icon: ShieldCheck, label: "ผู้ดูแลองค์กร", key: "organizations" },
+      { to: "/platform/menus", icon: LayoutGrid, label: "เมนูขององค์กร", key: "organizations" },
+    ],
+  },
+];
+
 function useProfileName(userId: string | undefined) {
   const { data } = useQuery({
     queryKey: ["sidebar-profile", userId],
@@ -83,6 +97,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const profile = useProfileName(user?.id);
   const { can, roles } = useCanAccess();
+  const { isPlatformOwner } = useIsPlatformOwner();
   const roleLabel =
     roles.map((r) => ROLES.find((x) => x.value === r)?.label ?? r).join(" · ") || null;
   const displayName =
@@ -110,6 +125,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           position={profile?.position ?? null}
           roleLabel={roleLabel}
           can={can}
+          isPlatformOwner={isPlatformOwner}
         />
       </aside>
 
@@ -244,10 +260,13 @@ function SidebarContent({
   position?: string | null;
   roleLabel?: string | null;
   can: (key: PageKey) => boolean;
+  isPlatformOwner?: boolean;
 }) {
-  const sections = NAV_SECTIONS
-    .map((s) => ({ ...s, items: s.items.filter((i) => can(i.key)) }))
-    .filter((s) => s.items.length > 0);
+  const sections = isPlatformOwner
+    ? PLATFORM_SECTIONS
+    : NAV_SECTIONS
+        .map((s) => ({ ...s, items: s.items.filter((i) => can(i.key)) }))
+        .filter((s) => s.items.length > 0);
   return (
     <>
       <div className="flex h-16 items-center gap-2.5 border-b border-sidebar-border px-4">
@@ -261,7 +280,7 @@ function SidebarContent({
           </div>
         )}
       </div>
-      <OrgSwitcher collapsed={collapsed} />
+      {!isPlatformOwner && <OrgSwitcher collapsed={collapsed} />}
       <nav className="flex-1 space-y-4 overflow-y-auto p-2 py-4">
 
         {sections.map((section) => (
