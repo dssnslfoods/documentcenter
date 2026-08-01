@@ -123,6 +123,36 @@ export function ProjectHistoryTab({ projectId }: { projectId: string }) {
     },
   });
 
+  const [q, setQ] = useState("");
+  const [entity, setEntity] = useState<string>("all");
+
+  const entities = useMemo(
+    () => Array.from(new Set((data ?? []).map((h) => h.entity || "project"))),
+    [data],
+  );
+
+  const rows = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    return (data ?? []).filter((h) => {
+      const e = h.entity || "project";
+      if (entity !== "all" && e !== entity) return false;
+      if (!s) return true;
+      const hay = [
+        h.editor,
+        h.entity_label ?? "",
+        ENTITY_LABEL[e] ?? e,
+        ...(h.changes ?? []).flatMap((c) => [
+          FIELD_LABEL[c.field] ?? c.field,
+          renderValue(c.field, c.old),
+          renderValue(c.field, c.new),
+        ]),
+      ]
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(s);
+    });
+  }, [data, q, entity]);
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
@@ -152,15 +182,51 @@ export function ProjectHistoryTab({ projectId }: { projectId: string }) {
     <div className="tile p-5">
       <div className="mb-4">
         <h3 className="text-sm font-semibold">ประวัติการแก้ไขโครงการ</h3>
-        <p className="text-xs text-muted-foreground">ทุกครั้งที่มีการแก้ไข ระบบจะบันทึกว่าใครแก้ไข เมื่อไหร่ และเปลี่ยนค่าอะไรบ้าง</p>
+        <p className="text-xs text-muted-foreground">
+          บันทึกทุกการเปลี่ยนแปลงในโครงการ (รายละเอียดโครงการ, เอกสาร, RFQ/Spec, ใบเสนอราคา, งวดงาน, แผนงาน, สมาชิก) พร้อมผู้แก้ไข เวลา และค่าก่อน/หลัง
+        </p>
       </div>
 
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row">
+        <div className="relative min-w-0 flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="ค้นหาชื่อผู้แก้ไข, ฟิลด์ หรือค่า..."
+            className="pl-9"
+          />
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {["all", ...entities].map((e) => (
+            <button
+              key={e}
+              type="button"
+              onClick={() => setEntity(e)}
+              className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                entity === e ? "border-primary bg-primary/10 text-primary" : "hover:bg-muted"
+              }`}
+            >
+              {e === "all" ? "ทั้งหมด" : (ENTITY_LABEL[e] ?? e)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {rows.length === 0 && (
+        <div className="rounded-lg border border-dashed py-10 text-center text-sm text-muted-foreground">
+          ไม่พบรายการที่ตรงกับเงื่อนไข
+        </div>
+      )}
+
       <ol className="relative space-y-5 border-l pl-6">
-        {data.map((h) => (
+        {rows.map((h) => (
           <li key={h.id} className="relative">
             <span className="absolute -left-[31px] flex h-5 w-5 items-center justify-center rounded-full border bg-card">
               {h.action === "create" ? (
                 <PlusCircle className="h-3 w-3 text-success" />
+              ) : h.action === "delete" ? (
+                <Trash2 className="h-3 w-3 text-destructive" />
               ) : (
                 <PencilLine className="h-3 w-3 text-primary" />
               )}
@@ -170,11 +236,15 @@ export function ProjectHistoryTab({ projectId }: { projectId: string }) {
               <span>·</span>
               <span>{fmtDateTime(h.created_at)}</span>
               <Badge variant="outline" className="text-[10px]">
-                {h.action === "create" ? "สร้างโครงการ" : "แก้ไข"}
+                {ACTION_LABEL[h.action] ?? h.action} · {ENTITY_LABEL[h.entity || "project"] ?? h.entity}
               </Badge>
+              {h.entity_label && (
+                <span className="max-w-full truncate font-medium text-foreground">“{h.entity_label}”</span>
+              )}
             </div>
 
-            {h.action !== "create" && (h.changes?.length ?? 0) > 0 && (
+            {(h.changes?.length ?? 0) > 0 && (
+
               <div className="mt-2 overflow-x-auto rounded-lg border">
                 <table className="w-full text-xs">
                   <thead className="bg-muted/40 text-left text-[10px] uppercase tracking-wider text-muted-foreground">
