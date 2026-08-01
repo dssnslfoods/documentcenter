@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Eye, Download, Loader2, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { getProjectFileUrl } from "@/lib/project-files";
+import { getProjectFileUrl, guessContentType } from "@/lib/project-files";
 
 function isImage(path: string) {
   return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(path);
@@ -31,14 +31,29 @@ export function FilePreviewButton({
 }) {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState<string | null>(null);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => () => { if (blobUrl) URL.revokeObjectURL(blobUrl); }, [blobUrl]);
 
   const show = async () => {
     setOpen(true);
     if (url) return;
     setLoading(true);
     try {
-      setUrl(await getProjectFileUrl(path));
+      const signed = await getProjectFileUrl(path);
+      setUrl(signed);
+      if (signed) {
+        // Force a correct MIME type so browsers render (some files were stored as octet-stream)
+        try {
+          const res = await fetch(signed);
+          const raw = await res.blob();
+          const typed = new Blob([raw], { type: guessContentType(path) });
+          setBlobUrl(URL.createObjectURL(typed));
+        } catch {
+          setBlobUrl(null);
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -66,10 +81,12 @@ export function FilePreviewButton({
               </div>
             ) : isImage(path) ? (
               <div className="flex h-full items-center justify-center overflow-auto p-2">
-                <img src={url} alt={baseName(path)} className="max-h-full max-w-full object-contain" />
+                <img src={blobUrl ?? url} alt={baseName(path)} className="max-h-full max-w-full object-contain" />
               </div>
             ) : previewable ? (
-              <iframe src={url} title={baseName(path)} className="h-full w-full" />
+              <object data={blobUrl ?? url} type="application/pdf" className="h-full w-full">
+                <iframe src={blobUrl ?? url} title={baseName(path)} className="h-full w-full" />
+              </object>
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
                 ไฟล์ประเภทนี้ดูตัวอย่างในหน้าเว็บไม่ได้ — กรุณาดาวน์โหลด

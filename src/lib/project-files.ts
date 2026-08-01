@@ -1,6 +1,23 @@
 import { getSupabase } from "@/lib/supabase";
 
+const MIME_BY_EXT: Record<string, string> = {
+  pdf: "application/pdf",
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+  bmp: "image/bmp",
+  svg: "image/svg+xml",
+};
+
+export function guessContentType(name: string): string {
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  return MIME_BY_EXT[ext] ?? "application/octet-stream";
+}
+
 // Upload a file to project-files bucket, path = {projectId}/{timestamp}-{filename}
+
 export async function uploadProjectFile(
   projectId: string,
   file: File,
@@ -11,6 +28,7 @@ export async function uploadProjectFile(
   const { error } = await sb.storage.from("project-files").upload(path, file, {
     cacheControl: "3600",
     upsert: false,
+    contentType: file.type || guessContentType(file.name),
   });
   if (error) throw error;
   return path;
