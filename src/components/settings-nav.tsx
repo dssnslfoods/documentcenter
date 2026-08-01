@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Users, Building2, FolderTree, Tag, Settings as SettingsIcon, LayoutGrid, Briefcase, Percent, ShieldCheck } from "lucide-react";
+import { Users, Building2, FolderTree, Tag, Settings as SettingsIcon, LayoutGrid, Briefcase, Percent, ShieldCheck, Network } from "lucide-react";
+import { useIsPlatformOwner } from "@/lib/org";
 
 const items: { to: string; label: string; icon: typeof Users; exact?: boolean }[] = [
   { to: "/settings", label: "ภาพรวม", icon: LayoutGrid, exact: true },
@@ -15,9 +16,13 @@ const items: { to: string; label: string; icon: typeof Users; exact?: boolean }[
 
 export function SettingsNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { isPlatformOwner } = useIsPlatformOwner();
+  const visible = isPlatformOwner
+    ? [...items, { to: "/settings/organizations", label: "องค์กร", icon: Network }]
+    : items;
   return (
     <div className="-mx-1 flex gap-1 overflow-x-auto rounded-lg border bg-card p-1 sm:mx-0 sm:flex-wrap sm:overflow-visible">
-      {items.map((it) => {
+      {visible.map((it) => {
         const active = it.exact ? pathname === it.to || pathname === "/settings/" : pathname.startsWith(it.to);
         return (
           <Link
