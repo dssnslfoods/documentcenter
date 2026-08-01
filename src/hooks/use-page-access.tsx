@@ -84,11 +84,13 @@ export function useCanAccess() {
 
   const can = (key: PageKey) => {
     if (roles.length === 0) return false;
-    if (roles.includes("platform_owner")) {
-      // เข้าใช้งานเมนูขององค์กรได้เต็มสิทธิ์เฉพาะตอนอยู่ในโหมดสนับสนุน
+    const orgRoles = roles.filter((r) => r !== "platform_owner");
+    if (roles.includes("platform_owner") && orgRoles.length === 0) {
+      // ผู้ดูแลแพลตฟอร์มล้วน ๆ: เข้าเมนูขององค์กรได้เฉพาะตอนอยู่ในโหมดสนับสนุน
       if (!supportActive) return false;
       return key !== "organizations" && orgAllows(key);
     }
+
     // องค์กรต้องถูกเปิดใช้เมนูนี้ก่อน จึงจะดูสิทธิ์ระดับบทบาท
     if (!orgAllows(key)) return false;
     return roles.some((role) => {
