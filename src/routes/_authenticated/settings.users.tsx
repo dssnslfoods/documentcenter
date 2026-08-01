@@ -135,6 +135,19 @@ function UsersPage() {
     onError: (e: Error) => toast.error(e.message ?? "เกิดข้อผิดพลาด"),
   });
 
+  const revokePlatformOwner = useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await sb.from("user_roles").delete().eq("user_id", userId).eq("role", "platform_owner");
+      if (error) throw error;
+      await sb.from("profiles").update({ active_organization_id: null }).eq("id", userId);
+    },
+    onSuccess: () => {
+      toast.success("ถอดสิทธิ์ผู้ดูแลแพลตฟอร์มเรียบร้อย");
+      qc.invalidateQueries({ queryKey: ["users-list"] });
+    },
+    onError: (e: Error) => toast.error(e.message ?? "เกิดข้อผิดพลาด"),
+  });
+
   const changeDept = useMutation({
     mutationFn: async ({ userId, deptId }: { userId: string; deptId: string | null }) => {
       const { error } = await sb.from("profiles").update({ department_id: deptId }).eq("id", userId);
@@ -383,7 +396,7 @@ function UsersPage() {
                     <TableCell>
                       <Select value={u.roles[0] ?? ""}
                         onValueChange={(v) => changeRole.mutate({ userId: u.id, role: v as Role })}
-                        disabled={u.id === user.id || u.roles.includes("platform_owner" as Role)}>
+                        disabled={u.id === user.id}>
                         <SelectTrigger><SelectValue placeholder="เลือกบทบาท" /></SelectTrigger>
                         <SelectContent>
                           {ROLES.map((r) => (
@@ -391,6 +404,19 @@ function UsersPage() {
                           ))}
                         </SelectContent>
                       </Select>
+                      {u.roles.includes("platform_owner" as Role) && (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="mt-2 w-full"
+                          disabled={revokePlatformOwner.isPending}
+                          onClick={() => {
+                            if (confirm("ถอดสิทธิ์ผู้ดูแลแพลตฟอร์มของผู้ใช้รายนี้?")) revokePlatformOwner.mutate(u.id);
+                          }}
+                        >
+                          ถอดสิทธิ์แพลตฟอร์ม
+                        </Button>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Select value={u.department_id ?? "none"}
@@ -407,7 +433,7 @@ function UsersPage() {
                     <TableCell>
                       <Button size="sm" variant={u.is_active ? "outline" : "secondary"}
                         onClick={() => toggleActive.mutate({ userId: u.id, active: !u.is_active })}
-                        disabled={u.id === user.id || u.roles.includes("platform_owner" as Role)}>
+                        disabled={u.id === user.id}>
                         {u.is_active ? "ใช้งานอยู่" : "ปิดใช้งาน"}
                       </Button>
                     </TableCell>
