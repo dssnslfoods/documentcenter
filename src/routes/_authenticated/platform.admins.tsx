@@ -147,6 +147,50 @@ function OrgAdminsPage() {
   });
 
 
+  // ---- แต่งตั้งผู้ใช้ที่มีอยู่แล้วเป็นผู้ดูแลองค์กร
+  const [mode, setMode] = useState<"existing" | "new">("existing");
+  const [pickUserId, setPickUserId] = useState<string>("");
+
+  const { data: candidates, isLoading: candidatesLoading } = useQuery({
+    queryKey: ["platform-candidate-users", form.organizationId],
+    enabled: open && mode === "existing",
+    queryFn: async () => {
+      let q = sb
+        .from("profiles")
+        .select("id, email, full_name, organization_id, is_active")
+        .order("full_name");
+      if (form.organizationId) q = q.eq("organization_id", form.organizationId);
+      const { data } = await q;
+      return (data ?? []) as AdminRow[];
+    },
+  });
+
+  const candidateList = useMemo(
+    () => (candidates ?? []).filter((c) => !(admins ?? []).some((a) => a.id === c.id)),
+    [candidates, admins],
+  );
+
+  const promoteExisting = useMutation({
+    mutationFn: async (userId: string) => {
+      if (!form.organizationId) throw new Error("กรุณาเลือกองค์กร");
+      await sb.from("user_roles").delete().eq("user_id", userId).neq("role", "platform_owner");
+      const { error } = await sb.from("user_roles").insert({ user_id: userId, role: "super_admin" });
+      if (error) throw error;
+      const { error: pErr } = await sb
+        .from("profiles")
+        .update({ organization_id: form.organizationId, is_active: true })
+        .eq("id", userId);
+      if (pErr) throw pErr;
+    },
+    onSuccess: () => {
+      toast.success("แต่งตั้งเป็นผู้ดูแลองค์กรเรียบร้อย");
+      setPickUserId("");
+      setOpen(false);
+      qc.invalidateQueries({ queryKey: ["platform-org-admins"] });
+    },
+    onError: (e: Error) => toast.error(e.message ?? "แต่งตั้งไม่สำเร็จ"),
+  });
+
   const toggleActive = useMutation({
     mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
       const { error } = await sb.from("profiles").update({ is_active: active }).eq("id", id);
@@ -297,6 +341,25 @@ function OrgAdminsPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2 rounded-md bg-muted/50 p-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={mode === "existing" ? "default" : "ghost"}
+                      onClick={() => setMode("existing")}
+                    >
+                      เลือกผู้ใช้ที่มีอยู่
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={mode === "new" ? "default" : "ghost"}
+                      onClick={() => setMode("new")}
+                    >
+                      สร้างบัญชีใหม่
+                    </Button>
+                  </div>
+
                   <div className="space-y-1.5">
                     <Label>องค์กร *</Label>
                     <Select value={form.organizationId} onValueChange={(v) => setForm({ ...form, organizationId: v })}>
@@ -308,28 +371,69 @@ function OrgAdminsPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>อีเมล *</Label>
-                    <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>ชื่อ-นามสกุล</Label>
-                    <Input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>รหัสผ่านเริ่มต้น *</Label>
-                    <div className="flex gap-2">
-                      <Input value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
-                      <Button type="button" variant="outline" onClick={() => setForm({ ...form, password: genPassword() })}>
-                        สุ่ม
-                      </Button>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setOpen(false)}>ยกเลิก</Button>
-                    <Button onClick={() => create.mutate()} disabled={create.isPending}>สร้างบัญชี</Button>
-                  </DialogFooter>
+
+                  {mode === "existing" ? (
+                    <>
+                      <div className="space-y-1.5">
+                        <Label>เลือกผู้ใช้ *</Label>
+                        <Select value={pickUserId} onValueChange={setPickUserId}>
+                          <SelectTrigger>
+                            <SelectValue placeholder={candidatesLoading ? "กำลังโหลดผู้ใช้..." : "เลือกบัญชีผู้ใช้"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {candidateList.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {(c.full_name || c.email) ?? c.id} {c.email && c.full_name ? `· ${c.email}` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {!candidatesLoading && !candidateList.length && (
+                          <p className="text-xs text-muted-foreground">
+                            {form.organizationId ? "องค์กรนี้ยังไม่มีผู้ใช้อื่น" : "เลือกองค์กรเพื่อกรองผู้ใช้ หรือดูผู้ใช้ทั้งหมด"}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          ผู้ใช้ที่เลือกจะถูกกำหนดบทบาท super_admin และย้ายเข้าองค์กรที่เลือก
+                        </p>
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setOpen(false)}>ยกเลิก</Button>
+                        <Button
+                          disabled={!pickUserId || !form.organizationId || promoteExisting.isPending}
+                          onClick={() => promoteExisting.mutate(pickUserId)}
+                        >
+                          แต่งตั้งเป็นผู้ดูแลองค์กร
+                        </Button>
+                      </DialogFooter>
+                    </>
+                  ) : (
+                    <>
+                      <div className="space-y-1.5">
+                        <Label>อีเมล *</Label>
+                        <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>ชื่อ-นามสกุล</Label>
+                        <Input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>รหัสผ่านเริ่มต้น *</Label>
+                        <div className="flex gap-2">
+                          <Input value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+                          <Button type="button" variant="outline" onClick={() => setForm({ ...form, password: genPassword() })}>
+                            สุ่ม
+                          </Button>
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setOpen(false)}>ยกเลิก</Button>
+                        <Button onClick={() => create.mutate()} disabled={create.isPending}>สร้างบัญชี</Button>
+                      </DialogFooter>
+                    </>
+                  )}
                 </div>
+
               )}
             </DialogContent>
           </Dialog>
