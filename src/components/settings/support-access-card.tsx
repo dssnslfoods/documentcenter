@@ -10,7 +10,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-supabase";
 import { useMyRoles } from "@/hooks/use-page-access";
-import { isSupportActive, useMySupportAccess, useSetSupportAccess } from "@/lib/support-access";
+import {
+  isSupportActive,
+  useMySupportAccess,
+  useSetSupportAccess,
+  useRevokeSupportAccess,
+} from "@/lib/support-access";
 
 /** การ์ดสำหรับผู้ดูแลองค์กร (super_admin) เปิด/ปิดสิทธิ์ให้ผู้ดูแลแพลตฟอร์มเข้าช่วยสนับสนุน */
 export function SupportAccessCard() {
@@ -18,6 +23,7 @@ export function SupportAccessCard() {
   const { roles } = useMyRoles();
   const { orgId, row, isLoading } = useMySupportAccess();
   const setAccess = useSetSupportAccess();
+  const revoke = useRevokeSupportAccess();
   const [enabled, setEnabled] = useState(false);
   const [expiresAt, setExpiresAt] = useState("");
   const [note, setNote] = useState("");
@@ -101,9 +107,30 @@ export function SupportAccessCard() {
           <div className="text-xs text-muted-foreground">
             {row?.granted_at ? `เปิดสิทธิ์ล่าสุด: ${new Date(row.granted_at).toLocaleString("th-TH")}` : "ยังไม่เคยเปิดสิทธิ์"}
           </div>
-          <Button size="sm" variant="outline" disabled={!enabled || setAccess.isPending} onClick={() => save(true)}>
-            บันทึกเงื่อนไข
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={revoke.isPending || !orgId}
+              onClick={() =>
+                orgId &&
+                revoke.mutate(orgId, {
+                  onSuccess: () => {
+                    setEnabled(false);
+                    setExpiresAt("");
+                    setNote("");
+                    toast.success("ถอดสิทธิ์ผู้ดูแลแพลตฟอร์มแล้ว");
+                  },
+                  onError: (e: Error) => toast.error(e.message),
+                })
+              }
+            >
+              ถอดสิทธิ์ทันที
+            </Button>
+            <Button size="sm" variant="outline" disabled={!enabled || setAccess.isPending} onClick={() => save(true)}>
+              บันทึกเงื่อนไข
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
