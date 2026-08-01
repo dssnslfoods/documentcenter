@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import type { AppRole } from "@/lib/types";
 import { defaultAllowed, type PageKey } from "@/lib/pages";
+import { useMyOrgPageAccess } from "@/lib/org-access";
 
 export function useMyRoles() {
   const { user } = useAuth();
@@ -38,16 +39,21 @@ export function useAccessMatrix() {
 export function useCanAccess() {
   const { roles, isLoading: rolesLoading } = useMyRoles();
   const { data, isLoading } = useAccessMatrix();
+  const { orgAllows, isLoading: orgLoading } = useMyOrgPageAccess();
 
   const can = (key: PageKey) => {
     if (roles.length === 0) return false;
+    // ผู้ดูแลแพลตฟอร์มใช้เมนูของโซนแพลตฟอร์มเท่านั้น
+    if (roles.includes("platform_owner")) return false;
+    // องค์กรต้องถูกเปิดใช้เมนูนี้ก่อน จึงจะดูสิทธิ์ระดับบทบาท
+    if (!orgAllows(key)) return false;
     return roles.some((role) => {
       const row = data?.rows.find((r) => r.role === role && r.page_key === key);
       return row ? row.allowed : defaultAllowed(role, key);
     });
   };
 
-  return { can, roles, isLoading: rolesLoading || isLoading };
+  return { can, roles, isLoading: rolesLoading || isLoading || orgLoading };
 }
 
 /** Guard a page: returns a node to render instead of the page when not allowed. */

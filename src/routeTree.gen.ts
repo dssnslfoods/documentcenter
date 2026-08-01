@@ -27,6 +27,7 @@ import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings.index'
 import { Route as AuthenticatedQuotationsIndexRouteImport } from './routes/_authenticated/quotations.index'
 import { Route as AuthenticatedProjectsIndexRouteImport } from './routes/_authenticated/projects.index'
+import { Route as AuthenticatedPlatformIndexRouteImport } from './routes/_authenticated/platform.index'
 import { Route as AuthenticatedDocumentsIndexRouteImport } from './routes/_authenticated/documents.index'
 import { Route as AuthenticatedContractsIndexRouteImport } from './routes/_authenticated/contracts.index'
 import { Route as AuthenticatedSettingsWorkTypesRouteImport } from './routes/_authenticated/settings.work-types'
@@ -42,6 +43,8 @@ import { Route as AuthenticatedQuotationsNewRouteImport } from './routes/_authen
 import { Route as AuthenticatedQuotationsIdRouteImport } from './routes/_authenticated/quotations.$id'
 import { Route as AuthenticatedProjectsNewRouteImport } from './routes/_authenticated/projects.new'
 import { Route as AuthenticatedProjectsIdRouteImport } from './routes/_authenticated/projects.$id'
+import { Route as AuthenticatedPlatformMenusRouteImport } from './routes/_authenticated/platform.menus'
+import { Route as AuthenticatedPlatformAdminsRouteImport } from './routes/_authenticated/platform.admins'
 import { Route as AuthenticatedDocumentsIdRouteImport } from './routes/_authenticated/documents.$id'
 import { Route as AuthenticatedContractsIdRouteImport } from './routes/_authenticated/contracts.$id'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
@@ -143,6 +146,12 @@ const AuthenticatedProjectsIndexRoute =
     path: '/projects/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedPlatformIndexRoute =
+  AuthenticatedPlatformIndexRouteImport.update({
+    id: '/platform/',
+    path: '/platform/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDocumentsIndexRoute =
   AuthenticatedDocumentsIndexRouteImport.update({
     id: '/documents/',
@@ -232,6 +241,18 @@ const AuthenticatedProjectsIdRoute = AuthenticatedProjectsIdRouteImport.update({
   path: '/projects/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPlatformMenusRoute =
+  AuthenticatedPlatformMenusRouteImport.update({
+    id: '/platform/menus',
+    path: '/platform/menus',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedPlatformAdminsRoute =
+  AuthenticatedPlatformAdminsRouteImport.update({
+    id: '/platform/admins',
+    path: '/platform/admins',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDocumentsIdRoute =
   AuthenticatedDocumentsIdRouteImport.update({
     id: '/documents/$id',
@@ -280,6 +301,8 @@ export interface FileRoutesByFullPath {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/contracts/$id': typeof AuthenticatedContractsIdRoute
   '/documents/$id': typeof AuthenticatedDocumentsIdRoute
+  '/platform/admins': typeof AuthenticatedPlatformAdminsRoute
+  '/platform/menus': typeof AuthenticatedPlatformMenusRoute
   '/projects/$id': typeof AuthenticatedProjectsIdRoute
   '/projects/new': typeof AuthenticatedProjectsNewRoute
   '/quotations/$id': typeof AuthenticatedQuotationsIdRoute
@@ -295,6 +318,7 @@ export interface FileRoutesByFullPath {
   '/settings/work-types': typeof AuthenticatedSettingsWorkTypesRoute
   '/contracts/': typeof AuthenticatedContractsIndexRoute
   '/documents/': typeof AuthenticatedDocumentsIndexRoute
+  '/platform/': typeof AuthenticatedPlatformIndexRoute
   '/projects/': typeof AuthenticatedProjectsIndexRoute
   '/quotations/': typeof AuthenticatedQuotationsIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
@@ -319,6 +343,8 @@ export interface FileRoutesByTo {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/contracts/$id': typeof AuthenticatedContractsIdRoute
   '/documents/$id': typeof AuthenticatedDocumentsIdRoute
+  '/platform/admins': typeof AuthenticatedPlatformAdminsRoute
+  '/platform/menus': typeof AuthenticatedPlatformMenusRoute
   '/projects/$id': typeof AuthenticatedProjectsIdRoute
   '/projects/new': typeof AuthenticatedProjectsNewRoute
   '/quotations/$id': typeof AuthenticatedQuotationsIdRoute
@@ -334,6 +360,7 @@ export interface FileRoutesByTo {
   '/settings/work-types': typeof AuthenticatedSettingsWorkTypesRoute
   '/contracts': typeof AuthenticatedContractsIndexRoute
   '/documents': typeof AuthenticatedDocumentsIndexRoute
+  '/platform': typeof AuthenticatedPlatformIndexRoute
   '/projects': typeof AuthenticatedProjectsIndexRoute
   '/quotations': typeof AuthenticatedQuotationsIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
@@ -360,6 +387,8 @@ export interface FileRoutesById {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/contracts/$id': typeof AuthenticatedContractsIdRoute
   '/_authenticated/documents/$id': typeof AuthenticatedDocumentsIdRoute
+  '/_authenticated/platform/admins': typeof AuthenticatedPlatformAdminsRoute
+  '/_authenticated/platform/menus': typeof AuthenticatedPlatformMenusRoute
   '/_authenticated/projects/$id': typeof AuthenticatedProjectsIdRoute
   '/_authenticated/projects/new': typeof AuthenticatedProjectsNewRoute
   '/_authenticated/quotations/$id': typeof AuthenticatedQuotationsIdRoute
@@ -375,6 +404,7 @@ export interface FileRoutesById {
   '/_authenticated/settings/work-types': typeof AuthenticatedSettingsWorkTypesRoute
   '/_authenticated/contracts/': typeof AuthenticatedContractsIndexRoute
   '/_authenticated/documents/': typeof AuthenticatedDocumentsIndexRoute
+  '/_authenticated/platform/': typeof AuthenticatedPlatformIndexRoute
   '/_authenticated/projects/': typeof AuthenticatedProjectsIndexRoute
   '/_authenticated/quotations/': typeof AuthenticatedQuotationsIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
@@ -401,6 +431,8 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/contracts/$id'
     | '/documents/$id'
+    | '/platform/admins'
+    | '/platform/menus'
     | '/projects/$id'
     | '/projects/new'
     | '/quotations/$id'
@@ -416,6 +448,7 @@ export interface FileRouteTypes {
     | '/settings/work-types'
     | '/contracts/'
     | '/documents/'
+    | '/platform/'
     | '/projects/'
     | '/quotations/'
     | '/settings/'
@@ -440,6 +473,8 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/contracts/$id'
     | '/documents/$id'
+    | '/platform/admins'
+    | '/platform/menus'
     | '/projects/$id'
     | '/projects/new'
     | '/quotations/$id'
@@ -455,6 +490,7 @@ export interface FileRouteTypes {
     | '/settings/work-types'
     | '/contracts'
     | '/documents'
+    | '/platform'
     | '/projects'
     | '/quotations'
     | '/settings'
@@ -480,6 +516,8 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/contracts/$id'
     | '/_authenticated/documents/$id'
+    | '/_authenticated/platform/admins'
+    | '/_authenticated/platform/menus'
     | '/_authenticated/projects/$id'
     | '/_authenticated/projects/new'
     | '/_authenticated/quotations/$id'
@@ -495,6 +533,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/work-types'
     | '/_authenticated/contracts/'
     | '/_authenticated/documents/'
+    | '/_authenticated/platform/'
     | '/_authenticated/projects/'
     | '/_authenticated/quotations/'
     | '/_authenticated/settings/'
@@ -642,6 +681,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProjectsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/platform/': {
+      id: '/_authenticated/platform/'
+      path: '/platform'
+      fullPath: '/platform/'
+      preLoaderRoute: typeof AuthenticatedPlatformIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/documents/': {
       id: '/_authenticated/documents/'
       path: '/documents'
@@ -747,6 +793,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProjectsIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/platform/menus': {
+      id: '/_authenticated/platform/menus'
+      path: '/platform/menus'
+      fullPath: '/platform/menus'
+      preLoaderRoute: typeof AuthenticatedPlatformMenusRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/platform/admins': {
+      id: '/_authenticated/platform/admins'
+      path: '/platform/admins'
+      fullPath: '/platform/admins'
+      preLoaderRoute: typeof AuthenticatedPlatformAdminsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/documents/$id': {
       id: '/_authenticated/documents/$id'
       path: '/documents/$id'
@@ -796,6 +856,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSearchRoute: typeof AuthenticatedSearchRoute
   AuthenticatedContractsIdRoute: typeof AuthenticatedContractsIdRoute
   AuthenticatedDocumentsIdRoute: typeof AuthenticatedDocumentsIdRoute
+  AuthenticatedPlatformAdminsRoute: typeof AuthenticatedPlatformAdminsRoute
+  AuthenticatedPlatformMenusRoute: typeof AuthenticatedPlatformMenusRoute
   AuthenticatedProjectsIdRoute: typeof AuthenticatedProjectsIdRoute
   AuthenticatedProjectsNewRoute: typeof AuthenticatedProjectsNewRoute
   AuthenticatedQuotationsIdRoute: typeof AuthenticatedQuotationsIdRoute
@@ -811,6 +873,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsWorkTypesRoute: typeof AuthenticatedSettingsWorkTypesRoute
   AuthenticatedContractsIndexRoute: typeof AuthenticatedContractsIndexRoute
   AuthenticatedDocumentsIndexRoute: typeof AuthenticatedDocumentsIndexRoute
+  AuthenticatedPlatformIndexRoute: typeof AuthenticatedPlatformIndexRoute
   AuthenticatedProjectsIndexRoute: typeof AuthenticatedProjectsIndexRoute
   AuthenticatedQuotationsIndexRoute: typeof AuthenticatedQuotationsIndexRoute
   AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
@@ -827,6 +890,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSearchRoute: AuthenticatedSearchRoute,
   AuthenticatedContractsIdRoute: AuthenticatedContractsIdRoute,
   AuthenticatedDocumentsIdRoute: AuthenticatedDocumentsIdRoute,
+  AuthenticatedPlatformAdminsRoute: AuthenticatedPlatformAdminsRoute,
+  AuthenticatedPlatformMenusRoute: AuthenticatedPlatformMenusRoute,
   AuthenticatedProjectsIdRoute: AuthenticatedProjectsIdRoute,
   AuthenticatedProjectsNewRoute: AuthenticatedProjectsNewRoute,
   AuthenticatedQuotationsIdRoute: AuthenticatedQuotationsIdRoute,
@@ -843,6 +908,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsWorkTypesRoute: AuthenticatedSettingsWorkTypesRoute,
   AuthenticatedContractsIndexRoute: AuthenticatedContractsIndexRoute,
   AuthenticatedDocumentsIndexRoute: AuthenticatedDocumentsIndexRoute,
+  AuthenticatedPlatformIndexRoute: AuthenticatedPlatformIndexRoute,
   AuthenticatedProjectsIndexRoute: AuthenticatedProjectsIndexRoute,
   AuthenticatedQuotationsIndexRoute: AuthenticatedQuotationsIndexRoute,
   AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
