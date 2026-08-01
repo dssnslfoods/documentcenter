@@ -13,6 +13,7 @@ export async function adminInviteUser(input: {
   email: string;
   password: string;
   fullName?: string;
+  organizationId?: string | null;
 }): Promise<{ userId: string | null; needsConfirmation: boolean }> {
   const cfg = await getSupabaseConfig();
   const tmp = createClient(cfg.url, cfg.anonKey, {
@@ -26,7 +27,10 @@ export async function adminInviteUser(input: {
     email: input.email,
     password: input.password,
     options: {
-      data: { full_name: input.fullName ?? input.email },
+      data: {
+        full_name: input.fullName ?? input.email,
+        ...(input.organizationId ? { organization_id: input.organizationId } : {}),
+      },
     },
   });
   if (error) throw error;

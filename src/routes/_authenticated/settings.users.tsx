@@ -23,6 +23,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { ShieldAlert, UserPlus, Search, Copy } from "lucide-react";
 import { adminInviteUser } from "@/lib/admin-invite";
+import { useMyOrg } from "@/lib/org";
 
 export const Route = createFileRoute("/_authenticated/settings/users")({
   head: () => ({ meta: [{ title: "ผู้ใช้งานและสิทธิ์ | Document Hub" }] }),
@@ -53,6 +54,7 @@ function UsersPage() {
   const sb = getSupabase();
   const qc = useQueryClient();
   const { user } = useAuth();
+  const { data: myOrg } = useMyOrg();
   const [q, setQ] = useState("");
   const [deptFilter, setDeptFilter] = useState<string>("all");
   const [roleFilter, setRoleFilter] = useState<string>("all");
@@ -163,7 +165,7 @@ function UsersPage() {
       const pw = invForm.password;
       if (!email || !pw) throw new Error("กรุณากรอกอีเมลและรหัสผ่าน");
       if (pw.length < 8) throw new Error("รหัสผ่านต้องยาวอย่างน้อย 8 ตัวอักษร");
-      const res = await adminInviteUser({ email, password: pw, fullName: invForm.fullName || email });
+      const res = await adminInviteUser({ email, password: pw, fullName: invForm.fullName || email, organizationId: myOrg?.activeId ?? null });
       // If user came back (no email confirmation), update role/dept immediately
       if (res.userId) {
         if (invForm.role && invForm.role !== "staff") {

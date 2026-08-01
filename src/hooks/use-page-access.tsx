@@ -83,7 +83,8 @@ export function usePageGuard(key: PageKey, title: string) {
  */
 export function useCanSeeMoney() {
   const { roles, isLoading } = useMyRoles();
-  const canSeeMoney = roles.includes("super_admin") || roles.includes("management");
+  const canSeeMoney =
+    roles.includes("platform_owner") || roles.includes("super_admin") || roles.includes("management");
   return { canSeeMoney, isLoading };
 }
 

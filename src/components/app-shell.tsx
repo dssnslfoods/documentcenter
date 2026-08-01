@@ -6,6 +6,7 @@ import {
   Search, LogOut, User as UserIcon, Menu, X, ChevronDown, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
+import { OrgSwitcher } from "@/components/org-switcher";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -260,7 +261,9 @@ function SidebarContent({
           </div>
         )}
       </div>
+      <OrgSwitcher collapsed={collapsed} />
       <nav className="flex-1 space-y-4 overflow-y-auto p-2 py-4">
+
         {sections.map((section) => (
           <div key={section.label} className="space-y-0.5">
             {!collapsed && (

@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/page-header";
 import { SettingsNav } from "@/components/settings-nav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Building2, FolderTree, Settings as SettingsIcon, Tag, Briefcase, Percent, ShieldCheck } from "lucide-react";
+import { Users, Building2, FolderTree, Settings as SettingsIcon, Tag, Briefcase, Percent, ShieldCheck, Network } from "lucide-react";
+import { useIsPlatformOwner, useMyOrg } from "@/lib/org";
 
 export const Route = createFileRoute("/_authenticated/settings/")({
   head: () => ({ meta: [{ title: "ตั้งค่าระบบ | Document Hub" }] }),
@@ -23,12 +24,25 @@ const cards = [
 ];
 
 function Settings() {
+  const { isPlatformOwner } = useIsPlatformOwner();
+  const { data: myOrg } = useMyOrg();
+  const shown = isPlatformOwner
+    ? [
+        { icon: Network, title: "องค์กร", desc: "จัดการองค์กรทั้งหมดในระบบ และสลับเข้าดูแต่ละองค์กร", to: "/settings/organizations" as const },
+        ...cards,
+      ]
+    : cards;
   return (
     <div className="space-y-6">
-      <PageHeader title="ตั้งค่าระบบ" description="จัดการ Master Data และการตั้งค่าองค์กร (สำหรับ Super Admin)" />
+      <PageHeader title="ตั้งค่าระบบ" description={
+          myOrg?.activeId
+            ? `จัดการ Master Data และการตั้งค่าขององค์กร: ${myOrg.org?.name ?? ""}`
+            : "มุมมองแพลตฟอร์ม — เห็นข้อมูลทุกองค์กร"
+        }
+      />
       <SettingsNav />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {cards.map((c) => (
+        {shown.map((c) => (
           <Link key={c.title} to={c.to}>
             <Card className="h-full cursor-pointer transition-shadow hover:shadow-md">
               <CardHeader>

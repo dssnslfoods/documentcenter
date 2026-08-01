@@ -17,7 +17,7 @@ export function useAdminGuard() {
     },
   });
 
-  const allowed = !!roles?.includes("super_admin");
+  const allowed = !!roles?.includes("super_admin") || !!roles?.includes("platform_owner");
 
   if (!user || isLoading) {
     return {
