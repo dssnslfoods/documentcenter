@@ -219,6 +219,11 @@ export function CustomerQuotationsTab({
                     </>
                   )}
                   {canEdit && (
+                    <Button size="sm" variant="outline" title="แก้ไขรายละเอียด" onClick={() => setEditRow(r)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {canEdit && (
                     <Button
                       size="sm"
                       variant={r.is_final ? "secondary" : "outline"}
@@ -229,6 +234,7 @@ export function CustomerQuotationsTab({
                       {r.is_final ? "ยกเลิก Final" : "เลือกเป็น Final"}
                     </Button>
                   )}
+
                   {canEdit && (
                     <Button
                       size="sm"
