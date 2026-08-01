@@ -47,11 +47,11 @@ const TAB_ORDER = [
   { value: "rfq", label: "2 · RFQ / Spec" },
   { value: "supplier", label: "3 · ใบเสนอ Supplier" },
   { value: "customer", label: "4 · ยื่นข้อเสนอลูกค้า" },
-  { value: "contract", label: "5 · สัญญา" },
+  { value: "contract", label: "5 · สัญญา / งวดงาน" },
   { value: "timeline", label: "6 · แผนงาน (Timeline)" },
-  { value: "milestones", label: "7 · งวดงาน" },
-  { value: "team", label: "8 · สมาชิกโครงการ" },
-  { value: "history", label: "9 · ประวัติการแก้ไข" },
+  { value: "team", label: "7 · สมาชิกโครงการ" },
+  { value: "history", label: "8 · ประวัติการแก้ไข" },
+
 ] as const;
 
 
