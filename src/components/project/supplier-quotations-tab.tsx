@@ -237,15 +237,21 @@ export function SupplierQuotationsTab({
                         {r.is_selected ? "ยกเลิก Final" : "เลือกเป็น Final"}
                       </Button>
 
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-destructive"
-                        onClick={() => confirm("ลบใบเสนอราคานี้?") && remove.mutate(r.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button size="sm" variant="outline" title="แก้ไขรายละเอียด" onClick={() => setEditRow(r)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive"
+                          onClick={() => confirm("ลบใบเสนอราคานี้?") && remove.mutate(r.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
+
                   )}
                 </CardContent>
               </Card>
