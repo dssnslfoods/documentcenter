@@ -147,10 +147,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           roleLabel={roleLabel}
           can={can}
           isPlatformOwner={platformOnly}
-          supportActive={support.active}
-          supportOrgName={support.org?.name ?? null}
-          onExitSupport={exitSupport}
         />
+
 
       </aside>
 
@@ -176,10 +174,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               roleLabel={roleLabel}
               can={can}
               isPlatformOwner={platformOnly}
-              supportActive={support.active}
-              supportOrgName={support.org?.name ?? null}
-              onExitSupport={exitSupport}
             />
+
 
 
           </aside>
@@ -297,7 +293,6 @@ function NotificationBell({ userId }: { userId: string | undefined }) {
 
 function SidebarContent({
   collapsed, pathname, displayName, email, position, roleLabel, can, isPlatformOwner,
-  supportActive, supportOrgName, onExitSupport,
 }: {
   collapsed: boolean;
   pathname: string;
@@ -307,10 +302,8 @@ function SidebarContent({
   roleLabel?: string | null;
   can: (key: PageKey) => boolean;
   isPlatformOwner?: boolean;
-  supportActive?: boolean;
-  supportOrgName?: string | null;
-  onExitSupport?: () => void;
 }) {
+
 
   const sections = isPlatformOwner
     ? PLATFORM_SECTIONS
@@ -330,7 +323,7 @@ function SidebarContent({
           </div>
         )}
       </div>
-      {!isPlatformOwner && <OrgSwitcher collapsed={collapsed} />}
+      <OrgSwitcher collapsed={collapsed} />
       <nav className="flex-1 space-y-4 overflow-y-auto p-2 py-4">
 
         {sections.map((section) => (
@@ -364,36 +357,8 @@ function SidebarContent({
             })}
           </div>
         ))}
-
-        {supportActive && (
-          <div className="space-y-0.5 rounded-lg border border-warning/40 bg-warning/10 p-2">
-            {!collapsed && (
-              <div className="px-1 pb-1 text-[10px] font-semibold uppercase tracking-wider text-warning">
-                โหมดสนับสนุน
-              </div>
-            )}
-            {!collapsed && supportOrgName && (
-              <div className="truncate px-1 pb-1 text-[11px] text-muted-foreground">{supportOrgName}</div>
-            )}
-            <Link
-              to="/platform"
-              className="flex items-center gap-3 rounded-md px-2 py-2 text-sm text-sidebar-foreground/90 transition-colors hover:bg-sidebar-accent"
-              title={collapsed ? "ไปหน้าผู้ดูแลแพลตฟอร์ม" : undefined}
-            >
-              <Building2 className="h-4 w-4 shrink-0" />
-              {!collapsed && <span className="truncate">ไปหน้าผู้ดูแลแพลตฟอร์ม</span>}
-            </Link>
-            <button
-              onClick={onExitSupport}
-              className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm text-sidebar-foreground/90 transition-colors hover:bg-sidebar-accent"
-              title={collapsed ? "ออกจากโหมดสนับสนุน" : undefined}
-            >
-              <LifeBuoy className="h-4 w-4 shrink-0" />
-              {!collapsed && <span className="truncate">ออกจากโหมดสนับสนุน</span>}
-            </button>
-          </div>
-        )}
       </nav>
+
       <div className="border-t border-sidebar-border p-3">
 
         <Link
