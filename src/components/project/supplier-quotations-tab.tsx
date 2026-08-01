@@ -54,8 +54,10 @@ export function SupplierQuotationsTab({
   const sb = getSupabase();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editRow, setEditRow] = useState<Row | null>(null);
   const [rfqPrompt, setRfqPrompt] = useState<{ supplier: string; items: ScannedItem[] } | null>(null);
   const [savingRfq, setSavingRfq] = useState(false);
+
 
   const { data: partners } = usePartners("supplier");
 
