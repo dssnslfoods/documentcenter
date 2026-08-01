@@ -4,7 +4,7 @@ export type PageKey =
   | "dashboard" | "calendar" | "notifications"
   | "projects" | "quotations" | "partners"
   | "documents" | "contracts"
-  | "reports" | "audit-log" | "settings";
+  | "reports" | "audit-log" | "settings" | "organizations";
 
 export const PAGES: { key: PageKey; label: string; to: string; group: string }[] = [
   { key: "dashboard", label: "ภาพรวม", to: "/dashboard", group: "งานประจำวัน" },
@@ -18,10 +18,12 @@ export const PAGES: { key: PageKey; label: string; to: string; group: string }[]
   { key: "reports", label: "รายงาน", to: "/reports", group: "กำกับและควบคุม" },
   { key: "audit-log", label: "Audit Log", to: "/audit-log", group: "กำกับและควบคุม" },
   { key: "settings", label: "ตั้งค่าระบบ", to: "/settings", group: "กำกับและควบคุม" },
+  { key: "organizations", label: "องค์กร", to: "/settings/organizations", group: "กำกับและควบคุม" },
 ];
 
 export const ROLES: { value: AppRole; label: string }[] = [
-  { value: "super_admin", label: "ผู้ดูแลระบบสูงสุด" },
+  { value: "platform_owner", label: "ผู้ดูแลแพลตฟอร์ม" },
+  { value: "super_admin", label: "ผู้ดูแลองค์กร" },
   { value: "management", label: "ผู้บริหาร" },
   { value: "dept_manager", label: "หัวหน้าแผนก" },
   { value: "staff", label: "พนักงาน" },
@@ -30,11 +32,12 @@ export const ROLES: { value: AppRole; label: string }[] = [
 
 /** Fallback matrix used when the role_page_access table has no row (or is missing). */
 export const DEFAULT_ACCESS: Record<AppRole, PageKey[]> = {
-  super_admin: PAGES.map((p) => p.key),
-  management: PAGES.filter((p) => p.key !== "settings").map((p) => p.key),
-  // ใบเสนอราคา / คู่ค้าและลูกค้า / รายงาน เปิดเฉพาะผู้ดูแลระบบสูงสุด และผู้บริหาร
+  platform_owner: PAGES.map((p) => p.key),
+  super_admin: PAGES.filter((p) => p.key !== "organizations").map((p) => p.key),
+  management: PAGES.filter((p) => !["settings", "organizations"].includes(p.key)).map((p) => p.key),
+  // ใบเสนอราคา / คู่ค้าและลูกค้า / รายงาน เปิดเฉพาะผู้ดูแลระบบ และผู้บริหาร
   dept_manager: PAGES.filter(
-    (p) => !["settings", "audit-log", "quotations", "partners", "reports"].includes(p.key),
+    (p) => !["settings", "organizations", "audit-log", "quotations", "partners", "reports"].includes(p.key),
   ).map((p) => p.key),
   staff: ["dashboard", "calendar", "notifications", "projects"],
   viewer: ["dashboard", "calendar", "notifications", "projects"],
