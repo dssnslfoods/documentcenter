@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { ShieldAlert, UserPlus, Search, Copy } from "lucide-react";
 import { adminInviteUser } from "@/lib/admin-invite";
 import { useMyOrg } from "@/lib/org";
+import { useMySupportAccess, useSetSupportAccess, useRevokeSupportAccess, isSupportActive } from "@/lib/support-access";
 
 export const Route = createFileRoute("/_authenticated/settings/users")({
   head: () => ({ meta: [{ title: "ผู้ใช้งานและสิทธิ์ | Document Hub" }] }),
@@ -54,6 +55,10 @@ function UsersPage() {
   const qc = useQueryClient();
   const { user } = useAuth();
   const { data: myOrg } = useMyOrg();
+  const { orgId: supportOrgId, row: supportRow } = useMySupportAccess();
+  const setSupport = useSetSupportAccess();
+  const revokeSupport = useRevokeSupportAccess();
+  const supportOn = isSupportActive(supportRow);
   const [q, setQ] = useState("");
   const [deptFilter, setDeptFilter] = useState<string>("all");
   const [roleFilter, setRoleFilter] = useState<string>("all");
@@ -411,11 +416,38 @@ function UsersPage() {
                       </Select>
                     </TableCell>
                     <TableCell>
-                      <Button size="sm" variant={u.is_active ? "outline" : "secondary"}
-                        onClick={() => toggleActive.mutate({ userId: u.id, active: !u.is_active })}
-                        disabled={u.id === user.id}>
-                        {u.is_active ? "ใช้งานอยู่" : "ปิดใช้งาน"}
-                      </Button>
+                      {u.roles.includes("platform_owner" as Role) ? (
+                        <div className="space-y-1">
+                          <Button size="sm" variant={supportOn ? "outline" : "secondary"}
+                            disabled={!supportOrgId || setSupport.isPending || revokeSupport.isPending}
+                            onClick={() => {
+                              if (!supportOrgId) return;
+                              if (supportOn) {
+                                revokeSupport.mutate(supportOrgId, {
+                                  onSuccess: () => toast.success("ปิดการใช้งานแล้ว — ผู้ดูแลแพลตฟอร์มเข้าองค์กรนี้ไม่ได้"),
+                                  onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "ปิดการใช้งานไม่สำเร็จ"),
+                                });
+                              } else {
+                                setSupport.mutate(
+                                  { organizationId: supportOrgId, enabled: true, grantedBy: user.id },
+                                  {
+                                    onSuccess: () => toast.success("เปิดให้ผู้ดูแลแพลตฟอร์มเข้าองค์กรนี้ได้"),
+                                    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "เปิดการใช้งานไม่สำเร็จ"),
+                                  },
+                                );
+                              }
+                            }}>
+                            {supportOn ? "ใช้งานอยู่" : "ปิดใช้งาน"}
+                          </Button>
+                          <p className="text-xs text-muted-foreground">สิทธิ์เข้าองค์กรนี้ของผู้ดูแลแพลตฟอร์ม</p>
+                        </div>
+                      ) : (
+                        <Button size="sm" variant={u.is_active ? "outline" : "secondary"}
+                          onClick={() => toggleActive.mutate({ userId: u.id, active: !u.is_active })}
+                          disabled={u.id === user.id}>
+                          {u.is_active ? "ใช้งานอยู่" : "ปิดใช้งาน"}
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
