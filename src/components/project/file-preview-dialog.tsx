@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Eye, Download, Loader2, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { getProjectFileUrl } from "@/lib/project-files";
+import { getProjectFileUrl, guessContentType } from "@/lib/project-files";
 
 function isImage(path: string) {
   return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(path);
