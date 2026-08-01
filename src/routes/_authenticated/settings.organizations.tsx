@@ -139,7 +139,7 @@ function OrganizationsPage() {
       <PageHeader
         title="องค์กร"
         description="จัดการองค์กรที่ใช้งานระบบนี้ — ข้อมูลของแต่ละองค์กรถูกแยกออกจากกันโดยสมบูรณ์"
-        action={
+        actions={
           <Button onClick={openNew} className="w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />เพิ่มองค์กร
           </Button>
