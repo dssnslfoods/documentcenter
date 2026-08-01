@@ -60,8 +60,8 @@ begin
 
   -- Count milestone health
   select
-    count(*) filter (where status not in ('completed','approved') and due_date < v_now),
-    count(*) filter (where status not in ('completed','approved') and due_date between v_now and v_now + interval '7 days')
+    count(*) filter (where status not in ('completed','postponed','failed') and due_date < v_now),
+    count(*) filter (where status not in ('completed','postponed','failed') and due_date between v_now and v_now + interval '7 days')
   into v_overdue_milestones, v_upcoming_milestones
   from public.project_milestones
   where project_id = _project_id;
@@ -143,8 +143,8 @@ begin
   where project_id = _project_id;
 
   select
-    count(*) filter (where status not in ('completed','approved') and due_date < v_now),
-    count(*) filter (where status not in ('completed','approved') and due_date between v_now and v_now + interval '7 days')
+    count(*) filter (where status not in ('completed','postponed','failed') and due_date < v_now),
+    count(*) filter (where status not in ('completed','postponed','failed') and due_date between v_now and v_now + interval '7 days')
   into v_overdue_milestones, v_upcoming_milestones
   from public.project_milestones
   where project_id = _project_id;
@@ -339,7 +339,7 @@ begin
     select m.project_id, p.name as project_name, m.description, m.due_date
     from public.project_milestones m
     join public.projects p on p.id = m.project_id
-    where m.status not in ('completed','approved')
+    where m.status not in ('completed','postponed','failed')
       and m.due_date between current_date and current_date + interval '3 days'
   loop
     v_title := format('งวดงาน "%s" ใกล้ครบกำหนด (%s)', rec.description, rec.due_date);
@@ -377,7 +377,7 @@ begin
     select m.project_id, p.name as project_name, m.description, m.due_date
     from public.project_milestones m
     join public.projects p on p.id = m.project_id
-    where m.status not in ('completed','approved')
+    where m.status not in ('completed','postponed','failed')
       and m.due_date < current_date
   loop
     v_title := format('งวดงาน "%s" เลยกำหนด (ครบวันที่ %s)', rec.description, rec.due_date);
