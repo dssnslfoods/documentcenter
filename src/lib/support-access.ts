@@ -122,7 +122,10 @@ export function useSupportSession() {
   const q = useQuery({
     queryKey: ["support-session", activeId],
     enabled: isPlatformOwner && !!activeId,
-    staleTime: 30_000,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchInterval: 60_000,
     queryFn: async () => {
       const { data } = await getSupabase()
         .from("organization_support_access")
