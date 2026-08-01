@@ -1,5 +1,7 @@
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { History, Loader2, PlusCircle, PencilLine } from "lucide-react";
+import { History, Loader2, PlusCircle, PencilLine, Trash2, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDateTime, fmtCurrency } from "@/lib/format";
@@ -12,6 +14,26 @@ type HistoryRow = {
   changes: Change[] | null;
   created_at: string;
   changed_by: string | null;
+  entity: string | null;
+  entity_id: string | null;
+  entity_label: string | null;
+};
+
+const ENTITY_LABEL: Record<string, string> = {
+  project: "รายละเอียดโครงการ",
+  project_documents: "เอกสาร/ไฟล์แนบ",
+  project_spec_notes: "RFQ / Spec",
+  project_milestones: "งวดงาน",
+  project_tasks: "แผนงาน (Timeline)",
+  project_members: "สมาชิกโครงการ",
+  supplier_quotations: "ใบเสนอราคา Supplier",
+  customer_quotations: "ใบเสนอราคาลูกค้า",
+};
+
+const ACTION_LABEL: Record<string, string> = {
+  create: "เพิ่ม",
+  update: "แก้ไข",
+  delete: "ลบ",
 };
 
 const FIELD_LABEL: Record<string, string> = {
@@ -33,6 +55,31 @@ const FIELD_LABEL: Record<string, string> = {
   progress: "ความคืบหน้า (%)",
   department_id: "แผนก",
   archived_at: "วันที่จัดเก็บ",
+  // ตารางลูก
+  document_name: "ชื่อไฟล์",
+  file_url: "ไฟล์",
+  document_type: "ประเภทเอกสาร",
+  title: "หัวข้อ",
+  content: "เนื้อหา",
+  note_type: "ประเภทบันทึก",
+  due_date: "กำหนดส่ง",
+  amount: "จำนวนเงิน",
+  payment_percent: "สัดส่วนการวางบิล (%)",
+  deliverables: "รายละเอียดการส่งมอบ",
+  quotation_amount: "ยอดใบเสนอราคา",
+  amount_incl_vat: "ยอดรวม VAT",
+  is_final: "เป็นฉบับสุดท้าย (Final)",
+  submitted_date: "วันที่ยื่น",
+  supplier_id: "คู่ค้า",
+  partner_id: "คู่ค้า/ลูกค้า",
+  user_id: "ผู้ใช้",
+  role_title: "ตำแหน่งในโครงการ",
+  project_role: "บทบาทในโครงการ",
+  responsibilities: "หน้าที่รับผิดชอบ",
+  assignee_label: "ผู้รับผิดชอบ",
+  start_date_plan: "วันเริ่ม (แผน)",
+  end_date_plan: "วันสิ้นสุด (แผน)",
+  notes: "หมายเหตุ",
 };
 
 const MONEY_FIELDS = new Set(["contract_value", "budget", "vat_amount", "contract_value_incl_vat"]);
@@ -55,7 +102,7 @@ export function ProjectHistoryTab({ projectId }: { projectId: string }) {
     queryFn: async () => {
       const { data: rows, error: err } = await sb
         .from("project_history")
-        .select("id, action, changes, created_at, changed_by")
+        .select("id, action, changes, created_at, changed_by, entity, entity_id, entity_label")
         .eq("project_id", projectId)
         .order("created_at", { ascending: false })
         .limit(300);
@@ -87,7 +134,7 @@ export function ProjectHistoryTab({ projectId }: { projectId: string }) {
   if (error) {
     return (
       <div className="rounded-xl border border-dashed bg-muted/30 p-6 text-sm text-muted-foreground">
-        ยังไม่ได้ติดตั้งตารางประวัติการแก้ไข — กรุณารันไฟล์ <code className="font-mono">db/0024_project_history.sql</code> ใน SQL Editor ของฐานข้อมูลก่อน
+        ยังไม่ได้ติดตั้งตารางประวัติการแก้ไข — กรุณารันไฟล์ <code className="font-mono">db/0039_detailed_project_history.sql</code> ใน SQL Editor ของฐานข้อมูลก่อน
       </div>
     );
   }
