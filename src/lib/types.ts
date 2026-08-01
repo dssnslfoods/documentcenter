@@ -3,8 +3,7 @@ export type AppRole =
   | "super_admin"
   | "management"
   | "dept_manager"
-  | "staff"
-  | "viewer";
+  | "staff";
 
 export type ConfidentialityLevel = "public" | "internal" | "confidential" | "highly_confidential";
 
