@@ -135,15 +135,14 @@ function UsersPage() {
     onError: (e: Error) => toast.error(e.message ?? "เกิดข้อผิดพลาด"),
   });
 
-  const revokePlatformOwner = useMutation({
-    mutationFn: async (userId: string) => {
-      const { error } = await sb.from("user_roles").delete().eq("user_id", userId).eq("role", "platform_owner");
+  const setPlatformOwner = useMutation({
+    mutationFn: async ({ userId, enabled }: { userId: string; enabled: boolean }) => {
+      const { error } = await sb.rpc("set_platform_owner", { _user: userId, _enabled: enabled });
       if (error) throw error;
-      await sb.from("profiles").update({ active_organization_id: null }).eq("id", userId);
     },
-    onSuccess: () => {
-      toast.success("ถอดสิทธิ์ผู้ดูแลแพลตฟอร์มเรียบร้อย");
-      qc.invalidateQueries({ queryKey: ["users-list"] });
+    onSuccess: (_d, v) => {
+      toast.success(v.enabled ? "ให้สิทธิ์ผู้ดูแลแพลตฟอร์มแล้ว" : "ถอดสิทธิ์ผู้ดูแลแพลตฟอร์มแล้ว");
+      qc.invalidateQueries();
     },
     onError: (e: Error) => toast.error(e.message ?? "เกิดข้อผิดพลาด"),
   });
@@ -404,19 +403,20 @@ function UsersPage() {
                           ))}
                         </SelectContent>
                       </Select>
-                      {u.roles.includes("platform_owner" as Role) && (
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          className="mt-2 w-full"
-                          disabled={revokePlatformOwner.isPending}
-                          onClick={() => {
-                            if (confirm("ถอดสิทธิ์ผู้ดูแลแพลตฟอร์มของผู้ใช้รายนี้?")) revokePlatformOwner.mutate(u.id);
-                          }}
-                        >
-                          ถอดสิทธิ์แพลตฟอร์ม
-                        </Button>
-                      )}
+                      {(() => {
+                        const isPO = u.roles.includes("platform_owner" as Role);
+                        return (
+                          <Button
+                            size="sm"
+                            variant={isPO ? "destructive" : "outline"}
+                            className="mt-2 w-full"
+                            disabled={setPlatformOwner.isPending}
+                            onClick={() => setPlatformOwner.mutate({ userId: u.id, enabled: !isPO })}
+                          >
+                            {isPO ? "ถอดสิทธิ์แพลตฟอร์ม" : "ให้สิทธิ์แพลตฟอร์ม"}
+                          </Button>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell>
                       <Select value={u.department_id ?? "none"}
