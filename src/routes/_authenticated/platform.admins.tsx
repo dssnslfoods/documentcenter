@@ -5,7 +5,7 @@ import { getSupabase } from "@/lib/supabase";
 import { adminInviteUser } from "@/lib/admin-invite";
 import { PageHeader, EmptyState } from "@/components/page-header";
 import { PlatformGuard, PlatformNav } from "@/components/platform-nav";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ShieldCheck, UserPlus, Copy, Trash2 } from "lucide-react";
+import { ShieldCheck, UserPlus, Copy, Trash2, History, RotateCcw } from "lucide-react";
 import { useOrganizations } from "@/lib/org";
 
 export const Route = createFileRoute("/_authenticated/platform/admins")({
@@ -458,5 +458,159 @@ function OrgAdminsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+type LogRow = {
+  id: string;
+  organization_id: string | null;
+  user_id: string;
+  role: string;
+  action: string;
+  actor_id: string | null;
+  restored_at: string | null;
+  created_at: string;
+};
+
+const ROLE_TH: Record<string, string> = {
+  platform_owner: "ผู้ดูแลแพลตฟอร์ม",
+  super_admin: "ผู้ดูแลองค์กร",
+  management: "ผู้บริหาร",
+  dept_manager: "ผู้จัดการฝ่าย",
+  staff: "เจ้าหน้าที่",
+};
+
+function RoleChangeLogCard({
+  orgFilter,
+  orgName,
+}: {
+  orgFilter: string;
+  orgName: (id: string | null) => string;
+}) {
+  const sb = getSupabase();
+  const qc = useQueryClient();
+
+  const { data: logs, isLoading } = useQuery({
+    queryKey: ["role-change-log", orgFilter],
+    queryFn: async () => {
+      let q = sb
+        .from("role_change_log")
+        .select("id, organization_id, user_id, role, action, actor_id, restored_at, created_at")
+        .eq("action", "revoked")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (orgFilter !== "all") q = q.eq("organization_id", orgFilter);
+      const { data } = await q;
+      return (data ?? []) as LogRow[];
+    },
+  });
+
+  const ids = useMemo(() => {
+    const s = new Set<string>();
+    (logs ?? []).forEach((l) => {
+      s.add(l.user_id);
+      if (l.actor_id) s.add(l.actor_id);
+    });
+    return [...s];
+  }, [logs]);
+
+  const { data: people } = useQuery({
+    queryKey: ["role-change-log-people", ids.join(",")],
+    enabled: ids.length > 0,
+    queryFn: async () => {
+      const { data } = await sb.from("profiles").select("id, email, full_name").in("id", ids);
+      const map: Record<string, string> = {};
+      ((data ?? []) as { id: string; email: string | null; full_name: string | null }[]).forEach((p) => {
+        map[p.id] = p.full_name || p.email || p.id.slice(0, 8);
+      });
+      return map;
+    },
+  });
+
+  const nameOf = (id: string | null) => (id ? people?.[id] ?? "—" : "—");
+
+  const restore = useMutation({
+    mutationFn: async (row: LogRow) => {
+      const { data: existing } = await sb
+        .from("user_roles")
+        .select("id")
+        .eq("user_id", row.user_id)
+        .eq("role", row.role)
+        .maybeSingle();
+      if (!existing) {
+        const { error } = await sb.from("user_roles").insert({ user_id: row.user_id, role: row.role });
+        if (error) throw error;
+      }
+      const { error: upErr } = await sb
+        .from("role_change_log")
+        .update({ restored_at: new Date().toISOString() })
+        .eq("id", row.id);
+      if (upErr) throw upErr;
+    },
+    onSuccess: () => {
+      toast.success("กู้คืนสิทธิ์เรียบร้อย");
+      qc.invalidateQueries({ queryKey: ["role-change-log"] });
+      qc.invalidateQueries({ queryKey: ["platform-org-admins"] });
+    },
+    onError: (e: Error) => toast.error(e.message ?? "กู้คืนสิทธิ์ไม่สำเร็จ"),
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <History className="h-4 w-4" />ประวัติการถอดสิทธิ์
+        </CardTitle>
+        <CardDescription>บันทึกการถอดบทบาทผู้ใช้ พร้อมกู้คืนสิทธิ์เดิมกลับมาได้</CardDescription>
+      </CardHeader>
+      <CardContent className="p-0">
+        {isLoading ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">กำลังโหลด...</div>
+        ) : !(logs ?? []).length ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">ยังไม่มีประวัติการถอดสิทธิ์</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ผู้ใช้</TableHead>
+                  <TableHead className="whitespace-nowrap">บทบาทที่ถูกถอด</TableHead>
+                  <TableHead className="w-48">องค์กร</TableHead>
+                  <TableHead className="whitespace-nowrap">ผู้ดำเนินการ / เวลา</TableHead>
+                  <TableHead className="text-right">กู้คืน</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(logs ?? []).map((l) => (
+                  <TableRow key={l.id}>
+                    <TableCell className="font-medium break-words">{nameOf(l.user_id)}</TableCell>
+                    <TableCell><Badge variant="secondary">{ROLE_TH[l.role] ?? l.role}</Badge></TableCell>
+                    <TableCell className="text-sm">{orgName(l.organization_id)}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      <div>{nameOf(l.actor_id)}</div>
+                      <div>{new Date(l.created_at).toLocaleString("th-TH")}</div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {l.restored_at ? (
+                        <Badge className="bg-success/10 text-success">กู้คืนแล้ว</Badge>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={restore.isPending}
+                          onClick={() => restore.mutate(l)}
+                        >
+                          <RotateCcw className="mr-1 h-3.5 w-3.5" />กู้คืนสิทธิ์
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
