@@ -18,8 +18,10 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Building2, Plus, Pencil } from "lucide-react";
-import { useOrganizations, type Organization } from "@/lib/org";
+import { Building2, Plus, Pencil, LifeBuoy, LogIn } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { useOrganizations, useSwitchOrg, type Organization } from "@/lib/org";
+import { isSupportActive, useAllSupportAccess } from "@/lib/support-access";
 
 export const Route = createFileRoute("/_authenticated/platform/")({
   head: () => ({
@@ -65,6 +67,19 @@ function nextCode(existing: string[]) {
 function OrganizationsAdmin() {
   const qc = useQueryClient();
   const { data: orgs, isLoading } = useOrganizations(true);
+  const { data: support } = useAllSupportAccess(true);
+  const switchOrg = useSwitchOrg();
+  const navigate = useNavigate();
+  const supportOf = (orgId: string) => support?.find((s) => s.organization_id === orgId) ?? null;
+  const enterOrg = (orgId: string) => {
+    switchOrg.mutate(orgId, {
+      onSuccess: () => {
+        toast.success("เข้าสู่โหมดสนับสนุนแล้ว");
+        navigate({ to: "/dashboard" });
+      },
+      onError: (e: Error) => toast.error(e.message),
+    });
+  };
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
 
@@ -158,6 +173,7 @@ function OrganizationsAdmin() {
                     <TableHead className="hidden md:table-cell">เลขผู้เสียภาษี</TableHead>
                     <TableHead className="hidden lg:table-cell">ติดต่อ</TableHead>
                     <TableHead className="whitespace-nowrap">สถานะ</TableHead>
+                    <TableHead className="whitespace-nowrap">โหมดสนับสนุน</TableHead>
                     <TableHead className="text-right">จัดการ</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -178,10 +194,34 @@ function OrganizationsAdmin() {
                           <Badge variant="secondary">ปิดใช้งาน</Badge>
                         )}
                       </TableCell>
+                      <TableCell>
+                        {isSupportActive(supportOf(o.id)) ? (
+                          <Badge className="bg-warning/15 text-warning">
+                            <LifeBuoy className="mr-1 h-3 w-3" />เปิดให้เข้าช่วย
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">ปิด</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right">
-                        <Button size="sm" variant="ghost" onClick={() => openEdit(o)}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
+                        <div className="flex flex-wrap justify-end gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={!isSupportActive(supportOf(o.id)) || switchOrg.isPending}
+                            onClick={() => enterOrg(o.id)}
+                            title={
+                              isSupportActive(supportOf(o.id))
+                                ? "เข้าใช้งานในนามองค์กรนี้ด้วยสิทธิ์เต็ม"
+                                : "ผู้ดูแลองค์กรยังไม่ได้เปิดสิทธิ์สนับสนุน"
+                            }
+                          >
+                            <LogIn className="mr-1 h-3.5 w-3.5" />เข้าช่วยสนับสนุน
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => openEdit(o)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

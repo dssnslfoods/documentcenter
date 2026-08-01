@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { getSupabase } from "@/lib/supabase";
 import { useAdminGuard } from "@/hooks/use-admin-guard";
+import { SupportAccessCard } from "@/components/settings/support-access-card";
 
 export const Route = createFileRoute("/_authenticated/settings/general")({
   head: () => ({ meta: [{ title: "การตั้งค่าทั่วไป | Document Hub" }] }),
@@ -129,6 +130,8 @@ function GeneralPage() {
           </div>
         </CardContent>
       </Card>
+
+      <SupportAccessCard />
 
       <Card>
         <CardHeader><CardTitle className="text-base">นโยบายเก็บรักษา (Retention)</CardTitle></CardHeader>
