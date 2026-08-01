@@ -173,6 +173,39 @@ function OrgAdminsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const [fixOrgId, setFixOrgId] = useState<string>("");
+  const orgsWithoutAdmin = useMemo(
+    () => (orgs ?? []).filter((o) => !(admins ?? []).some((a) => a.organization_id === o.id)),
+    [orgs, admins],
+  );
+
+  const { data: fixMembers } = useQuery({
+    queryKey: ["platform-appoint-members", fixOrgId],
+    enabled: !!fixOrgId,
+    queryFn: async () => {
+      const { data } = await sb
+        .from("profiles")
+        .select("id, email, full_name")
+        .eq("organization_id", fixOrgId)
+        .eq("is_active", true);
+      return (data ?? []) as { id: string; email: string | null; full_name: string | null }[];
+    },
+  });
+
+  const appoint = useMutation({
+    mutationFn: async (userId: string) => {
+      await sb.from("user_roles").delete().eq("user_id", userId).neq("role", "platform_owner");
+      const { error } = await sb.from("user_roles").insert({ user_id: userId, role: "super_admin" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("แต่งตั้งผู้ดูแลองค์กรเรียบร้อย");
+      setFixOrgId("");
+      qc.invalidateQueries({ queryKey: ["platform-org-admins"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const handleRevokeClick = (a: AdminRow) => {
     if (isLastAdminOfOrg(a)) {
       setSuccessorId("");
@@ -275,6 +308,36 @@ function OrgAdminsPage() {
         }
       />
       <PlatformNav />
+
+      {orgsWithoutAdmin.length > 0 && (
+        <Alert variant="destructive">
+          <AlertTitle>มีองค์กรที่ยังไม่มีผู้ดูแลองค์กร</AlertTitle>
+          <AlertDescription>
+            <div className="mt-2 space-y-2">
+              {orgsWithoutAdmin.map((o) => (
+                <div key={o.id} className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-medium">{o.name}</span>
+                  {fixOrgId === o.id ? (
+                    <>
+                      <Select onValueChange={(v) => appoint.mutate(v)}>
+                        <SelectTrigger className="h-8 w-64 text-xs"><SelectValue placeholder="เลือกผู้ใช้มาเป็นผู้ดูแล" /></SelectTrigger>
+                        <SelectContent>
+                          {(fixMembers ?? []).map((m) => (
+                            <SelectItem key={m.id} value={m.id}>{m.full_name || m.email}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button size="sm" variant="ghost" onClick={() => setFixOrgId("")}>ยกเลิก</Button>
+                    </>
+                  ) : (
+                    <Button size="sm" variant="outline" onClick={() => setFixOrgId(o.id)}>แต่งตั้งผู้ดูแล</Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         <Label className="text-xs text-muted-foreground">กรององค์กร</Label>
