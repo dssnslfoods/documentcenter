@@ -113,7 +113,10 @@ begin
 
     execute format(
       'alter table public.%I add column if not exists organization_id uuid references public.organizations(id) on delete cascade', t);
+    -- ปิด trigger ชั่วคราวระหว่าง backfill (กัน guard_locked_project / history triggers)
+    execute format('alter table public.%I disable trigger user', t);
     execute format('update public.%I set organization_id = %L where organization_id is null', t, default_org);
+    execute format('alter table public.%I enable trigger user', t);
     execute format('create index if not exists idx_%s_org on public.%I(organization_id)', t, t);
 
     execute format('drop trigger if exists %I on public.%I', t || '_set_org_id', t);
