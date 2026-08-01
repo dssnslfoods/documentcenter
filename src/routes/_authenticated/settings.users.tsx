@@ -123,7 +123,8 @@ function UsersPage() {
 
   const changeRole = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: Role }) => {
-      await sb.from("user_roles").delete().eq("user_id", userId);
+      // ห้ามลบบทบาท platform_owner จากหน้าจัดการผู้ใช้ระดับองค์กร
+      await sb.from("user_roles").delete().eq("user_id", userId).neq("role", "platform_owner");
       const { error } = await sb.from("user_roles").insert({ user_id: userId, role });
       if (error) throw error;
     },
@@ -382,7 +383,7 @@ function UsersPage() {
                     <TableCell>
                       <Select value={u.roles[0] ?? ""}
                         onValueChange={(v) => changeRole.mutate({ userId: u.id, role: v as Role })}
-                        disabled={u.id === user.id}>
+                        disabled={u.id === user.id || u.roles.includes("platform_owner" as Role)}>
                         <SelectTrigger><SelectValue placeholder="เลือกบทบาท" /></SelectTrigger>
                         <SelectContent>
                           {ROLES.map((r) => (
@@ -406,7 +407,7 @@ function UsersPage() {
                     <TableCell>
                       <Button size="sm" variant={u.is_active ? "outline" : "secondary"}
                         onClick={() => toggleActive.mutate({ userId: u.id, active: !u.is_active })}
-                        disabled={u.id === user.id}>
+                        disabled={u.id === user.id || u.roles.includes("platform_owner" as Role)}>
                         {u.is_active ? "ใช้งานอยู่" : "ปิดใช้งาน"}
                       </Button>
                     </TableCell>
