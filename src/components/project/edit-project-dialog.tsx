@@ -56,6 +56,22 @@ export function EditProjectDialog({
     enabled: open && canEditPrice,
     queryFn: () => fetchFinalQuotationSummary(project.id),
   });
+  // มีใบเสนอราคาจาก Supplier ที่เลือกเป็น Final แล้วหรือไม่ → ล็อกตัวเลือก "งานผลิตภายใน"
+  const { data: finalSupplierCount } = useQuery({
+    queryKey: ["supplier-final-count", project.id],
+    enabled: open,
+    queryFn: async () => {
+      const { count, error } = await sb
+        .from("supplier_quotations")
+        .select("id", { count: "exact", head: true })
+        .eq("project_id", project.id)
+        .eq("is_selected", true);
+      if (error) return 0;
+      return count ?? 0;
+    },
+  });
+  const inhouseLocked = (finalSupplierCount ?? 0) > 0;
+
 
   const [name, setName] = useState(project.name ?? "");
   const [description, setDescription] = useState(project.description ?? "");
