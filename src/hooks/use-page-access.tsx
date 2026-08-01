@@ -36,15 +36,59 @@ export function useAccessMatrix() {
   });
 }
 
+/**
+ * โหมดสนับสนุน: ผู้ดูแลแพลตฟอร์มที่สลับเข้าองค์กรซึ่งเปิดสิทธิ์สนับสนุนไว้
+ * (สอบถามในไฟล์นี้โดยตรงเพื่อเลี่ยง import วน)
+ */
+export function useSupportOverride() {
+  const { user } = useAuth();
+  const { roles, isLoading: rolesLoading } = useMyRoles();
+  const isPlatformOwner = roles.includes("platform_owner");
+
+  const q = useQuery({
+    queryKey: ["support-override", user?.id],
+    enabled: !!user && isPlatformOwner,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const sb = getSupabase();
+      const { data: prof } = await sb
+        .from("profiles")
+        .select("active_organization_id")
+        .eq("id", user!.id)
+        .maybeSingle();
+      const activeId = (prof as { active_organization_id: string | null } | null)?.active_organization_id ?? null;
+      if (!activeId) return false;
+      const { data } = await sb
+        .from("organization_support_access")
+        .select("enabled, expires_at")
+        .eq("organization_id", activeId)
+        .maybeSingle();
+      const row = data as { enabled: boolean; expires_at: string | null } | null;
+      if (!row?.enabled) return false;
+      return !row.expires_at || new Date(row.expires_at).getTime() > Date.now();
+    },
+  });
+
+  return {
+    isPlatformOwner,
+    supportActive: !!q.data,
+    isLoading: rolesLoading || (isPlatformOwner && q.isLoading),
+  };
+}
+
 export function useCanAccess() {
   const { roles, isLoading: rolesLoading } = useMyRoles();
   const { data, isLoading } = useAccessMatrix();
   const { orgAllows, isLoading: orgLoading } = useMyOrgPageAccess();
+  const { supportActive, isLoading: supportLoading } = useSupportOverride();
 
   const can = (key: PageKey) => {
     if (roles.length === 0) return false;
-    // ผู้ดูแลแพลตฟอร์มใช้เมนูของโซนแพลตฟอร์มเท่านั้น
-    if (roles.includes("platform_owner")) return false;
+    if (roles.includes("platform_owner")) {
+      // เข้าใช้งานเมนูขององค์กรได้เต็มสิทธิ์เฉพาะตอนอยู่ในโหมดสนับสนุน
+      if (!supportActive) return false;
+      return key !== "organizations" && orgAllows(key);
+    }
     // องค์กรต้องถูกเปิดใช้เมนูนี้ก่อน จึงจะดูสิทธิ์ระดับบทบาท
     if (!orgAllows(key)) return false;
     return roles.some((role) => {
@@ -53,7 +97,7 @@ export function useCanAccess() {
     });
   };
 
-  return { can, roles, isLoading: rolesLoading || isLoading || orgLoading };
+  return { can, roles, isLoading: rolesLoading || isLoading || orgLoading || supportLoading };
 }
 
 /** Guard a page: returns a node to render instead of the page when not allowed. */
