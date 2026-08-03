@@ -47,6 +47,7 @@ import { Route as AuthenticatedPlatformMenusRouteImport } from './routes/_authen
 import { Route as AuthenticatedPlatformAdminsRouteImport } from './routes/_authenticated/platform.admins'
 import { Route as AuthenticatedDocumentsIdRouteImport } from './routes/_authenticated/documents.$id'
 import { Route as AuthenticatedContractsIdRouteImport } from './routes/_authenticated/contracts.$id'
+import { Route as AuthenticatedAssignmentsExecutionRouteImport } from './routes/_authenticated/assignments.execution'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as ApiPublicCronDailyCheckRouteImport } from './routes/api/public/cron/daily-check'
@@ -265,6 +266,12 @@ const AuthenticatedContractsIdRoute =
     path: '/contracts/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAssignmentsExecutionRoute =
+  AuthenticatedAssignmentsExecutionRouteImport.update({
+    id: '/assignments/execution',
+    path: '/assignments/execution',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
   Char91DotmcpChar93InvokeToolToolRouteImport.update({
     id: '/.mcp/invoke-tool/$tool',
@@ -299,6 +306,7 @@ export interface FileRoutesByFullPath {
   '/search': typeof AuthenticatedSearchRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/assignments/execution': typeof AuthenticatedAssignmentsExecutionRoute
   '/contracts/$id': typeof AuthenticatedContractsIdRoute
   '/documents/$id': typeof AuthenticatedDocumentsIdRoute
   '/platform/admins': typeof AuthenticatedPlatformAdminsRoute
@@ -341,6 +349,7 @@ export interface FileRoutesByTo {
   '/search': typeof AuthenticatedSearchRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/assignments/execution': typeof AuthenticatedAssignmentsExecutionRoute
   '/contracts/$id': typeof AuthenticatedContractsIdRoute
   '/documents/$id': typeof AuthenticatedDocumentsIdRoute
   '/platform/admins': typeof AuthenticatedPlatformAdminsRoute
@@ -385,6 +394,7 @@ export interface FileRoutesById {
   '/_authenticated/search': typeof AuthenticatedSearchRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/_authenticated/assignments/execution': typeof AuthenticatedAssignmentsExecutionRoute
   '/_authenticated/contracts/$id': typeof AuthenticatedContractsIdRoute
   '/_authenticated/documents/$id': typeof AuthenticatedDocumentsIdRoute
   '/_authenticated/platform/admins': typeof AuthenticatedPlatformAdminsRoute
@@ -429,6 +439,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/assignments/execution'
     | '/contracts/$id'
     | '/documents/$id'
     | '/platform/admins'
@@ -471,6 +482,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/assignments/execution'
     | '/contracts/$id'
     | '/documents/$id'
     | '/platform/admins'
@@ -514,6 +526,7 @@ export interface FileRouteTypes {
     | '/_authenticated/search'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/_authenticated/assignments/execution'
     | '/_authenticated/contracts/$id'
     | '/_authenticated/documents/$id'
     | '/_authenticated/platform/admins'
@@ -821,6 +834,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedContractsIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/assignments/execution': {
+      id: '/_authenticated/assignments/execution'
+      path: '/assignments/execution'
+      fullPath: '/assignments/execution'
+      preLoaderRoute: typeof AuthenticatedAssignmentsExecutionRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/.mcp/invoke-tool/$tool': {
       id: '/.mcp/invoke-tool/$tool'
       path: '/.mcp/invoke-tool/$tool'
@@ -854,6 +874,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
   AuthenticatedSearchRoute: typeof AuthenticatedSearchRoute
+  AuthenticatedAssignmentsExecutionRoute: typeof AuthenticatedAssignmentsExecutionRoute
   AuthenticatedContractsIdRoute: typeof AuthenticatedContractsIdRoute
   AuthenticatedDocumentsIdRoute: typeof AuthenticatedDocumentsIdRoute
   AuthenticatedPlatformAdminsRoute: typeof AuthenticatedPlatformAdminsRoute
@@ -888,6 +909,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,
   AuthenticatedSearchRoute: AuthenticatedSearchRoute,
+  AuthenticatedAssignmentsExecutionRoute:
+    AuthenticatedAssignmentsExecutionRoute,
   AuthenticatedContractsIdRoute: AuthenticatedContractsIdRoute,
   AuthenticatedDocumentsIdRoute: AuthenticatedDocumentsIdRoute,
   AuthenticatedPlatformAdminsRoute: AuthenticatedPlatformAdminsRoute,

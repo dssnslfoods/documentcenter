@@ -4,7 +4,7 @@ import {
   LayoutDashboard, FileText, FileSignature, FileSpreadsheet,
   Users, FolderKanban, Calendar, Bell, BarChart3, History, Settings,
   Search, LogOut, User as UserIcon, Menu, X, ChevronDown, PanelLeftClose, PanelLeftOpen,
-  Building2, ShieldCheck, LayoutGrid, LifeBuoy,
+  Building2, ShieldCheck, LayoutGrid, LifeBuoy, ClipboardList, ChevronRight,
 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 import { OrgSwitcher } from "@/components/org-switcher";
@@ -22,7 +22,13 @@ import { useIsPlatformOwner, useSwitchOrg } from "@/lib/org";
 import { useSupportSession } from "@/lib/support-access";
 
 // Sidebar organized by workflow order: daily work → sales pipeline → post-sale docs → governance
-type NavItem = { to: string; icon: React.ComponentType<{ className?: string }>; label: string; key: PageKey };
+type NavItem = {
+  to: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  key: PageKey;
+  children?: { to: string; label: string }[];
+};
 type NavSection = { label: string; items: NavItem[] };
 
 const NAV_SECTIONS: NavSection[] = [
@@ -38,11 +44,19 @@ const NAV_SECTIONS: NavSection[] = [
     label: "งานขายและโครงการ",
     items: [
       { to: "/projects", icon: FolderKanban, label: "โครงการ", key: "projects" },
+      {
+        to: "/assignments",
+        icon: ClipboardList,
+        label: "การมอบหมายงาน",
+        key: "assignments",
+        children: [{ to: "/assignments/execution", label: "การดำเนินโครงการ" }],
+      },
       { to: "/quotations", icon: FileSpreadsheet, label: "ใบเสนอราคา", key: "quotations" },
       
       { to: "/partners", icon: Users, label: "คู่ค้าและลูกค้า", key: "partners" },
     ],
   },
+
   {
     label: "เอกสารและสัญญา",
     items: [
@@ -339,24 +353,47 @@ function SidebarContent({
             {section.items.map((item) => {
               const active = pathname === item.to || pathname.startsWith(item.to + "/");
               return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className={`group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
-                    active
-                      ? "bg-primary/10 text-primary font-semibold"
-                      : "text-sidebar-foreground/90 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  }`}
-                  title={collapsed ? item.label : undefined}
-                >
-                  {active && (
-                    <span className="absolute left-0 top-1.5 h-[calc(100%-0.75rem)] w-0.5 rounded-r bg-primary" aria-hidden />
+                <div key={item.to}>
+                  <Link
+                    to={item.children ? item.children[0].to : item.to}
+                    className={`group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
+                      active
+                        ? "bg-primary/10 text-primary font-semibold"
+                        : "text-sidebar-foreground/90 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    }`}
+                    title={collapsed ? item.label : undefined}
+                  >
+                    {active && (
+                      <span className="absolute left-0 top-1.5 h-[calc(100%-0.75rem)] w-0.5 rounded-r bg-primary" aria-hidden />
+                    )}
+                    <item.icon className="h-4 w-4 shrink-0" />
+                    {!collapsed && <span className="truncate">{item.label}</span>}
+                  </Link>
+                  {!collapsed && item.children && (
+                    <div className="mt-0.5 space-y-0.5 border-l border-sidebar-border/70 pl-3 ml-5">
+                      {item.children.map((child) => {
+                        const childActive = pathname === child.to || pathname.startsWith(child.to + "/");
+                        return (
+                          <Link
+                            key={child.to}
+                            to={child.to}
+                            className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] transition-colors ${
+                              childActive
+                                ? "bg-primary/10 text-primary font-medium"
+                                : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                            }`}
+                          >
+                            <ChevronRight className="h-3 w-3 shrink-0 opacity-60" />
+                            <span className="truncate">{child.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
                   )}
-                  <item.icon className="h-4 w-4 shrink-0" />
-                  {!collapsed && <span className="truncate">{item.label}</span>}
-                </Link>
+                </div>
               );
             })}
+
           </div>
         ))}
       </nav>
