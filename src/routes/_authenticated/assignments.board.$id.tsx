@@ -10,6 +10,8 @@ import {
   Loader2,
   MessageSquare,
   Send,
+  UserPlus,
+  UserMinus,
   Users,
   Zap,
 } from "lucide-react";
@@ -29,6 +31,7 @@ import { fmtDate } from "@/lib/format";
 import { TaskAssignmentDialog } from "@/components/project/task-assignment-dialog";
 import { LIFECYCLE_LABEL, STATUS_TONE, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 import { ASSIGNMENT_META, type AssignmentStatus } from "@/lib/task-assignment";
+import { ROLE_PERMISSIONS } from "@/lib/project-roles";
 
 export const Route = createFileRoute("/_authenticated/assignments/board/$id")({
   head: () => ({
@@ -61,7 +64,7 @@ type Task = {
   assignment_status: AssignmentStatus | null;
 };
 
-type Member = { id: string; name: string; role: string | null; position: string | null };
+type Member = { id: string; memberId: string; name: string; role: string | null; position: string | null };
 
 const BAR_TONE: Record<AssignmentStatus, string> = {
   draft: "bg-muted-foreground/25",
@@ -98,6 +101,7 @@ function AssignmentBoard() {
   const [due, setDue] = useState("");
   const [threadTask, setThreadTask] = useState<string | null>(null);
   const [showLoad, setShowLoad] = useState(true);
+  const [manageOpen, setManageOpen] = useState(false);
 
   const workload = useQuery({
     queryKey: ["member-workload", selectedMember],
@@ -146,9 +150,14 @@ function AssignmentBoard() {
     queryFn: async () => {
       const { data: mem } = await sb
         .from("project_members")
-        .select("user_id, project_role, role_title")
+        .select("id, user_id, project_role, role_title")
         .eq("project_id", id);
-      const rows = (mem ?? []) as { user_id: string | null; project_role: string | null; role_title: string | null }[];
+      const rows = (mem ?? []) as {
+        id: string;
+        user_id: string | null;
+        project_role: string | null;
+        role_title: string | null;
+      }[];
       const ids = rows.map((m) => m.user_id).filter(Boolean) as string[];
       if (!ids.length) return [] as Member[];
       const { data: profs } = await sb.from("profiles").select("id, full_name, email").in("id", ids);
@@ -157,6 +166,7 @@ function AssignmentBoard() {
         const p = byId.get(m.user_id!);
         return {
           id: m.user_id!,
+          memberId: m.id,
           name: ((p?.full_name as string) || (p?.email as string) || "ไม่ทราบชื่อ") as string,
           role: m.project_role,
           position: m.role_title,
@@ -164,6 +174,57 @@ function AssignmentBoard() {
       }) as Member[];
     },
   });
+
+  const candidates = useQuery({
+    queryKey: ["assignment-board-candidates"],
+    enabled: guard.allowed && manageOpen,
+    queryFn: async () => {
+      const { data } = await sb
+        .from("profiles")
+        .select("id, full_name, email")
+        .eq("is_active", true)
+        .order("full_name");
+      return (data ?? []) as { id: string; full_name: string | null; email: string | null }[];
+    },
+  });
+
+  const addMember = useMutation({
+    mutationFn: async (userId: string) => {
+      const { data: inserted, error } = await sb
+        .from("project_members")
+        .insert({ project_id: id, user_id: userId, project_role: "staff" })
+        .select("id")
+        .single();
+      if (error) throw error;
+      const perms = ROLE_PERMISSIONS.staff;
+      if (perms.length) {
+        await sb
+          .from("project_member_permissions")
+          .insert(perms.map((k) => ({ project_member_id: inserted.id, permission_key: k, granted: true })));
+      }
+    },
+    onSuccess: () => {
+      toast.success("เพิ่มสมาชิกเข้าโครงการแล้ว");
+      qc.invalidateQueries({ queryKey: ["assignment-board-members", id] });
+      qc.invalidateQueries({ queryKey: ["project-members", id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const removeMember = useMutation({
+    mutationFn: async (m: Member) => {
+      const { error } = await sb.from("project_members").delete().eq("id", m.memberId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("นำสมาชิกออกจากโครงการแล้ว");
+      setSelectedMember(null);
+      qc.invalidateQueries({ queryKey: ["assignment-board-members", id] });
+      qc.invalidateQueries({ queryKey: ["project-members", id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
   const tasks = useQuery({
     queryKey: ["assignment-board-tasks", id],
@@ -300,6 +361,17 @@ function AssignmentBoard() {
             <div className="flex items-center gap-2 px-1 pb-1 text-sm font-medium">
               <Users className="h-4 w-4 text-primary" />
               สมาชิกโครงการ
+              {canManage && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="ml-auto h-7 px-2 text-xs"
+                  onClick={() => setManageOpen(true)}
+                >
+                  <UserPlus className="mr-1 h-3.5 w-3.5" />
+                  เพิ่ม
+                </Button>
+              )}
             </div>
             {members.isLoading ? (
               <p className="px-1 text-xs text-muted-foreground">กำลังโหลด...</p>
@@ -309,24 +381,46 @@ function AssignmentBoard() {
               (members.data ?? []).map((m) => {
                 const active = m.id === selectedMember;
                 return (
-                  <button
+                  <div
                     key={m.id}
-                    type="button"
-                    onClick={() => setSelectedMember(active ? null : m.id)}
-                    className={`flex w-full items-center gap-3 rounded-lg border p-2 text-left transition ${
+                    className={`flex w-full items-center gap-2 rounded-lg border p-2 transition ${
                       active ? "border-primary bg-primary/5" : "border-transparent hover:bg-muted/60"
                     }`}
                   >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                      {initials(m.name)}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">{m.name}</span>
-                      <span className="block truncate text-[11px] text-muted-foreground">
-                        {m.position || m.role || "สมาชิก"} · {countFor(m.id)} งาน
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMember(active ? null : m.id)}
+                      className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                    >
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                        {initials(m.name)}
                       </span>
-                    </span>
-                  </button>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">{m.name}</span>
+                        <span className="block truncate text-[11px] text-muted-foreground">
+                          {m.position || m.role || "สมาชิก"} · {countFor(m.id)} งาน
+                        </span>
+                      </span>
+                    </button>
+                    {canManage && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+                        title="นำออกจากโครงการ"
+                        disabled={removeMember.isPending}
+                        onClick={() => {
+                          if (countFor(m.id) > 0) {
+                            toast.error("สมาชิกคนนี้ยังมีงานที่รับผิดชอบอยู่ — โปรดย้ายงานก่อนนำออก");
+                            return;
+                          }
+                          if (window.confirm(`นำ ${m.name} ออกจากโครงการ?`)) removeMember.mutate(m);
+                        }}
+                      >
+                        <UserMinus className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 );
               })
             )}
@@ -335,6 +429,7 @@ function AssignmentBoard() {
                 กำลังมอบหมายให้ <strong>{member.name}</strong> — คลิกงานที่ต้องการทางขวา
               </p>
             )}
+
           </CardContent>
         </Card>
 
@@ -506,7 +601,46 @@ function AssignmentBoard() {
         </DialogContent>
       </Dialog>
 
+      {/* ── เพิ่มสมาชิกเข้าโครงการ ── */}
+      <Dialog open={manageOpen} onOpenChange={setManageOpen}>
+        <DialogContent className="w-[95vw] max-w-md">
+          <DialogHeader>
+            <DialogTitle className="pr-6 text-base">เพิ่มสมาชิกเข้าโครงการ</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] space-y-1.5 overflow-y-auto">
+            {candidates.isLoading ? (
+              <p className="p-2 text-xs text-muted-foreground">กำลังโหลดรายชื่อ...</p>
+            ) : (
+              (() => {
+                const existing = new Set((members.data ?? []).map((m) => m.id));
+                const rows = (candidates.data ?? []).filter((c) => !existing.has(c.id));
+                if (!rows.length)
+                  return <p className="p-2 text-xs text-muted-foreground">ผู้ใช้ทุกคนอยู่ในโครงการนี้แล้ว</p>;
+                return rows.map((c) => (
+                  <div key={c.id} className="flex items-center gap-2 rounded-md border p-2">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
+                      {initials(c.full_name || c.email || "?")}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm">{c.full_name || c.email}</span>
+                      {c.full_name && c.email && (
+                        <span className="block truncate text-[11px] text-muted-foreground">{c.email}</span>
+                      )}
+                    </span>
+                    <Button size="sm" disabled={addMember.isPending} onClick={() => addMember.mutate(c.id)}>
+                      <UserPlus className="mr-1 h-3.5 w-3.5" />
+                      เพิ่ม
+                    </Button>
+                  </div>
+                ));
+              })()
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <TaskAssignmentDialog
+
         taskId={threadTask}
         open={!!threadTask}
         onOpenChange={(v) => !v && setThreadTask(null)}
