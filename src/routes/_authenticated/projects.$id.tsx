@@ -19,6 +19,7 @@ import { TeamTab } from "@/components/project/team-tab";
 import { ProjectHistoryTab } from "@/components/project/history-tab";
 
 import { useProjectPermissions } from "@/hooks/use-project-permissions";
+import { useCanSeeMoney, MONEY_MASK } from "@/hooks/use-page-access";
 import {
   LIFECYCLE_LABEL, STATUS_TONE, nextStatuses,
   type ProjectLifecycleStatus,
@@ -62,6 +63,7 @@ function ProjectDetail() {
   const sb = getSupabase();
   const qc = useQueryClient();
   const { data: perms, isLoading: permsLoading } = useProjectPermissions(id);
+  const { canSeeMoney } = useCanSeeMoney();
 
   const { data: p, isLoading } = useQuery({
     queryKey: ["project", id],
@@ -220,13 +222,13 @@ function ProjectDetail() {
           <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
             {p.project_type && <span>ประเภท {p.project_type}</span>}
             {(p.contract_value ?? p.budget) != null && (
-              <span>มูลค่าสัญญา (ก่อน VAT) <span className="font-semibold text-foreground tabular-nums">{fmtCurrency(p.contract_value ?? p.budget, "THB")}</span></span>
+              <span>มูลค่าสัญญา (ก่อน VAT) <span className="font-semibold text-foreground tabular-nums">{canSeeMoney ? fmtCurrency(p.contract_value ?? p.budget, "THB") : MONEY_MASK}</span></span>
             )}
-            {p.vat_rate != null && (
+            {canSeeMoney && p.vat_rate != null && (
               <span>VAT {Number(p.vat_rate).toFixed(2)}% <span className="tabular-nums">{fmtCurrency(p.vat_amount ?? 0, "THB")}</span></span>
             )}
             {p.contract_value_incl_vat != null && (
-              <span>รวม VAT <span className="font-semibold text-foreground tabular-nums">{fmtCurrency(p.contract_value_incl_vat, "THB")}</span></span>
+              <span>รวม VAT <span className="font-semibold text-foreground tabular-nums">{canSeeMoney ? fmtCurrency(p.contract_value_incl_vat, "THB") : MONEY_MASK}</span></span>
             )}
           </div>
         </div>
