@@ -161,6 +161,7 @@ export function PortfolioTimeline() {
       .map<Lane | null>((p) => {
         const tasks = byProjectTasks.get(p.id) ?? [];
         const mss = byProjectMs.get(p.id) ?? [];
+        const asgs = byProjectAsg.get(p.id) ?? [];
 
         const starts = [t(p.start_date), ...tasks.map((x) => t(x.start_date))].filter((n) => !Number.isNaN(n));
         const ends = [
@@ -189,14 +190,33 @@ export function PortfolioTimeline() {
             })),
         ].sort((a, b) => t(a.date) - t(b.date));
 
+        const assignments: Assignment[] = asgs
+          .map<Assignment>((a) => {
+            const missions = splitMissions(a.description).missions;
+            return {
+              id: a.id,
+              label: missions[0] ?? a.name,
+              assignee: data.nameById.get(a.assignee_id!) ?? "ไม่ระบุชื่อ",
+              start: t(a.start_date),
+              end: t(a.end_date),
+              endDate: a.end_date,
+              status: (a.assignment_status as AssignmentStatus) ?? "draft",
+              done: a.status === "done" || a.assignment_status === "accepted",
+            };
+          })
+          .filter((a) => !Number.isNaN(a.start) && !Number.isNaN(a.end))
+          .sort((a, b) => a.end - b.end);
+
         const openDue = deliveries.filter((d) => !d.done).map((d) => d.date);
         return {
           project: p,
           start: Math.min(...starts),
           end: Math.max(...ends),
           deliveries,
+          assignments,
           finalDue: openDue[0] ?? p.end_date ?? null,
         };
+
       })
       .filter((x): x is Lane => x !== null);
 
