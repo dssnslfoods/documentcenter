@@ -146,9 +146,14 @@ function AssignmentBoard() {
     queryFn: async () => {
       const { data: mem } = await sb
         .from("project_members")
-        .select("user_id, project_role, role_title")
+        .select("id, user_id, project_role, role_title")
         .eq("project_id", id);
-      const rows = (mem ?? []) as { user_id: string | null; project_role: string | null; role_title: string | null }[];
+      const rows = (mem ?? []) as {
+        id: string;
+        user_id: string | null;
+        project_role: string | null;
+        role_title: string | null;
+      }[];
       const ids = rows.map((m) => m.user_id).filter(Boolean) as string[];
       if (!ids.length) return [] as Member[];
       const { data: profs } = await sb.from("profiles").select("id, full_name, email").in("id", ids);
@@ -157,6 +162,7 @@ function AssignmentBoard() {
         const p = byId.get(m.user_id!);
         return {
           id: m.user_id!,
+          memberId: m.id,
           name: ((p?.full_name as string) || (p?.email as string) || "ไม่ทราบชื่อ") as string,
           role: m.project_role,
           position: m.role_title,
@@ -164,6 +170,57 @@ function AssignmentBoard() {
       }) as Member[];
     },
   });
+
+  const candidates = useQuery({
+    queryKey: ["assignment-board-candidates"],
+    enabled: guard.allowed && manageOpen,
+    queryFn: async () => {
+      const { data } = await sb
+        .from("profiles")
+        .select("id, full_name, email")
+        .eq("is_active", true)
+        .order("full_name");
+      return (data ?? []) as { id: string; full_name: string | null; email: string | null }[];
+    },
+  });
+
+  const addMember = useMutation({
+    mutationFn: async (userId: string) => {
+      const { data: inserted, error } = await sb
+        .from("project_members")
+        .insert({ project_id: id, user_id: userId, project_role: "staff" })
+        .select("id")
+        .single();
+      if (error) throw error;
+      const perms = ROLE_PERMISSIONS.staff;
+      if (perms.length) {
+        await sb
+          .from("project_member_permissions")
+          .insert(perms.map((k) => ({ project_member_id: inserted.id, permission_key: k, granted: true })));
+      }
+    },
+    onSuccess: () => {
+      toast.success("เพิ่มสมาชิกเข้าโครงการแล้ว");
+      qc.invalidateQueries({ queryKey: ["assignment-board-members", id] });
+      qc.invalidateQueries({ queryKey: ["project-members", id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const removeMember = useMutation({
+    mutationFn: async (m: Member) => {
+      const { error } = await sb.from("project_members").delete().eq("id", m.memberId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("นำสมาชิกออกจากโครงการแล้ว");
+      setSelectedMember(null);
+      qc.invalidateQueries({ queryKey: ["assignment-board-members", id] });
+      qc.invalidateQueries({ queryKey: ["project-members", id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
   const tasks = useQuery({
     queryKey: ["assignment-board-tasks", id],
