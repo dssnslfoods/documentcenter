@@ -636,7 +636,35 @@ function AssignmentBoard() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* ── เลือกผู้รับผิดชอบจากชื่อสมาชิก ── */}
+            <div className="space-y-1.5">
+              <Label>ผู้รับผิดชอบ</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {(members.data ?? []).map((m) => {
+                  const active = m.id === selectedMember;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setSelectedMember(m.id)}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition ${
+                        active
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-background hover:bg-muted"
+                      }`}
+                    >
+                      <span className="font-medium">{m.name}</span>
+                      <span className={active ? "opacity-80" : "text-muted-foreground"}>
+                        · {countFor(m.id)} งาน
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* ── ภาระงานปัจจุบันของสมาชิก ── */}
+
             <div className="rounded-lg border bg-muted/30">
               <button
                 type="button"
