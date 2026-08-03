@@ -11,9 +11,10 @@ import { getSupabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/use-supabase";
 import { usePageGuard } from "@/hooks/use-page-access";
 import { fmtDate } from "@/lib/format";
-import { CalendarClock, FolderKanban, MessagesSquare } from "lucide-react";
+import { CalendarClock, FolderKanban, MessagesSquare, Crown } from "lucide-react";
 import { TaskAssignmentDialog } from "@/components/project/task-assignment-dialog";
 import { ASSIGNMENT_META, type AssignmentStatus } from "@/lib/task-assignment";
+import { LIFECYCLE_LABEL, STATUS_TONE, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 
 export const Route = createFileRoute("/_authenticated/assignments/execution")({
   head: () => ({
