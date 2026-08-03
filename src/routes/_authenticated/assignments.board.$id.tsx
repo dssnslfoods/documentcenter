@@ -97,6 +97,7 @@ function AssignmentBoard() {
 
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
   const [quickTask, setQuickTask] = useState<Task | null>(null);
+  const [missionTitle, setMissionTitle] = useState("");
   const [mission, setMission] = useState("");
   const [due, setDue] = useState("");
   const [threadTask, setThreadTask] = useState<string | null>(null);
@@ -274,22 +275,33 @@ function AssignmentBoard() {
         assigned_at: new Date().toISOString(),
         assigned_by: user?.id ?? null,
       };
-      if (mission.trim()) patch.description = mission.trim();
+      const title = missionTitle.trim();
+      const detail = mission.trim();
+      const body = [title ? `ภารกิจ: ${title}` : "", detail].filter(Boolean).join("\n");
+      if (body) patch.description = body;
       if (due) patch.end_date = due;
       const { error } = await sb.from("project_tasks").update(patch).eq("id", quickTask.id);
       if (error) throw error;
+      const summary = [
+        title || quickTask.name,
+        m?.name ? `ผู้รับผิดชอบ: ${m.name}` : "",
+        due ? `ส่งมอบ ${fmtDate(due)}` : "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
       const { error: e2 } = await sb.from("project_task_updates").insert({
         task_id: quickTask.id,
         project_id: id,
         author_id: user!.id,
         kind: "assign",
-        message: mission.trim() || null,
+        message: [summary, detail].filter(Boolean).join("\n"),
       });
       if (e2) throw e2;
     },
     onSuccess: () => {
       toast.success("มอบหมายภารกิจเรียบร้อย");
       setQuickTask(null);
+      setMissionTitle("");
       setMission("");
       setDue("");
       qc.invalidateQueries({ queryKey: ["assignment-board-tasks", id] });
@@ -324,6 +336,7 @@ function AssignmentBoard() {
       return;
     }
     setQuickTask(t);
+    setMissionTitle("");
     setMission(t.description ?? "");
     setDue(t.end_date);
   };
@@ -565,6 +578,27 @@ function AssignmentBoard() {
             </div>
 
             <div className="space-y-1.5">
+              <Label>ชื่อภารกิจ</Label>
+              <Input
+                value={missionTitle}
+                onChange={(e) => setMissionTitle(e.target.value)}
+                placeholder="เช่น ออกแบบ mockup first draft"
+              />
+              <div className="flex flex-wrap gap-2 pt-1">
+                {[
+                  "ออกแบบ mockup first draft",
+                  "จัดทำ artwork / layout",
+                  "แก้ไขงานตาม comment",
+                  "เตรียมไฟล์ส่งลูกค้า",
+                ].map((t) => (
+                  <Button key={t} type="button" size="sm" variant="outline" onClick={() => setMissionTitle(t)}>
+                    {t}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
               <Label>รายละเอียดภารกิจ</Label>
               <Textarea
                 rows={3}
@@ -589,6 +623,14 @@ function AssignmentBoard() {
                 ))}
               </div>
             </div>
+
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+              <span className="text-muted-foreground">สรุปคำสั่งงาน: </span>
+              มอบหมายให้ <span className="font-medium">{member?.name ?? "สมาชิก"}</span>{" "}
+              <span className="font-medium">{missionTitle.trim() || quickTask?.name}</span>
+              {due ? ` ส่งมอบ ${fmtDate(due)}` : ""}
+            </div>
+
             <Button className="w-full" disabled={assign.isPending} onClick={() => assign.mutate()}>
               {assign.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
