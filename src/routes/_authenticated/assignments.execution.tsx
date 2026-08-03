@@ -207,10 +207,12 @@ function AssignmentsExecution() {
 
   const nameOf = (id: string | null) => (id ? profiles.data?.[id] ?? "…" : "ยังไม่ระบุผู้รับผิดชอบ");
   const rows = sortCards(toMissionCards(mine.data ?? []), sortKey, sortDir);
-  const open = rows.filter((r) => r.status !== "done" && r.projects?.status !== "completed");
-  const done = rows.filter((r) => r.status === "done" || r.projects?.status === "completed");
+  const filteredRows = hideCompleted ? rows.filter((r) => r.projects?.status !== "completed") : rows;
+  const open = filteredRows.filter((r) => r.status !== "done" && r.projects?.status !== "completed");
+  const done = filteredRows.filter((r) => r.status === "done" || r.projects?.status === "completed");
   const today = new Date().toISOString().slice(0, 10);
-  const tracked = sortCards(toMissionCards(assigned.data ?? []), sortKey, sortDir);
+  const trackedAll = sortCards(toMissionCards(assigned.data ?? []), sortKey, sortDir);
+  const tracked = hideCompleted ? trackedAll.filter((r) => r.projects?.status !== "completed") : trackedAll;
   const led = execProjects.data ?? [];
 
 
