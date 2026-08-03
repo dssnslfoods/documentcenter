@@ -461,7 +461,7 @@ function Dashboard() {
                     <th className="px-3 py-2">ชื่อสัญญา</th>
                     <th className="px-3 py-2">คู่สัญญา</th>
                     <th className="px-3 py-2">วันหมดอายุ</th>
-                    <th className="px-3 py-2 text-right">มูลค่า</th>
+                    {canSeeMoney && <th className="px-3 py-2 text-right">มูลค่า</th>}
                     <th className="px-3 py-2">สถานะ</th>
                   </tr>
                 </thead>
@@ -474,7 +474,7 @@ function Dashboard() {
                         <td className="px-3 py-2 font-medium">{c.title}</td>
                         <td className="px-3 py-2 text-muted-foreground">{partner?.name ?? "-"}</td>
                         <td className="px-3 py-2">{fmtDate(c.end_date)}</td>
-                        <td className="px-3 py-2 text-right font-mono tabular-nums">{canSeeMoney ? fmtCurrency(c.value_amount) : MONEY_MASK}</td>
+                        {canSeeMoney && <td className="px-3 py-2 text-right font-mono tabular-nums">{fmtCurrency(c.value_amount)}</td>}
                         <td className="px-3 py-2"><ContractStatusBadge status={c.status as never} /></td>
                       </tr>
                     );

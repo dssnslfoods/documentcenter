@@ -223,14 +223,14 @@ function MilestoneList({ title, icon: Icon, items, currency, showTotal }: {
                 {m.notes && <div className="text-xs text-muted-foreground mt-0.5 truncate">{m.notes}</div>}
                 <div className="text-xs text-muted-foreground mt-1">ครบกำหนด: {fmtDate(m.due_date)}</div>
               </div>
-              <div className="text-sm font-semibold whitespace-nowrap">{canSeeMoney ? fmtCurrency(m.amount, currency) : MONEY_MASK}</div>
+              {canSeeMoney && <div className="text-sm font-semibold whitespace-nowrap">{fmtCurrency(m.amount, currency)}</div>}
             </div>
           ))
         )}
-        {showTotal && items.length > 0 && (
+        {canSeeMoney && showTotal && items.length > 0 && (
           <div className="flex justify-end pt-2 border-t text-sm">
             <span className="text-muted-foreground">รวม:&nbsp;</span>
-            <span className="font-semibold">{canSeeMoney ? fmtCurrency(total, currency) : MONEY_MASK}</span>
+            <span className="font-semibold">{fmtCurrency(total, currency)}</span>
           </div>
         )}
       </CardContent>
