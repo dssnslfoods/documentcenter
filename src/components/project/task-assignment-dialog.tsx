@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getSupabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/use-supabase";
 import { fmtDate } from "@/lib/format";
@@ -51,6 +52,7 @@ export function TaskAssignmentDialog({
   const { user } = useAuth();
   const [message, setMessage] = useState("");
   const [progress, setProgress] = useState("");
+  const [assignee, setAssignee] = useState<string | null>(null);
 
   const { data: task } = useQuery({
     queryKey: ["task-assignment", taskId],
@@ -90,7 +92,40 @@ export function TaskAssignmentDialog({
     },
   });
 
+  const { data: members } = useQuery({
+    queryKey: ["task-project-members", task?.project_id],
+    enabled: !!task?.project_id && canManage,
+    queryFn: async () => {
+      const { data: mem } = await sb.from("project_members").select("user_id").eq("project_id", task!.project_id);
+      const ids = (mem ?? []).map((m) => m.user_id).filter(Boolean) as string[];
+      if (!ids.length) return [] as { id: string; name: string }[];
+      const { data: profs } = await sb.from("profiles").select("id, full_name, email").in("id", ids);
+      return (profs ?? []).map((p) => ({
+        id: p.id as string,
+        name: ((p.full_name as string) || (p.email as string)) ?? "",
+      }));
+    },
+  });
+
+  const saveAssignee = useMutation({
+    mutationFn: async (userId: string) => {
+      const name = (members ?? []).find((m) => m.id === userId)?.name ?? null;
+      const { error } = await sb
+        .from("project_tasks")
+        .update({ assignee_id: userId, assignee_label: name })
+        .eq("id", task!.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("บันทึกผู้รับผิดชอบเรียบร้อย");
+      qc.invalidateQueries({ queryKey: ["task-assignment", taskId] });
+      qc.invalidateQueries({ queryKey: ["project-tasks", task?.project_id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const missingTable = /project_task_updates/.test(updatesError?.message ?? "");
+
   const isAssignee = !!task?.assignee_id && task.assignee_id === user?.id;
   const st: AssignmentStatus = (task?.assignment_status ?? "draft") as AssignmentStatus;
 
@@ -165,6 +200,45 @@ export function TaskAssignmentDialog({
                 <div className="mt-1 text-right text-[11px] text-muted-foreground">{task.progress ?? 0}%</div>
               </div>
             </div>
+
+            {canManage && !missingTable && (
+              <div className="space-y-2">
+                <Label>เลือกสมาชิกผู้รับผิดชอบ</Label>
+                <Select
+                  value={assignee ?? task.assignee_id ?? ""}
+                  onValueChange={(v) => setAssignee(v)}
+                  disabled={saveAssignee.isPending}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="เลือกสมาชิกโครงการ" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(members ?? []).map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {assignee && assignee !== task.assignee_id && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={saveAssignee.isPending}
+                    onClick={() => saveAssignee.mutate(assignee)}
+                  >
+                    {saveAssignee.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <UserCheck className="mr-2 h-4 w-4" />
+                    )}
+                    บันทึกผู้รับผิดชอบ
+                  </Button>
+                )}
+              </div>
+            )}
+
+
 
             {missingTable ? (
               <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm">

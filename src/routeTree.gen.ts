@@ -51,6 +51,7 @@ import { Route as AuthenticatedAssignmentsExecutionRouteImport } from './routes/
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as ApiPublicCronDailyCheckRouteImport } from './routes/api/public/cron/daily-check'
+import { Route as AuthenticatedAssignmentsProjectIdRouteImport } from './routes/_authenticated/assignments.project.$id'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -288,6 +289,12 @@ const ApiPublicCronDailyCheckRoute = ApiPublicCronDailyCheckRouteImport.update({
   path: '/api/public/cron/daily-check',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAssignmentsProjectIdRoute =
+  AuthenticatedAssignmentsProjectIdRouteImport.update({
+    id: '/assignments/project/$id',
+    path: '/assignments/project/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -330,6 +337,7 @@ export interface FileRoutesByFullPath {
   '/projects/': typeof AuthenticatedProjectsIndexRoute
   '/quotations/': typeof AuthenticatedQuotationsIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
+  '/assignments/project/$id': typeof AuthenticatedAssignmentsProjectIdRoute
   '/api/public/cron/daily-check': typeof ApiPublicCronDailyCheckRoute
 }
 export interface FileRoutesByTo {
@@ -373,6 +381,7 @@ export interface FileRoutesByTo {
   '/projects': typeof AuthenticatedProjectsIndexRoute
   '/quotations': typeof AuthenticatedQuotationsIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
+  '/assignments/project/$id': typeof AuthenticatedAssignmentsProjectIdRoute
   '/api/public/cron/daily-check': typeof ApiPublicCronDailyCheckRoute
 }
 export interface FileRoutesById {
@@ -418,6 +427,7 @@ export interface FileRoutesById {
   '/_authenticated/projects/': typeof AuthenticatedProjectsIndexRoute
   '/_authenticated/quotations/': typeof AuthenticatedQuotationsIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
+  '/_authenticated/assignments/project/$id': typeof AuthenticatedAssignmentsProjectIdRoute
   '/api/public/cron/daily-check': typeof ApiPublicCronDailyCheckRoute
 }
 export interface FileRouteTypes {
@@ -463,6 +473,7 @@ export interface FileRouteTypes {
     | '/projects/'
     | '/quotations/'
     | '/settings/'
+    | '/assignments/project/$id'
     | '/api/public/cron/daily-check'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -506,6 +517,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/quotations'
     | '/settings'
+    | '/assignments/project/$id'
     | '/api/public/cron/daily-check'
   id:
     | '__root__'
@@ -550,6 +562,7 @@ export interface FileRouteTypes {
     | '/_authenticated/projects/'
     | '/_authenticated/quotations/'
     | '/_authenticated/settings/'
+    | '/_authenticated/assignments/project/$id'
     | '/api/public/cron/daily-check'
   fileRoutesById: FileRoutesById
 }
@@ -862,6 +875,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronDailyCheckRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/assignments/project/$id': {
+      id: '/_authenticated/assignments/project/$id'
+      path: '/assignments/project/$id'
+      fullPath: '/assignments/project/$id'
+      preLoaderRoute: typeof AuthenticatedAssignmentsProjectIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -898,6 +918,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedProjectsIndexRoute: typeof AuthenticatedProjectsIndexRoute
   AuthenticatedQuotationsIndexRoute: typeof AuthenticatedQuotationsIndexRoute
   AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
+  AuthenticatedAssignmentsProjectIdRoute: typeof AuthenticatedAssignmentsProjectIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -935,6 +956,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedProjectsIndexRoute: AuthenticatedProjectsIndexRoute,
   AuthenticatedQuotationsIndexRoute: AuthenticatedQuotationsIndexRoute,
   AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
+  AuthenticatedAssignmentsProjectIdRoute:
+    AuthenticatedAssignmentsProjectIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
