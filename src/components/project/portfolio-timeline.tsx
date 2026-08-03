@@ -486,7 +486,11 @@ export function PortfolioTimeline() {
           <span className="h-3 w-3 rotate-45 rounded-[2px] bg-destructive" />เลยกำหนด
         </span>
         <span className="flex items-center gap-1.5">
+          <span className="h-2 w-5 rounded-sm bg-sky-400/70" />งานที่มอบหมายให้สมาชิก
+        </span>
+        <span className="flex items-center gap-1.5">
           <span className="h-3 w-px bg-destructive" />วันนี้
+
         </span>
       </div>
     </div>
