@@ -52,6 +52,7 @@ import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as ApiPublicCronDailyCheckRouteImport } from './routes/api/public/cron/daily-check'
 import { Route as AuthenticatedAssignmentsProjectIdRouteImport } from './routes/_authenticated/assignments.project.$id'
+import { Route as AuthenticatedAssignmentsBoardIdRouteImport } from './routes/_authenticated/assignments.board.$id'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -295,6 +296,12 @@ const AuthenticatedAssignmentsProjectIdRoute =
     path: '/assignments/project/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAssignmentsBoardIdRoute =
+  AuthenticatedAssignmentsBoardIdRouteImport.update({
+    id: '/assignments/board/$id',
+    path: '/assignments/board/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -337,6 +344,7 @@ export interface FileRoutesByFullPath {
   '/projects/': typeof AuthenticatedProjectsIndexRoute
   '/quotations/': typeof AuthenticatedQuotationsIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
+  '/assignments/board/$id': typeof AuthenticatedAssignmentsBoardIdRoute
   '/assignments/project/$id': typeof AuthenticatedAssignmentsProjectIdRoute
   '/api/public/cron/daily-check': typeof ApiPublicCronDailyCheckRoute
 }
@@ -381,6 +389,7 @@ export interface FileRoutesByTo {
   '/projects': typeof AuthenticatedProjectsIndexRoute
   '/quotations': typeof AuthenticatedQuotationsIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
+  '/assignments/board/$id': typeof AuthenticatedAssignmentsBoardIdRoute
   '/assignments/project/$id': typeof AuthenticatedAssignmentsProjectIdRoute
   '/api/public/cron/daily-check': typeof ApiPublicCronDailyCheckRoute
 }
@@ -427,6 +436,7 @@ export interface FileRoutesById {
   '/_authenticated/projects/': typeof AuthenticatedProjectsIndexRoute
   '/_authenticated/quotations/': typeof AuthenticatedQuotationsIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
+  '/_authenticated/assignments/board/$id': typeof AuthenticatedAssignmentsBoardIdRoute
   '/_authenticated/assignments/project/$id': typeof AuthenticatedAssignmentsProjectIdRoute
   '/api/public/cron/daily-check': typeof ApiPublicCronDailyCheckRoute
 }
@@ -473,6 +483,7 @@ export interface FileRouteTypes {
     | '/projects/'
     | '/quotations/'
     | '/settings/'
+    | '/assignments/board/$id'
     | '/assignments/project/$id'
     | '/api/public/cron/daily-check'
   fileRoutesByTo: FileRoutesByTo
@@ -517,6 +528,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/quotations'
     | '/settings'
+    | '/assignments/board/$id'
     | '/assignments/project/$id'
     | '/api/public/cron/daily-check'
   id:
@@ -562,6 +574,7 @@ export interface FileRouteTypes {
     | '/_authenticated/projects/'
     | '/_authenticated/quotations/'
     | '/_authenticated/settings/'
+    | '/_authenticated/assignments/board/$id'
     | '/_authenticated/assignments/project/$id'
     | '/api/public/cron/daily-check'
   fileRoutesById: FileRoutesById
@@ -882,6 +895,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAssignmentsProjectIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/assignments/board/$id': {
+      id: '/_authenticated/assignments/board/$id'
+      path: '/assignments/board/$id'
+      fullPath: '/assignments/board/$id'
+      preLoaderRoute: typeof AuthenticatedAssignmentsBoardIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -918,6 +938,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedProjectsIndexRoute: typeof AuthenticatedProjectsIndexRoute
   AuthenticatedQuotationsIndexRoute: typeof AuthenticatedQuotationsIndexRoute
   AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
+  AuthenticatedAssignmentsBoardIdRoute: typeof AuthenticatedAssignmentsBoardIdRoute
   AuthenticatedAssignmentsProjectIdRoute: typeof AuthenticatedAssignmentsProjectIdRoute
 }
 
@@ -956,6 +977,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedProjectsIndexRoute: AuthenticatedProjectsIndexRoute,
   AuthenticatedQuotationsIndexRoute: AuthenticatedQuotationsIndexRoute,
   AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
+  AuthenticatedAssignmentsBoardIdRoute: AuthenticatedAssignmentsBoardIdRoute,
   AuthenticatedAssignmentsProjectIdRoute:
     AuthenticatedAssignmentsProjectIdRoute,
 }
