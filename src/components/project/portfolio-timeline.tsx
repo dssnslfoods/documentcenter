@@ -118,8 +118,8 @@ export function PortfolioTimeline() {
         sb
           .from("project_tasks")
           .select("id, project_id, name, description, start_date, end_date, status, assignment_status, assignee_id")
-          .not("parent_id", "is", null)
           .not("assignee_id", "is", null),
+
       ]);
       const assignments = (asg.data ?? []) as unknown as AssignRow[];
       const ids = [...new Set(assignments.map((a) => a.assignee_id).filter(Boolean))] as string[];
