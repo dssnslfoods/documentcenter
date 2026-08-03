@@ -36,3 +36,22 @@ export type TaskUpdate = {
   progress: number | null;
   created_at: string;
 };
+
+/** แยกรายการ "ภารกิจ:" ออกจากคำอธิบายงาน เพื่อแสดงผลเป็นการ์ดละ 1 ภารกิจ */
+export function splitMissions(description: string | null | undefined): {
+  missions: string[];
+  note: string;
+} {
+  const lines = (description ?? "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const missions: string[] = [];
+  const notes: string[] = [];
+  for (const line of lines) {
+    const m = line.match(/^ภารกิจ\s*:\s*(.+)$/);
+    if (m) missions.push(m[1].trim());
+    else notes.push(line);
+  }
+  return { missions, note: notes.join("\n") };
+}
