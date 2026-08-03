@@ -52,6 +52,7 @@ export function TaskAssignmentDialog({
   const { user } = useAuth();
   const [message, setMessage] = useState("");
   const [progress, setProgress] = useState("");
+  const [assignee, setAssignee] = useState<string | null>(null);
 
   const { data: task } = useQuery({
     queryKey: ["task-assignment", taskId],
