@@ -124,6 +124,7 @@ const HEALTH: Record<string, { label: string; dot: string }> = {
 };
 
 const ACTIVE_STATUSES = ["won", "in_progress"];
+const HIDDEN_KEY = "portfolio-timeline:hidden-projects";
 
 export function PortfolioTimeline() {
   const sb = getSupabase();
