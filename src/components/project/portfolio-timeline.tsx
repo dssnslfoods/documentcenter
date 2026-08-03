@@ -174,6 +174,34 @@ export function PortfolioTimeline() {
     el.scrollLeft = dragRef.current.scrollLeft - walk;
   };
 
+  const scrollToMonth = (index: number) => {
+    const el = scrollRef.current;
+    if (!el || !months.length) return;
+    const clamped = Math.max(0, Math.min(index, months.length - 1));
+    const target = (months[clamped].left / 100) * el.scrollWidth;
+    el.scrollTo({ left: target, behavior: "smooth" });
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    const el = scrollRef.current;
+    if (!el || !months.length) return;
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
+    e.preventDefault();
+
+    if (e.key === "Home") return scrollToMonth(0);
+    if (e.key === "End") return scrollToMonth(months.length - 1);
+
+    const currentIndex = months.findIndex((m, i) => {
+      const leftPx = (m.left / 100) * el.scrollWidth;
+      const nextLeftPx = i < months.length - 1 ? (months[i + 1].left / 100) * el.scrollWidth : el.scrollWidth;
+      return el.scrollLeft >= leftPx && el.scrollLeft < nextLeftPx;
+    });
+
+    const base = currentIndex === -1 ? months.length - 1 : currentIndex;
+    scrollToMonth(e.key === "ArrowLeft" ? base - 1 : base + 1);
+  };
+
+
 
   const { data, isLoading } = useQuery({
     queryKey: ["portfolio-timeline", "delegated-status-v2"],
@@ -438,11 +466,15 @@ export function PortfolioTimeline() {
             </Button>
             <div
               ref={scrollRef}
-              className="cursor-grab overflow-x-auto"
+              tabIndex={0}
+              role="region"
+              aria-label="ไทม์ไลน์โครงการ"
+              className="cursor-grab overflow-x-auto outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
               onMouseDown={onMouseDown}
               onMouseLeave={onMouseLeave}
               onMouseUp={onMouseUp}
               onMouseMove={onMouseMove}
+              onKeyDown={onKeyDown}
             >
               <div className="min-w-[900px]">
                 <div className="flex border-b bg-muted/40">
@@ -666,9 +698,15 @@ export function PortfolioTimeline() {
         </span>
         <span className="flex items-center gap-1.5">
           <span className="h-3 w-px bg-destructive" />วันนี้
-
         </span>
       </div>
+
+      <p className="text-[11px] text-muted-foreground">
+        คลิกที่ไทม์ไลน์แล้วใช้ปุ่ม <kbd className="rounded border bg-muted px-1 py-0.5 font-mono text-[10px]">←</kbd>{" "}
+        <kbd className="rounded border bg-muted px-1 py-0.5 font-mono text-[10px]">→</kbd> เพื่อเลื่อนเป็นเดือน{" "}
+        <kbd className="rounded border bg-muted px-1 py-0.5 font-mono text-[10px]">Home</kbd> /{" "}
+        <kbd className="rounded border bg-muted px-1 py-0.5 font-mono text-[10px]">End</kbd> เพื่อกระโดดไปต้น/ปลายไทม์ไลน์
+      </p>
 
       <TaskAssignmentDialog
         taskId={editTaskId}
