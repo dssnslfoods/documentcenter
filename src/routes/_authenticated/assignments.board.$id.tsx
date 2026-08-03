@@ -10,6 +10,8 @@ import {
   Loader2,
   MessageSquare,
   Send,
+  UserPlus,
+  UserMinus,
   Users,
   Zap,
 } from "lucide-react";
@@ -29,6 +31,7 @@ import { fmtDate } from "@/lib/format";
 import { TaskAssignmentDialog } from "@/components/project/task-assignment-dialog";
 import { LIFECYCLE_LABEL, STATUS_TONE, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 import { ASSIGNMENT_META, type AssignmentStatus } from "@/lib/task-assignment";
+import { ROLE_PERMISSIONS } from "@/lib/project-roles";
 
 export const Route = createFileRoute("/_authenticated/assignments/board/$id")({
   head: () => ({
@@ -61,7 +64,7 @@ type Task = {
   assignment_status: AssignmentStatus | null;
 };
 
-type Member = { id: string; name: string; role: string | null; position: string | null };
+type Member = { id: string; memberId: string; name: string; role: string | null; position: string | null };
 
 const BAR_TONE: Record<AssignmentStatus, string> = {
   draft: "bg-muted-foreground/25",
@@ -98,6 +101,7 @@ function AssignmentBoard() {
   const [due, setDue] = useState("");
   const [threadTask, setThreadTask] = useState<string | null>(null);
   const [showLoad, setShowLoad] = useState(true);
+  const [manageOpen, setManageOpen] = useState(false);
 
   const workload = useQuery({
     queryKey: ["member-workload", selectedMember],
