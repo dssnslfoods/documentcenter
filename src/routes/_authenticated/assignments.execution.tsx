@@ -114,8 +114,33 @@ function AssignmentsExecution() {
     },
   });
 
+  const assigneeIds = Array.from(
+    new Set(
+      [...(mine.data ?? []), ...(assigned.data ?? [])]
+        .map((t) => t.assignee_id)
+        .filter((v): v is string => !!v)
+    )
+  );
+
+  const profiles = useQuery({
+    queryKey: ["task-assignee-profiles", assigneeIds.join(",")],
+    enabled: assigneeIds.length > 0,
+    queryFn: async () => {
+      const { data } = await getSupabase()
+        .from("profiles")
+        .select("id, full_name, email")
+        .in("id", assigneeIds);
+      const map: Record<string, string> = {};
+      for (const p of (data ?? []) as { id: string; full_name: string | null; email: string | null }[]) {
+        map[p.id] = p.full_name || p.email || "ไม่ทราบชื่อ";
+      }
+      return map;
+    },
+  });
+
   if (!guard.allowed) return guard.node;
 
+  const nameOf = (id: string | null) => (id ? profiles.data?.[id] ?? "…" : "ยังไม่ระบุผู้รับผิดชอบ");
   const rows = toMissionCards(mine.data ?? []);
   const open = rows.filter((r) => r.status !== "done");
   const done = rows.filter((r) => r.status === "done");
