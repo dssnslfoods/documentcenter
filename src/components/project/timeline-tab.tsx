@@ -38,6 +38,7 @@ type Task = {
   progress: number;
   status: TaskStatus;
   sort_order: number;
+  assignment_status?: AssignmentStatus | null;
 };
 
 const DAY = 86_400_000;
