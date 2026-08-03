@@ -75,6 +75,8 @@ function AssignmentsExecution() {
   const guard = usePageGuard("assignments", "การมอบหมายงาน");
   const { user } = useAuth();
   const [openTask, setOpenTask] = useState<{ id: string; manage: boolean } | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>("end_date");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   const mine = useQuery({
     queryKey: ["my-assigned-tasks", user?.id],
