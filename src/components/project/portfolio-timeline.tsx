@@ -1,15 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  AlertTriangle,
-  CalendarClock,
-  CheckCircle2,
-  Flag,
-  Loader2,
-  Timer,
-} from "lucide-react";
-import { PageHeader, EmptyState } from "@/components/page-header";
+import { AlertTriangle, CalendarClock, CheckCircle2, Flag, Loader2, Timer } from "lucide-react";
+import { EmptyState } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -20,30 +13,9 @@ import {
 } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getSupabase } from "@/lib/supabase";
-import { usePageGuard } from "@/hooks/use-page-access";
 import { fmtDate, daysUntil } from "@/lib/format";
 import { akaBadgeClass } from "@/lib/aka-colors";
 import { LIFECYCLE_LABEL, STATUS_TONE, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
-
-export const Route = createFileRoute("/_authenticated/projects/timeline")({
-  head: () => ({
-    meta: [
-      { title: "ไทม์ไลน์ภาพรวมโครงการ | Document Hub" },
-      {
-        name: "description",
-        content: "อินโฟกราฟิกไทม์ไลน์กำหนดส่งมอบของทุกโครงการ สำหรับผู้บริหารดูภาพรวมได้ในหน้าเดียว",
-      },
-      { property: "og:title", content: "ไทม์ไลน์ภาพรวมโครงการ | Document Hub" },
-      {
-        property: "og:description",
-        content: "อินโฟกราฟิกไทม์ไลน์กำหนดส่งมอบของทุกโครงการ สำหรับผู้บริหารดูภาพรวมได้ในหน้าเดียว",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
-  component: PortfolioTimeline,
-});
 
 type ProjectRow = {
   id: string;
@@ -97,14 +69,12 @@ const HEALTH: Record<string, { label: string; dot: string }> = {
 
 const ACTIVE_STATUSES = ["won", "in_progress"];
 
-function PortfolioTimeline() {
-  const guard = usePageGuard("reports", "ไทม์ไลน์ภาพรวมโครงการ");
+export function PortfolioTimeline() {
   const sb = getSupabase();
   const [scope, setScope] = useState<"active" | "all">("active");
 
   const { data, isLoading } = useQuery({
     queryKey: ["portfolio-timeline"],
-    enabled: guard.allowed,
     queryFn: async () => {
       const [pr, tk, ms] = await Promise.all([
         sb
@@ -117,9 +87,7 @@ function PortfolioTimeline() {
           .from("project_tasks")
           .select("project_id, name, start_date, end_date, status, is_milestone_marker")
           .is("parent_id", null),
-        sb
-          .from("project_milestones")
-          .select("project_id, milestone_number, description, due_date, status"),
+        sb.from("project_milestones").select("project_id, milestone_number, description, due_date, status"),
       ]);
       return {
         projects: (pr.data ?? []) as ProjectRow[],
@@ -232,23 +200,22 @@ function PortfolioTimeline() {
     return { projects: lanes.length, overdue, soon, done };
   }, [lanes]);
 
-  if (!guard.allowed) return guard.node;
-
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="ไทม์ไลน์ภาพรวมโครงการ"
-        description="ภาพรวมกำหนดส่งมอบของทุกโครงการในมุมมองเดียว สำหรับผู้บริหารติดตามความคืบหน้าและความเสี่ยง"
-        actions={
-          <Select value={scope} onValueChange={(v) => setScope(v as "active" | "all")}>
-            <SelectTrigger className="w-[190px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="active">เฉพาะโครงการที่ดำเนินการ</SelectItem>
-              <SelectItem value="all">ทุกโครงการ (ยกเว้นแพ้งาน)</SelectItem>
-            </SelectContent>
-          </Select>
-        }
-      />
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs text-muted-foreground">
+          ภาพรวมกำหนดส่งมอบของทุกโครงการ ก่อนมอบหมายงานให้สมาชิก
+        </p>
+        <Select value={scope} onValueChange={(v) => setScope(v as "active" | "all")}>
+          <SelectTrigger className="h-9 w-[190px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="active">เฉพาะโครงการที่ดำเนินการ</SelectItem>
+            <SelectItem value="all">ทุกโครงการ (ยกเว้นแพ้งาน)</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard icon={CalendarClock} tone="text-primary" label="โครงการในไทม์ไลน์" value={kpi.projects} />
@@ -258,7 +225,9 @@ function PortfolioTimeline() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-20"><Loader2 className="h-7 w-7 animate-spin text-muted-foreground" /></div>
+        <div className="flex justify-center py-20">
+          <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
+        </div>
       ) : !lanes.length || !range ? (
         <EmptyState
           icon={CalendarClock}
@@ -270,7 +239,6 @@ function PortfolioTimeline() {
           <div className="tile overflow-hidden p-0">
             <div className="overflow-x-auto">
               <div className="min-w-[900px]">
-                {/* Month scale */}
                 <div className="flex border-b bg-muted/40">
                   <div className="w-64 shrink-0 border-r px-4 py-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                     โครงการ
@@ -299,7 +267,10 @@ function PortfolioTimeline() {
                     <div key={p.id} className="flex border-b last:border-b-0 hover:bg-muted/30">
                       <div className="w-64 shrink-0 space-y-1 border-r px-4 py-3">
                         <div className="flex items-center gap-1.5">
-                          <span className={`h-2 w-2 shrink-0 rounded-full ${health.dot}`} title={`สุขภาพโครงการ: ${health.label}`} />
+                          <span
+                            className={`h-2 w-2 shrink-0 rounded-full ${health.dot}`}
+                            title={`สุขภาพโครงการ: ${health.label}`}
+                          />
                           <Link
                             to="/projects/$id"
                             params={{ id: p.id }}
@@ -314,14 +285,21 @@ function PortfolioTimeline() {
                               {p.customer_aka}
                             </Badge>
                           )}
-                          <Badge variant="outline" className={`h-4 px-1.5 text-[9px] ${STATUS_TONE[p.status as ProjectLifecycleStatus] ?? ""}`}>
+                          <Badge
+                            variant="outline"
+                            className={`h-4 px-1.5 text-[9px] ${STATUS_TONE[p.status as ProjectLifecycleStatus] ?? ""}`}
+                          >
                             {LIFECYCLE_LABEL[p.status as ProjectLifecycleStatus] ?? p.status}
                           </Badge>
                         </div>
                         <div className="text-[10px] text-muted-foreground">
                           ส่งมอบถัดไป {fmtDate(lane.finalDue)}
                           {dueIn != null && (
-                            <span className={dueIn < 0 ? "ml-1 font-semibold text-destructive" : "ml-1 font-semibold text-foreground"}>
+                            <span
+                              className={
+                                dueIn < 0 ? "ml-1 font-semibold text-destructive" : "ml-1 font-semibold text-foreground"
+                              }
+                            >
                               {dueIn < 0 ? `เลย ${Math.abs(dueIn)} วัน` : `อีก ${dueIn} วัน`}
                             </span>
                           )}
@@ -330,9 +308,16 @@ function PortfolioTimeline() {
 
                       <div className="relative min-h-[64px] flex-1">
                         {months.map((m) => (
-                          <div key={`g-${p.id}-${m.left}`} className="absolute top-0 h-full border-l border-border/50" style={{ left: `${m.left}%` }} />
+                          <div
+                            key={`g-${p.id}-${m.left}`}
+                            className="absolute top-0 h-full border-l border-border/50"
+                            style={{ left: `${m.left}%` }}
+                          />
                         ))}
-                        <div className="absolute top-0 h-full w-px bg-destructive/60" style={{ left: `${pct(Date.now())}%` }} />
+                        <div
+                          className="absolute top-0 h-full w-px bg-destructive/60"
+                          style={{ left: `${pct(Date.now())}%` }}
+                        />
                         <div
                           className="absolute top-1/2 h-3 -translate-y-1/2 rounded-full bg-primary/25 ring-1 ring-inset ring-primary/40"
                           style={{ left: `${left}%`, width: `${width}%` }}
@@ -373,10 +358,18 @@ function PortfolioTimeline() {
       )}
 
       <div className="flex flex-wrap items-center gap-4 text-[11px] text-muted-foreground">
-        <span className="flex items-center gap-1.5"><span className="h-3 w-3 rotate-45 rounded-[2px] bg-success" />ส่งมอบแล้ว</span>
-        <span className="flex items-center gap-1.5"><span className="h-3 w-3 rotate-45 rounded-[2px] bg-primary" />รอส่งมอบ</span>
-        <span className="flex items-center gap-1.5"><span className="h-3 w-3 rotate-45 rounded-[2px] bg-destructive" />เลยกำหนด</span>
-        <span className="flex items-center gap-1.5"><span className="h-3 w-px bg-destructive" />วันนี้</span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-3 w-3 rotate-45 rounded-[2px] bg-success" />ส่งมอบแล้ว
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-3 w-3 rotate-45 rounded-[2px] bg-primary" />รอส่งมอบ
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-3 w-3 rotate-45 rounded-[2px] bg-destructive" />เลยกำหนด
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-3 w-px bg-destructive" />วันนี้
+        </span>
       </div>
     </div>
   );

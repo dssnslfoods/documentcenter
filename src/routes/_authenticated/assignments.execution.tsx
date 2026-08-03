@@ -21,6 +21,8 @@ import { fmtDate, daysUntil } from "@/lib/format";
 import { Crown, UserRound, ArrowUpDown, Tag, FolderKanban, MessagesSquare } from "lucide-react";
 import { akaBadgeClass } from "@/lib/aka-colors";
 import { TaskAssignmentDialog } from "@/components/project/task-assignment-dialog";
+import { PortfolioTimeline } from "@/components/project/portfolio-timeline";
+
 import { ASSIGNMENT_META, splitMissions, type AssignmentStatus } from "@/lib/task-assignment";
 import { LIFECYCLE_LABEL, STATUS_TONE, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 
@@ -127,6 +129,8 @@ function AssignmentsExecution() {
   const [openTask, setOpenTask] = useState<{ id: string; manage: boolean } | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("end_date");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [tab, setTab] = useState("overview");
+
 
   const mine = useQuery({
     queryKey: ["my-assigned-tasks", user?.id],
@@ -253,13 +257,15 @@ function AssignmentsExecution() {
       )}
 
 
-      <Tabs defaultValue="mine">
+      <Tabs value={tab} onValueChange={setTab}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <TabsList>
+            <TabsTrigger value="overview">ภาพรวมกำหนดส่งมอบ</TabsTrigger>
             <TabsTrigger value="mine">งานที่ได้รับมอบหมาย ({rows.length})</TabsTrigger>
             <TabsTrigger value="tracking">งานที่ฉันมอบหมาย ({tracked.length})</TabsTrigger>
           </TabsList>
-          <div className="flex items-center gap-2">
+          <div className={`flex items-center gap-2 ${tab === "overview" ? "hidden" : ""}`}>
+
             <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">เรียงตาม</span>
             <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
@@ -287,7 +293,12 @@ function AssignmentsExecution() {
         </div>
 
 
+        <TabsContent value="overview" className="pt-4">
+          <PortfolioTimeline />
+        </TabsContent>
+
         <TabsContent value="mine" className="space-y-4 pt-4">
+
           <div className="grid gap-3 sm:grid-cols-3">
             <StatCard label="งานที่ยังไม่เสร็จ" value={open.length} />
             <StatCard label="เลยกำหนด" value={open.filter((r) => r.end_date < today).length} />
