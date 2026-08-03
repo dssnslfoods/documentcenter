@@ -617,7 +617,7 @@ export function PortfolioTimeline() {
               onMouseMove={onMouseMove}
               onKeyDown={onKeyDown}
             >
-              <div className="min-w-[900px]">
+              <div style={{ minWidth: contentMinWidth }}>
                 <div className="flex border-b bg-muted/40">
                   <div className="w-64 shrink-0 border-r px-4 py-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                     โครงการ
@@ -626,12 +626,22 @@ export function PortfolioTimeline() {
                     {months.map((m) => (
                       <div
                         key={m.label + m.left}
-                        className="absolute top-0 h-full border-l text-[10px] text-muted-foreground"
+                        className={`absolute top-0 h-full overflow-hidden border-l text-[10px] text-muted-foreground ${
+                          m.weekend ? "bg-muted/60" : ""
+                        }`}
                         style={{ left: `${m.left}%`, width: `${m.width}%` }}
                       >
-                        <span className="pl-1.5 leading-9">{m.label}</span>
+                        {zoom === "day" ? (
+                          <span className="flex h-full flex-col items-center justify-center leading-none">
+                            <span className="text-[9px]">{m.sub}</span>
+                            <span className="font-medium">{m.label}</span>
+                          </span>
+                        ) : (
+                          <span className="pl-1.5 leading-9">{m.label}</span>
+                        )}
                       </div>
                     ))}
+
                     <div className="absolute top-0 h-full w-px bg-destructive" style={{ left: `${pct(Date.now())}%` }} />
                   </div>
                 </div>
