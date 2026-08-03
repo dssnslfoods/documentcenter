@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/page-header";
+import { FilePreviewButton } from "@/components/project/file-preview-dialog";
+
 import { getSupabase } from "@/lib/supabase";
 import { fmtDateTime } from "@/lib/format";
 import {
