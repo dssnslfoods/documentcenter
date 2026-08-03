@@ -124,23 +124,6 @@ export function TaskAssignmentDialog({
     },
   });
 
-  const saveAssignee = useMutation({
-    mutationFn: async (userId: string) => {
-      const name = (members ?? []).find((m) => m.id === userId)?.name ?? null;
-      const { error } = await sb
-        .from("project_tasks")
-        .update({ assignee_id: userId, assignee_label: name })
-        .eq("id", task!.id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("บันทึกผู้รับผิดชอบเรียบร้อย");
-      qc.invalidateQueries({ queryKey: ["task-assignment", taskId] });
-      qc.invalidateQueries({ queryKey: ["project-tasks", task?.project_id] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
   const saveDetails = useMutation({
     mutationFn: async () => {
       if (!task) return;
