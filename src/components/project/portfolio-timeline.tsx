@@ -417,6 +417,8 @@ export function PortfolioTimeline() {
     return rows.sort((a, b) => (t(a.finalDue) || a.end) - (t(b.finalDue) || b.end));
   }, [data, scope]);
 
+  const lanes = useMemo(() => allLanes.filter((l) => !hidden.has(l.project.id)), [allLanes, hidden]);
+
   const range = useMemo(() => {
     if (!lanes.length) return null;
     const min = Math.min(...lanes.map((l) => l.start), Date.now());
