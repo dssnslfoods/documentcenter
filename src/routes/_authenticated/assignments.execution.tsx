@@ -303,7 +303,7 @@ function AssignmentsExecution() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
               {[...open, ...done].map((t, i) => (
                 <TaskCard key={`${t.id}-${i}`} t={t} today={today} assigneeName={nameOf(t.assignee_id)} onOpen={() => setOpenTask({ id: t.id, manage: false })} />
               ))}
@@ -321,7 +321,7 @@ function AssignmentsExecution() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
               {tracked.map((t, i) => (
                 <TaskCard key={`${t.id}-${i}`} t={t} today={today} assigneeName={nameOf(t.assignee_id)} onOpen={() => setOpenTask({ id: t.id, manage: true })} />
               ))}
