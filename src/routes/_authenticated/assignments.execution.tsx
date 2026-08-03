@@ -11,9 +11,10 @@ import { getSupabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/use-supabase";
 import { usePageGuard } from "@/hooks/use-page-access";
 import { fmtDate } from "@/lib/format";
-import { CalendarClock, FolderKanban, MessagesSquare } from "lucide-react";
+import { CalendarClock, FolderKanban, MessagesSquare, Crown } from "lucide-react";
 import { TaskAssignmentDialog } from "@/components/project/task-assignment-dialog";
 import { ASSIGNMENT_META, type AssignmentStatus } from "@/lib/task-assignment";
+import { LIFECYCLE_LABEL, STATUS_TONE, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 
 export const Route = createFileRoute("/_authenticated/assignments/execution")({
   head: () => ({
@@ -53,6 +54,16 @@ type Row = {
 const SELECT =
   "id, project_id, name, description, start_date, end_date, progress, status, assignment_status, assignee_id, projects(id, name, code)";
 
+type ExecProject = {
+  id: string;
+  name: string;
+  code: string | null;
+  status: string;
+  progress: number | null;
+  end_date: string | null;
+};
+
+
 function AssignmentsExecution() {
   const guard = usePageGuard("assignments", "การมอบหมายงาน");
   const { user } = useAuth();
@@ -85,6 +96,21 @@ function AssignmentsExecution() {
     },
   });
 
+  const execProjects = useQuery({
+    queryKey: ["projects-i-lead", user?.id],
+    enabled: !!user && guard.allowed,
+    queryFn: async () => {
+      const { data } = await getSupabase()
+        .from("project_members")
+        .select("project_role, projects(id, name, code, status, progress, end_date)")
+        .eq("user_id", user!.id)
+        .eq("project_role", "exec");
+      return (data ?? [])
+        .map((r) => (r as unknown as { projects: ExecProject | null }).projects)
+        .filter((p): p is ExecProject => !!p && p.status !== "closed" && p.status !== "lost");
+    },
+  });
+
   if (!guard.allowed) return guard.node;
 
   const rows = mine.data ?? [];
@@ -92,6 +118,7 @@ function AssignmentsExecution() {
   const done = rows.filter((r) => r.status === "done");
   const today = new Date().toISOString().slice(0, 10);
   const tracked = assigned.data ?? [];
+  const led = execProjects.data ?? [];
 
   return (
     <div className="space-y-6">
@@ -99,6 +126,44 @@ function AssignmentsExecution() {
         title="มอบหมายและติดตามงานสมาชิก"
         description="ผู้บริหารโครงการมอบหมายงานจากแผนการดำเนินงาน (Timeline) — สมาชิกกดรับทราบ ส่ง feedback และส่งมอบงานให้ผู้บริหารตรวจรับ"
       />
+
+      {led.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <Crown className="h-4 w-4 text-primary" />
+            โครงการที่คุณเป็นผู้บริหารโครงการ ({led.length})
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {led.map((p) => (
+              <Card key={p.id}>
+                <CardContent className="space-y-2 p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <Link
+                      to="/projects/$id"
+                      params={{ id: p.id }}
+                      className="min-w-0 font-medium text-primary hover:underline"
+                    >
+                      <span className="line-clamp-2">
+                        {p.code ? `${p.code} · ` : ""}
+                        {p.name}
+                      </span>
+                    </Link>
+                    <Badge variant="outline" className={STATUS_TONE[p.status as ProjectLifecycleStatus]}>
+                      {LIFECYCLE_LABEL[p.status as ProjectLifecycleStatus] ?? p.status}
+                    </Badge>
+                  </div>
+                  <Progress value={p.progress ?? 0} className="h-2" />
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span>{p.end_date ? `สิ้นสุด ${fmtDate(p.end_date)}` : "ไม่ระบุวันสิ้นสุด"}</span>
+                    <span>{p.progress ?? 0}%</span>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
+
 
       <Tabs defaultValue="mine">
         <TabsList>
