@@ -217,13 +217,13 @@ export function PortfolioTimeline() {
             })),
         ].sort((a, b) => t(a.date) - t(b.date));
 
+        // 1 ภารกิจ = 1 แถบกราฟ (ตรงกับการ์ดในบอร์ดการดำเนินโครงการ)
         const assignments: Assignment[] = asgs
           .filter((a): a is AssignRow & { assignee_id: string } => Boolean(a.assignee_id))
-          .map<Assignment>((a) => {
+          .flatMap<Assignment>((a) => {
             const missions = splitMissions(a.description).missions;
-            return {
-              id: a.id,
-              label: missions[0] ?? a.name,
+            const labels = missions.length ? missions : [a.name];
+            const base = {
               assignee: data.nameById.get(a.assignee_id) ?? a.assignee_label ?? "ไม่ระบุชื่อ",
               start: t(a.start_date),
               end: t(a.end_date),
@@ -231,9 +231,15 @@ export function PortfolioTimeline() {
               status: (a.assignment_status as AssignmentStatus) ?? "draft",
               done: a.status === "done" || a.assignment_status === "accepted",
             };
+            return labels.map((label, idx) => ({
+              id: `${a.id}-${idx}`,
+              label,
+              ...base,
+            }));
           })
           .filter((a) => !Number.isNaN(a.start) && !Number.isNaN(a.end))
           .sort((a, b) => a.end - b.end);
+
 
         const steps: Step[] = tasks
           .filter((x) => !x.is_milestone_marker)
