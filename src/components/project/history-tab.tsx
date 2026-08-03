@@ -254,8 +254,12 @@ export function ProjectHistoryTab({ projectId }: { projectId: string }) {
               )}
             </div>
 
-            {(h.changes?.length ?? 0) > 0 && (
-
+            {(() => {
+              const visibleChanges = (h.changes ?? []).filter(
+                (c) => canSeeMoney || !MONEY_FIELDS.has(c.field),
+              );
+              if (visibleChanges.length === 0) return null;
+              return (
               <div className="mt-2 overflow-x-auto rounded-lg border">
                 <table className="w-full text-xs">
                   <thead className="bg-muted/40 text-left text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -266,13 +270,13 @@ export function ProjectHistoryTab({ projectId }: { projectId: string }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {(h.changes ?? []).map((c, i) => (
+                    {visibleChanges.map((c, i) => (
                       <tr key={`${h.id}-${c.field}-${i}`} className="border-t">
                         <td className="px-3 py-2 font-medium">{FIELD_LABEL[c.field] ?? c.field}</td>
                         <td className="px-3 py-2 text-muted-foreground line-through decoration-muted-foreground/40">
-                          {renderValue(c.field, c.old, canSeeMoney)}
+                          {renderValue(c.field, c.old)}
                         </td>
-                        <td className="px-3 py-2 font-medium text-foreground">{renderValue(c.field, c.new, canSeeMoney)}</td>
+                        <td className="px-3 py-2 font-medium text-foreground">{renderValue(c.field, c.new)}</td>
                       </tr>
                     ))}
                   </tbody>
