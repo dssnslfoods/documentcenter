@@ -82,14 +82,23 @@ const FIELD_LABEL: Record<string, string> = {
   notes: "หมายเหตุ",
 };
 
-const MONEY_FIELDS = new Set(["contract_value", "budget", "vat_amount", "contract_value_incl_vat"]);
+const MONEY_FIELDS = new Set([
+  "contract_value",
+  "budget",
+  "vat_amount",
+  "contract_value_incl_vat",
+  "amount",
+  "quotation_amount",
+  "amount_incl_vat",
+  "payment_value",
+]);
 
-function renderValue(field: string, v: unknown): string {
+function renderValue(field: string, v: unknown, canSeeMoney = true): string {
   if (v === null || v === undefined || v === "") return "—";
   if (typeof v === "boolean") return v ? "ใช่" : "ไม่ใช่";
   if (field === "status" && typeof v === "string")
     return LIFECYCLE_LABEL[v as keyof typeof LIFECYCLE_LABEL] ?? v;
-  if (MONEY_FIELDS.has(field)) return fmtCurrency(Number(v), "THB");
+  if (MONEY_FIELDS.has(field)) return canSeeMoney ? fmtCurrency(Number(v), "THB") : MONEY_MASK;
   if (typeof v === "object") return JSON.stringify(v);
   return String(v);
 }
