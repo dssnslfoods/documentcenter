@@ -131,7 +131,9 @@ export function PortfolioTimeline() {
         sb
           .from("project_tasks")
           .select("id, project_id, name, description, start_date, end_date, status, assignment_status, assignee_id")
-          .not("assignee_id", "is", null),
+          .not("assignee_id", "is", null)
+          .not("parent_id", "is", null),
+
 
 
       ]);
