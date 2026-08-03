@@ -54,6 +54,16 @@ type Row = {
 const SELECT =
   "id, project_id, name, description, start_date, end_date, progress, status, assignment_status, assignee_id, projects(id, name, code)";
 
+type ExecProject = {
+  id: string;
+  name: string;
+  code: string | null;
+  status: string;
+  progress: number | null;
+  end_date: string | null;
+};
+
+
 function AssignmentsExecution() {
   const guard = usePageGuard("assignments", "การมอบหมายงาน");
   const { user } = useAuth();
