@@ -303,7 +303,7 @@ function AssignmentsExecution() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {[...open, ...done].map((t, i) => (
                 <TaskCard key={`${t.id}-${i}`} t={t} today={today} assigneeName={nameOf(t.assignee_id)} onOpen={() => setOpenTask({ id: t.id, manage: false })} />
               ))}
