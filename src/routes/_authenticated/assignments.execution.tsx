@@ -18,7 +18,7 @@ import { getSupabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/use-supabase";
 import { usePageGuard } from "@/hooks/use-page-access";
 import { fmtDate, daysUntil } from "@/lib/format";
-import { CalendarClock, FolderKanban, MessagesSquare, Crown, UserRound, ArrowUpDown, Tag } from "lucide-react";
+import { Crown, UserRound, ArrowUpDown, Tag, FolderKanban, MessagesSquare } from "lucide-react";
 import { akaBadgeClass } from "@/lib/aka-colors";
 import { TaskAssignmentDialog } from "@/components/project/task-assignment-dialog";
 import { ASSIGNMENT_META, splitMissions, type AssignmentStatus } from "@/lib/task-assignment";
