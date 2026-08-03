@@ -265,7 +265,7 @@ function AssignmentsExecution() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <TabsList>
             <TabsTrigger value="overview">ภาพรวมกำหนดส่งมอบ</TabsTrigger>
-            <TabsTrigger value="mine">งานที่ได้รับมอบหมาย ({rows.length})</TabsTrigger>
+            <TabsTrigger value="mine">งานที่ได้รับมอบหมาย ({filteredRows.length})</TabsTrigger>
             <TabsTrigger value="tracking">งานที่ฉันมอบหมาย ({tracked.length})</TabsTrigger>
           </TabsList>
           <div className={`flex items-center gap-2 ${tab === "overview" ? "hidden" : ""}`}>
