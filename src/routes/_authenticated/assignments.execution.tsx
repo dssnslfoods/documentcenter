@@ -139,7 +139,7 @@ function AssignmentsExecution() {
                 <CardContent className="space-y-2 p-4">
                   <div className="flex items-start justify-between gap-2">
                     <Link
-                      to="/projects/$id"
+                      to="/assignments/project/$id"
                       params={{ id: p.id }}
                       className="min-w-0 font-medium text-primary hover:underline"
                     >
