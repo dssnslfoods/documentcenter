@@ -225,7 +225,18 @@ function AssignmentsExecution() {
   );
 }
 
-function TaskCard({ t, today, onOpen }: { t: Row; today: string; onOpen: () => void }) {
+type MissionCard = Row & { missionTitle: string | null; missionNote: string };
+
+/** 1 ภารกิจ = 1 การ์ด (งานที่มีหลายภารกิจจะถูกแยกออกจากกัน) */
+function toMissionCards(rows: Row[]): MissionCard[] {
+  return rows.flatMap((t) => {
+    const { missions, note } = splitMissions(t.description);
+    if (missions.length === 0) return [{ ...t, missionTitle: null, missionNote: note }];
+    return missions.map((m) => ({ ...t, missionTitle: m, missionNote: note }));
+  });
+}
+
+function TaskCard({ t, today, onOpen }: { t: MissionCard; today: string; onOpen: () => void }) {
   const overdue = t.status !== "done" && t.end_date < today;
   const asg = (t.assignment_status ?? "draft") as AssignmentStatus;
   return (
@@ -233,12 +244,15 @@ function TaskCard({ t, today, onOpen }: { t: Row; today: string; onOpen: () => v
       <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="truncate font-medium">{t.name}</span>
+            <span className="truncate font-medium">{t.missionTitle ?? t.name}</span>
             <Badge variant="outline" className={STATUS_META[t.status].badge}>{STATUS_META[t.status].label}</Badge>
             <Badge variant="outline" className={ASSIGNMENT_META[asg].badge}>{ASSIGNMENT_META[asg].label}</Badge>
             {overdue && <Badge variant="destructive">เลยกำหนด</Badge>}
           </div>
-          {t.description && <p className="line-clamp-2 text-xs text-muted-foreground">{t.description}</p>}
+          {t.missionTitle && (
+            <p className="truncate text-xs text-muted-foreground">งานในแผน: {t.name}</p>
+          )}
+          {t.missionNote && <p className="line-clamp-2 text-xs text-muted-foreground">{t.missionNote}</p>}
           <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <CalendarClock className="h-3.5 w-3.5" />
@@ -270,6 +284,7 @@ function TaskCard({ t, today, onOpen }: { t: Row; today: string; onOpen: () => v
     </Card>
   );
 }
+
 
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
