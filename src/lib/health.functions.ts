@@ -16,5 +16,7 @@ export const scanDueDateNotifications = createServerFn({ method: "POST" })
     const sb = getSupabaseAdmin();
     const { error } = await sb.rpc("scan_due_date_notifications");
     if (error) throw new Error(error.message);
+    const { error: e2 } = await sb.rpc("scan_assignment_due_notifications");
+    if (e2) throw new Error(e2.message);
     return { ok: true };
   });
