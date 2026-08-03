@@ -430,23 +430,50 @@ export function PortfolioTimeline() {
 
   const months = useMemo(() => {
     if (!range) return [];
-    const out: { label: string; left: number; width: number }[] = [];
+    const out: { label: string; sub?: string; left: number; width: number; weekend?: boolean }[] = [];
     const span = range.max - range.min;
     const cursor = new Date(range.min);
-    cursor.setDate(1);
+    cursor.setHours(0, 0, 0, 0);
+
+    if (zoom === "month") cursor.setDate(1);
+    if (zoom === "week") cursor.setDate(cursor.getDate() - cursor.getDay());
+
     while (cursor.getTime() < range.max) {
       const startMs = Math.max(cursor.getTime(), range.min);
-      const next = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1).getTime();
-      const endMs = Math.min(next, range.max);
+      const nextDate = new Date(cursor);
+      if (zoom === "month") nextDate.setMonth(nextDate.getMonth() + 1, 1);
+      else if (zoom === "week") nextDate.setDate(nextDate.getDate() + 7);
+      else nextDate.setDate(nextDate.getDate() + 1);
+      const endMs = Math.min(nextDate.getTime(), range.max);
+
+      const d = new Date(cursor);
       out.push({
-        label: new Date(cursor).toLocaleDateString("th-TH", { month: "short", year: "2-digit" }),
+        label:
+          zoom === "month"
+            ? d.toLocaleDateString("th-TH", { month: "short", year: "2-digit" })
+            : zoom === "week"
+              ? `${d.toLocaleDateString("th-TH", { day: "numeric", month: "short" })}`
+              : `${d.getDate()}`,
+        sub:
+          zoom === "day"
+            ? d.toLocaleDateString("th-TH", { weekday: "narrow" })
+            : zoom === "week"
+              ? `สัปดาห์`
+              : undefined,
+        weekend: zoom === "day" && (d.getDay() === 0 || d.getDay() === 6),
         left: ((startMs - range.min) / span) * 100,
         width: ((endMs - startMs) / span) * 100,
       });
-      cursor.setMonth(cursor.getMonth() + 1);
+      cursor.setTime(nextDate.getTime());
     }
     return out;
-  }, [range]);
+  }, [range, zoom]);
+
+  const contentMinWidth = useMemo(() => {
+    const perTick = zoom === "day" ? 44 : zoom === "week" ? 96 : 90;
+    return Math.max(900, 256 + months.length * perTick);
+  }, [months.length, zoom]);
+
 
   const pct = (ms: number) => (range ? ((ms - range.min) / (range.max - range.min)) * 100 : 0);
 
