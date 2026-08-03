@@ -56,11 +56,11 @@ type Row = {
   status: TaskStatus;
   assignment_status: AssignmentStatus | null;
   assignee_id: string | null;
-  projects: { id: string; name: string; code: string | null } | null;
+  projects: { id: string; name: string; code: string | null; customer_aka: string | null; customer_aka_color: string | null } | null;
 };
 
 const SELECT =
-  "id, project_id, name, description, start_date, end_date, progress, status, assignment_status, assignee_id, projects(id, name, code)";
+  "id, project_id, name, description, start_date, end_date, progress, status, assignment_status, assignee_id, projects(id, name, code, customer_aka, customer_aka_color)";
 
 type ExecProject = {
   id: string;
