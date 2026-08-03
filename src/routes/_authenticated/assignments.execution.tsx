@@ -371,7 +371,7 @@ function TaskCard({ t, today, assigneeName, onOpen }: { t: MissionCard; today: s
             <p className="truncate text-xs text-muted-foreground">งานในแผน: {t.name}</p>
           )}
           {t.missionNote && <p className="line-clamp-2 text-xs text-muted-foreground">{t.missionNote}</p>}
-          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <CalendarClock className="h-3.5 w-3.5" />
               {fmtDate(t.start_date)} – {fmtDate(t.end_date)}
@@ -380,12 +380,18 @@ function TaskCard({ t, today, assigneeName, onOpen }: { t: MissionCard; today: s
               <Link
                 to="/projects/$id"
                 params={{ id: t.project_id }}
-                className="inline-flex items-center gap-1 text-primary hover:underline"
+                className="inline-flex items-center gap-1 rounded-md border border-muted-foreground/30 bg-muted/50 px-2 py-0.5 text-xs font-medium text-foreground hover:bg-muted"
               >
                 <FolderKanban className="h-3.5 w-3.5" />
                 {t.projects.code ? `${t.projects.code} · ` : ""}
                 {t.projects.name}
               </Link>
+            )}
+            {t.projects?.customer_aka && (
+              <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium ${akaBadgeClass(t.projects.customer_aka_color)}`}>
+                <Tag className="h-3.5 w-3.5" />
+                {t.projects.customer_aka}
+              </span>
             )}
           </div>
         </div>
