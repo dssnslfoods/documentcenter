@@ -1,9 +1,19 @@
 import { Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, CalendarClock, CheckCircle2, Flag, Loader2, Timer } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarClock,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Flag,
+  Loader2,
+  Timer,
+} from "lucide-react";
 import { EmptyState } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -18,6 +28,7 @@ import { akaBadgeClass } from "@/lib/aka-colors";
 import { LIFECYCLE_LABEL, STATUS_TONE, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 import { ASSIGNMENT_META, splitMissions, type AssignmentStatus } from "@/lib/task-assignment";
 import { TaskAssignmentDialog } from "@/components/project/task-assignment-dialog";
+
 
 
 type ProjectRow = {
@@ -115,6 +126,54 @@ export function PortfolioTimeline() {
   const sb = getSupabase();
   const [scope, setScope] = useState<"active" | "all">("active");
   const [editTaskId, setEditTaskId] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ isDragging: boolean; startX: number; scrollLeft: number }>({
+    isDragging: false,
+    startX: 0,
+    scrollLeft: 0,
+  });
+
+  const scrollTimeline = (direction: "left" | "right") => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const step = el.clientWidth * 0.5;
+    el.scrollBy({ left: direction === "left" ? -step : step, behavior: "smooth" });
+  };
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    dragRef.current = { isDragging: true, startX: e.pageX - el.offsetLeft, scrollLeft: el.scrollLeft };
+    el.style.cursor = "grabbing";
+    el.style.userSelect = "none";
+  };
+
+  const onMouseLeave = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    dragRef.current.isDragging = false;
+    el.style.cursor = "grab";
+    el.style.removeProperty("user-select");
+  };
+
+  const onMouseUp = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    dragRef.current.isDragging = false;
+    el.style.cursor = "grab";
+    el.style.removeProperty("user-select");
+  };
+
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (!dragRef.current.isDragging) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    e.preventDefault();
+    const x = e.pageX - el.offsetLeft;
+    const walk = (x - dragRef.current.startX) * 1.2;
+    el.scrollLeft = dragRef.current.scrollLeft - walk;
+  };
+
 
   const { data, isLoading } = useQuery({
     queryKey: ["portfolio-timeline", "delegated-status-v2"],
@@ -358,8 +417,33 @@ export function PortfolioTimeline() {
         />
       ) : (
         <TooltipProvider delayDuration={100}>
-          <div className="tile overflow-hidden p-0">
-            <div className="overflow-x-auto">
+          <div className="tile relative overflow-hidden p-0">
+            <Button
+              variant="secondary"
+              size="icon"
+              className="absolute left-1 top-1 z-20 h-7 w-7 rounded-full opacity-80 shadow-sm hover:opacity-100"
+              onClick={() => scrollTimeline("left")}
+              aria-label="เลื่อนไทม์ไลน์ไปซ้าย"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="secondary"
+              size="icon"
+              className="absolute right-1 top-1 z-20 h-7 w-7 rounded-full opacity-80 shadow-sm hover:opacity-100"
+              onClick={() => scrollTimeline("right")}
+              aria-label="เลื่อนไทม์ไลน์ไปขวา"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <div
+              ref={scrollRef}
+              className="cursor-grab overflow-x-auto"
+              onMouseDown={onMouseDown}
+              onMouseLeave={onMouseLeave}
+              onMouseUp={onMouseUp}
+              onMouseMove={onMouseMove}
+            >
               <div className="min-w-[900px]">
                 <div className="flex border-b bg-muted/40">
                   <div className="w-64 shrink-0 border-r px-4 py-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
