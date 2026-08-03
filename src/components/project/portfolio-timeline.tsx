@@ -294,7 +294,7 @@ export function PortfolioTimeline() {
             .map<Delivery>((m) => ({
               label: `งวด ${m.milestone_number} · ${m.description}`,
               date: m.due_date!,
-              done: m.status === "completed",
+              done: m.status === "completed" || p.status === "completed",
               kind: "milestone",
             })),
           ...tasks
@@ -302,7 +302,7 @@ export function PortfolioTimeline() {
             .map<Delivery>((x) => ({
               label: x.name,
               date: x.end_date,
-              done: x.status === "done",
+              done: x.status === "done" || p.status === "completed",
               kind: "marker",
             })),
         ].sort((a, b) => t(a.date) - t(b.date));
