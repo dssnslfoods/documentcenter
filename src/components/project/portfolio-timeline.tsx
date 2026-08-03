@@ -417,8 +417,33 @@ export function PortfolioTimeline() {
         />
       ) : (
         <TooltipProvider delayDuration={100}>
-          <div className="tile overflow-hidden p-0">
-            <div className="overflow-x-auto">
+          <div className="tile relative overflow-hidden p-0">
+            <Button
+              variant="secondary"
+              size="icon"
+              className="absolute left-1 top-1 z-20 h-7 w-7 rounded-full opacity-80 shadow-sm hover:opacity-100"
+              onClick={() => scrollTimeline("left")}
+              aria-label="เลื่อนไทม์ไลน์ไปซ้าย"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="secondary"
+              size="icon"
+              className="absolute right-1 top-1 z-20 h-7 w-7 rounded-full opacity-80 shadow-sm hover:opacity-100"
+              onClick={() => scrollTimeline("right")}
+              aria-label="เลื่อนไทม์ไลน์ไปขวา"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <div
+              ref={scrollRef}
+              className="cursor-grab overflow-x-auto"
+              onMouseDown={onMouseDown}
+              onMouseLeave={onMouseLeave}
+              onMouseUp={onMouseUp}
+              onMouseMove={onMouseMove}
+            >
               <div className="min-w-[900px]">
                 <div className="flex border-b bg-muted/40">
                   <div className="w-64 shrink-0 border-r px-4 py-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
