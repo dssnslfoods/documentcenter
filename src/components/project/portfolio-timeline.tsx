@@ -16,6 +16,8 @@ import { getSupabase } from "@/lib/supabase";
 import { fmtDate, daysUntil } from "@/lib/format";
 import { akaBadgeClass } from "@/lib/aka-colors";
 import { LIFECYCLE_LABEL, STATUS_TONE, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
+import { ASSIGNMENT_META, splitMissions, type AssignmentStatus } from "@/lib/task-assignment";
+
 
 type ProjectRow = {
   id: string;
