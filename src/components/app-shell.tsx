@@ -53,6 +53,7 @@ const NAV_SECTIONS: NavSection[] = [
     label: "การมอบหมายงาน",
     items: [
       { to: "/assignments/execution", icon: ClipboardList, label: "การดำเนินโครงการ", key: "assignments" },
+      { to: "/assignments/history", icon: History, label: "ประวัติการมอบหมายงาน", key: "assignments" },
     ],
   },
 
