@@ -19,6 +19,7 @@ import { TeamTab } from "@/components/project/team-tab";
 import { ProjectHistoryTab } from "@/components/project/history-tab";
 
 import { useProjectPermissions } from "@/hooks/use-project-permissions";
+import { useCanSeeMoney, MONEY_MASK } from "@/hooks/use-page-access";
 import {
   LIFECYCLE_LABEL, STATUS_TONE, nextStatuses,
   type ProjectLifecycleStatus,
@@ -62,6 +63,7 @@ function ProjectDetail() {
   const sb = getSupabase();
   const qc = useQueryClient();
   const { data: perms, isLoading: permsLoading } = useProjectPermissions(id);
+  const { canSeeMoney } = useCanSeeMoney();
 
   const { data: p, isLoading } = useQuery({
     queryKey: ["project", id],
