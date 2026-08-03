@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DocumentStatusBadge, ConfidentialityBadge } from "@/components/status-badge";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDate, fmtDateTime, fmtCurrency } from "@/lib/format";
-import { useCanSeeMoney, MONEY_MASK } from "@/hooks/use-page-access";
+import { useCanSeeMoney } from "@/hooks/use-page-access";
 
 export const Route = createFileRoute("/_authenticated/documents/$id")({
   head: () => ({ meta: [{ title: "รายละเอียดเอกสาร | Document Hub" }] }),

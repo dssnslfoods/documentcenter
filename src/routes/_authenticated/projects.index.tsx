@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { useMyRoles, useCanSeeMoney, MONEY_MASK } from "@/hooks/use-page-access";
+import { useMyRoles, useCanSeeMoney } from "@/hooks/use-page-access";
 import { useAuth } from "@/hooks/use-supabase";
 import { canCreateProjects } from "@/lib/project-roles";
 import { ProjectMembersPeek } from "@/components/project/project-members-peek";
@@ -480,7 +480,7 @@ function ListView({
                   <th className="px-4 py-3">สุขภาพ</th>
                   <th className="px-4 py-3">เริ่ม</th>
                   <th className="px-4 py-3">สิ้นสุด</th>
-                  <th className="px-4 py-3 text-right">มูลค่าสัญญา</th>
+                  {canSeeMoney && <th className="px-4 py-3 text-right">มูลค่าสัญญา</th>}
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -507,7 +507,7 @@ function ListView({
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">{fmtDate(p.start_date)}</td>
                       <td className="px-4 py-3 text-muted-foreground">{fmtDate(p.end_date)}</td>
-                      <td className="px-4 py-3 text-right font-mono tabular-nums">{canSeeMoney ? fmtCurrency(p.contract_value ?? p.budget, "THB") : MONEY_MASK}</td>
+                      {canSeeMoney && <td className="px-4 py-3 text-right font-mono tabular-nums">{fmtCurrency(p.contract_value ?? p.budget, "THB")}</td>}
                       <td className="px-4 py-3 text-right">
                         <Link to="/projects/$id" params={{ id: p.id }} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
                           เปิด <ArrowRight className="h-3 w-3" />

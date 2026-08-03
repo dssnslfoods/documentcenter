@@ -7,7 +7,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { useCanSeeMoney, MONEY_MASK, useMyRoles, useCanAccess } from "@/hooks/use-page-access";
+import { useCanSeeMoney, useMyRoles, useCanAccess } from "@/hooks/use-page-access";
 import { ROLES } from "@/lib/pages";
 import { canCreateProjects } from "@/lib/project-roles";
 import { getSupabase } from "@/lib/supabase";
@@ -461,7 +461,7 @@ function Dashboard() {
                     <th className="px-3 py-2">ชื่อสัญญา</th>
                     <th className="px-3 py-2">คู่สัญญา</th>
                     <th className="px-3 py-2">วันหมดอายุ</th>
-                    <th className="px-3 py-2 text-right">มูลค่า</th>
+                    {canSeeMoney && <th className="px-3 py-2 text-right">มูลค่า</th>}
                     <th className="px-3 py-2">สถานะ</th>
                   </tr>
                 </thead>
@@ -474,7 +474,7 @@ function Dashboard() {
                         <td className="px-3 py-2 font-medium">{c.title}</td>
                         <td className="px-3 py-2 text-muted-foreground">{partner?.name ?? "-"}</td>
                         <td className="px-3 py-2">{fmtDate(c.end_date)}</td>
-                        <td className="px-3 py-2 text-right font-mono tabular-nums">{canSeeMoney ? fmtCurrency(c.value_amount) : MONEY_MASK}</td>
+                        {canSeeMoney && <td className="px-3 py-2 text-right font-mono tabular-nums">{fmtCurrency(c.value_amount)}</td>}
                         <td className="px-3 py-2"><ContractStatusBadge status={c.status as never} /></td>
                       </tr>
                     );
