@@ -59,6 +59,7 @@ type AssignRow = {
   status: string;
   assignment_status: string;
   assignee_id: string | null;
+  assignee_label: string | null;
 };
 
 type Delivery = { label: string; date: string; done: boolean; kind: "milestone" | "marker" };
@@ -113,7 +114,7 @@ export function PortfolioTimeline() {
   const [scope, setScope] = useState<"active" | "all">("active");
 
   const { data, isLoading } = useQuery({
-    queryKey: ["portfolio-timeline"],
+    queryKey: ["portfolio-timeline", "delegated-status-v2"],
     queryFn: async () => {
       const [pr, tk, ms, asg] = await Promise.all([
         sb
@@ -130,9 +131,9 @@ export function PortfolioTimeline() {
         sb.from("project_milestones").select("project_id, milestone_number, description, due_date, status"),
         sb
           .from("project_tasks")
-          .select("id, project_id, name, description, start_date, end_date, status, assignment_status, assignee_id")
+          .select("id, project_id, name, description, start_date, end_date, status, assignment_status, assignee_id, assignee_label")
           .not("assignee_id", "is", null)
-          .not("parent_id", "is", null),
+          .neq("assignment_status", "draft"),
 
 
 
@@ -217,12 +218,13 @@ export function PortfolioTimeline() {
         ].sort((a, b) => t(a.date) - t(b.date));
 
         const assignments: Assignment[] = asgs
+          .filter((a): a is AssignRow & { assignee_id: string } => Boolean(a.assignee_id))
           .map<Assignment>((a) => {
             const missions = splitMissions(a.description).missions;
             return {
               id: a.id,
               label: missions[0] ?? a.name,
-              assignee: data.nameById.get(a.assignee_id!) ?? "ไม่ระบุชื่อ",
+              assignee: data.nameById.get(a.assignee_id) ?? a.assignee_label ?? "ไม่ระบุชื่อ",
               start: t(a.start_date),
               end: t(a.end_date),
               endDate: a.end_date,
