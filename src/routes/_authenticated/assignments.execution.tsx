@@ -364,7 +364,9 @@ function toMissionCards(rows: Row[]): MissionCard[] {
 }
 
 function TaskCard({ t, today, assigneeName, onOpen }: { t: MissionCard; today: string; assigneeName: string; onOpen: () => void }) {
-  const overdue = t.status !== "done" && t.end_date < today;
+  const projectClosed = t.projects?.status === "completed";
+  const effectiveDone = t.status === "done" || projectClosed;
+  const overdue = !effectiveDone && t.end_date < today;
   const asg = (t.assignment_status ?? "draft") as AssignmentStatus;
   const remaining = daysUntil(t.end_date);
   return (
@@ -388,7 +390,7 @@ function TaskCard({ t, today, assigneeName, onOpen }: { t: MissionCard; today: s
             <div className={`text-xs font-semibold ${overdue ? "text-destructive" : "text-primary"}`}>
               {fmtDate(t.end_date)}
             </div>
-            {t.status === "done" ? (
+            {effectiveDone ? (
               <div className="text-[10px] font-medium text-success">เสร็จสิ้น</div>
             ) : remaining == null ? null : remaining < 0 ? (
               <div className="text-[10px] font-semibold text-destructive">เลย {Math.abs(remaining)} วัน</div>
@@ -404,6 +406,7 @@ function TaskCard({ t, today, assigneeName, onOpen }: { t: MissionCard; today: s
           <Badge variant="outline" className={`text-[10px] ${STATUS_META[t.status].badge}`}>{STATUS_META[t.status].label}</Badge>
           <Badge variant="outline" className={`text-[10px] ${ASSIGNMENT_META[asg].badge}`}>{ASSIGNMENT_META[asg].label}</Badge>
           {overdue && <Badge variant="destructive" className="text-[10px]">เลยกำหนด</Badge>}
+          {projectClosed && <Badge variant="outline" className="text-[10px] border-success/40 text-success">ปิดโครงการ</Badge>}
         </div>
 
         {t.missionNote && <p className="line-clamp-2 text-[11px] text-muted-foreground">{t.missionNote}</p>}
