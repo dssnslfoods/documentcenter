@@ -504,15 +504,38 @@ export function PortfolioTimeline() {
             {live ? "อัปเดตอัตโนมัติ (Realtime)" : "กำลังเชื่อมต่อ Realtime…"}
           </span>
         </div>
-        <Select value={scope} onValueChange={(v) => setScope(v as "active" | "all")}>
-          <SelectTrigger className="h-9 w-[190px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="active">เฉพาะโครงการที่ดำเนินการ</SelectItem>
-            <SelectItem value="all">ทุกโครงการ (ยกเว้นแพ้งาน)</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-md border p-0.5">
+            {(
+              [
+                { v: "day", label: "รายวัน" },
+                { v: "week", label: "รายสัปดาห์" },
+                { v: "month", label: "รายเดือน" },
+              ] as const
+            ).map((o) => (
+              <button
+                key={o.v}
+                type="button"
+                onClick={() => setZoom(o.v)}
+                aria-pressed={zoom === o.v}
+                className={`rounded px-2.5 py-1 text-[11px] font-medium transition ${
+                  zoom === o.v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+          <Select value={scope} onValueChange={(v) => setScope(v as "active" | "all")}>
+            <SelectTrigger className="h-9 w-[190px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">เฉพาะโครงการที่ดำเนินการ</SelectItem>
+              <SelectItem value="all">ทุกโครงการ (ยกเว้นแพ้งาน)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {allLanes.length > 0 && (
