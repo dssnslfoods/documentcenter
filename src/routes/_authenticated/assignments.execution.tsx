@@ -291,7 +291,12 @@ function AssignmentsExecution() {
         </div>
 
 
+        <TabsContent value="overview" className="pt-4">
+          <PortfolioTimeline />
+        </TabsContent>
+
         <TabsContent value="mine" className="space-y-4 pt-4">
+
           <div className="grid gap-3 sm:grid-cols-3">
             <StatCard label="งานที่ยังไม่เสร็จ" value={open.length} />
             <StatCard label="เลยกำหนด" value={open.filter((r) => r.end_date < today).length} />
