@@ -230,11 +230,12 @@ type MissionCard = Row & { missionTitle: string | null; missionNote: string };
 
 /** 1 ภารกิจ = 1 การ์ด (งานที่มีหลายภารกิจจะถูกแยกออกจากกัน) */
 function toMissionCards(rows: Row[]): MissionCard[] {
-  return rows.flatMap((t) => {
+  return rows.flatMap((t): MissionCard[] => {
     const { missions, note } = splitMissions(t.description);
     if (missions.length === 0) return [{ ...t, missionTitle: null, missionNote: note }];
     return missions.map((m) => ({ ...t, missionTitle: m, missionNote: note }));
   });
+
 }
 
 function TaskCard({ t, today, onOpen }: { t: MissionCard; today: string; onOpen: () => void }) {
