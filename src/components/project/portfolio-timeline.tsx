@@ -126,6 +126,54 @@ export function PortfolioTimeline() {
   const sb = getSupabase();
   const [scope, setScope] = useState<"active" | "all">("active");
   const [editTaskId, setEditTaskId] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ isDragging: boolean; startX: number; scrollLeft: number }>({
+    isDragging: false,
+    startX: 0,
+    scrollLeft: 0,
+  });
+
+  const scrollTimeline = (direction: "left" | "right") => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const step = el.clientWidth * 0.5;
+    el.scrollBy({ left: direction === "left" ? -step : step, behavior: "smooth" });
+  };
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    dragRef.current = { isDragging: true, startX: e.pageX - el.offsetLeft, scrollLeft: el.scrollLeft };
+    el.style.cursor = "grabbing";
+    el.style.userSelect = "none";
+  };
+
+  const onMouseLeave = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    dragRef.current.isDragging = false;
+    el.style.cursor = "grab";
+    el.style.removeProperty("user-select");
+  };
+
+  const onMouseUp = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    dragRef.current.isDragging = false;
+    el.style.cursor = "grab";
+    el.style.removeProperty("user-select");
+  };
+
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (!dragRef.current.isDragging) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    e.preventDefault();
+    const x = e.pageX - el.offsetLeft;
+    const walk = (x - dragRef.current.startX) * 1.2;
+    el.scrollLeft = dragRef.current.scrollLeft - walk;
+  };
+
 
   const { data, isLoading } = useQuery({
     queryKey: ["portfolio-timeline", "delegated-status-v2"],
