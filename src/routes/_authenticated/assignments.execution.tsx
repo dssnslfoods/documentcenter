@@ -17,7 +17,7 @@ import {
 import { getSupabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/use-supabase";
 import { usePageGuard } from "@/hooks/use-page-access";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, daysUntil } from "@/lib/format";
 import { CalendarClock, FolderKanban, MessagesSquare, Crown, UserRound, ArrowUpDown, Tag } from "lucide-react";
 import { akaBadgeClass } from "@/lib/aka-colors";
 import { TaskAssignmentDialog } from "@/components/project/task-assignment-dialog";
