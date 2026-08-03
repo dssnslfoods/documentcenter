@@ -92,7 +92,40 @@ export function TaskAssignmentDialog({
     },
   });
 
+  const { data: members } = useQuery({
+    queryKey: ["task-project-members", task?.project_id],
+    enabled: !!task?.project_id && canManage,
+    queryFn: async () => {
+      const { data: mem } = await sb.from("project_members").select("user_id").eq("project_id", task!.project_id);
+      const ids = (mem ?? []).map((m) => m.user_id).filter(Boolean) as string[];
+      if (!ids.length) return [] as { id: string; name: string }[];
+      const { data: profs } = await sb.from("profiles").select("id, full_name, email").in("id", ids);
+      return (profs ?? []).map((p) => ({
+        id: p.id as string,
+        name: ((p.full_name as string) || (p.email as string)) ?? "",
+      }));
+    },
+  });
+
+  const saveAssignee = useMutation({
+    mutationFn: async (userId: string) => {
+      const name = (members ?? []).find((m) => m.id === userId)?.name ?? null;
+      const { error } = await sb
+        .from("project_tasks")
+        .update({ assignee_id: userId, assignee_label: name })
+        .eq("id", task!.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("บันทึกผู้รับผิดชอบเรียบร้อย");
+      qc.invalidateQueries({ queryKey: ["task-assignment", taskId] });
+      qc.invalidateQueries({ queryKey: ["project-tasks", task?.project_id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const missingTable = /project_task_updates/.test(updatesError?.message ?? "");
+
   const isAssignee = !!task?.assignee_id && task.assignee_id === user?.id;
   const st: AssignmentStatus = (task?.assignment_status ?? "draft") as AssignmentStatus;
 
