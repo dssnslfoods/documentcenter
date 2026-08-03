@@ -253,13 +253,15 @@ function AssignmentsExecution() {
       )}
 
 
-      <Tabs defaultValue="mine">
+      <Tabs value={tab} onValueChange={setTab}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <TabsList>
+            <TabsTrigger value="overview">ภาพรวมกำหนดส่งมอบ</TabsTrigger>
             <TabsTrigger value="mine">งานที่ได้รับมอบหมาย ({rows.length})</TabsTrigger>
             <TabsTrigger value="tracking">งานที่ฉันมอบหมาย ({tracked.length})</TabsTrigger>
           </TabsList>
-          <div className="flex items-center gap-2">
+          <div className={`flex items-center gap-2 ${tab === "overview" ? "hidden" : ""}`}>
+
             <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">เรียงตาม</span>
             <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
