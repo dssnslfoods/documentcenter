@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/page-header";
+import { FilePreviewButton } from "@/components/project/file-preview-dialog";
+
 import { getSupabase } from "@/lib/supabase";
 import { fmtDateTime } from "@/lib/format";
 import {
@@ -232,9 +234,11 @@ export function ProjectDocumentsList({
                       <div className="truncate text-sm font-medium">{d.document_name}</div>
                       <div className="text-xs text-muted-foreground">{fmtDateTime(d.uploaded_at)}</div>
                     </div>
-                    <Button size="sm" variant="ghost" onClick={() => openFile(d.file_url)}>
+                    <FilePreviewButton path={d.file_url} label="ดูไฟล์" variant="ghost" />
+                    <Button size="sm" variant="ghost" title="ดาวน์โหลด" onClick={() => openFile(d.file_url)}>
                       <Download className="h-4 w-4" />
                     </Button>
+
                     {canEdit && (
                       <Button
                         size="sm"
