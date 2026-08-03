@@ -129,6 +129,51 @@ export function PortfolioTimeline() {
   const sb = getSupabase();
   const [scope, setScope] = useState<"active" | "all">("active");
   const [editTaskId, setEditTaskId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const [hidden, setHidden] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const raw = window.localStorage.getItem(HIDDEN_KEY);
+      return new Set<string>(raw ? (JSON.parse(raw) as string[]) : []);
+    } catch {
+      return new Set<string>();
+    }
+  });
+  const [live, setLive] = useState(false);
+
+  const toggleProject = (id: string) => {
+    setHidden((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      try {
+        window.localStorage.setItem(HIDDEN_KEY, JSON.stringify([...next]));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
+
+  // Realtime: refresh the timeline whenever projects / plans / assignments change
+  useEffect(() => {
+    const channel = sb
+      .channel("portfolio-timeline-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "projects" }, () =>
+        queryClient.invalidateQueries({ queryKey: ["portfolio-timeline"] }),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "project_tasks" }, () =>
+        queryClient.invalidateQueries({ queryKey: ["portfolio-timeline"] }),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "project_milestones" }, () =>
+        queryClient.invalidateQueries({ queryKey: ["portfolio-timeline"] }),
+      )
+      .subscribe((status) => setLive(status === "SUBSCRIBED"));
+    return () => {
+      void sb.removeChannel(channel);
+    };
+  }, [sb, queryClient]);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ isDragging: boolean; startX: number; scrollLeft: number }>({
     isDragging: false,
