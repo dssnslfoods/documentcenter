@@ -127,6 +127,8 @@ function AssignmentsExecution() {
   const [openTask, setOpenTask] = useState<{ id: string; manage: boolean } | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("end_date");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [tab, setTab] = useState("overview");
+
 
   const mine = useQuery({
     queryKey: ["my-assigned-tasks", user?.id],
