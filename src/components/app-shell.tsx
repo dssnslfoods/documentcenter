@@ -44,18 +44,19 @@ const NAV_SECTIONS: NavSection[] = [
     label: "งานขายและโครงการ",
     items: [
       { to: "/projects", icon: FolderKanban, label: "โครงการ", key: "projects" },
-      {
-        to: "/assignments",
-        icon: ClipboardList,
-        label: "การมอบหมายงาน",
-        key: "assignments",
-        children: [{ to: "/assignments/execution", label: "การดำเนินโครงการ" }],
-      },
       { to: "/quotations", icon: FileSpreadsheet, label: "ใบเสนอราคา", key: "quotations" },
       
       { to: "/partners", icon: Users, label: "คู่ค้าและลูกค้า", key: "partners" },
     ],
   },
+  {
+    label: "การมอบหมายงาน",
+    items: [
+      { to: "/assignments/execution", icon: ClipboardList, label: "การดำเนินโครงการ", key: "assignments" },
+    ],
+  },
+
+
 
   {
     label: "เอกสารและสัญญา",
