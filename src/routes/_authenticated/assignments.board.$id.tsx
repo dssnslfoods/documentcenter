@@ -297,29 +297,41 @@ function AssignmentBoard() {
     mutationFn: async () => {
       if (!quickTask || !selectedMember) throw new Error("กรุณาเลือกสมาชิกและงาน");
       const m = (members.data ?? []).find((x) => x.id === selectedMember);
-      const patch: Record<string, unknown> = {
-        assignee_id: selectedMember,
-        assignee_label: m?.name ?? null,
-        assignment_status: "assigned",
-        assigned_at: new Date().toISOString(),
-        assigned_by: user?.id ?? null,
-      };
       const title = missionTitle.trim();
       const detail = mission.trim();
-      const body = [title ? `ภารกิจ: ${title}` : "", detail].filter(Boolean).join("\n");
-      if (body) patch.description = body;
-      if (due) patch.end_date = due;
-      const { error } = await sb.from("project_tasks").update(patch).eq("id", quickTask.id);
+      const endDate = due || quickTask.end_date;
+
+      // มอบหมายแต่ละภารกิจเป็นงานย่อยใหม่เสมอ เพื่อไม่ให้ทับงานที่มอบหมายให้คนก่อนหน้า
+      const { data: created, error } = await sb
+        .from("project_tasks")
+        .insert({
+          project_id: id,
+          parent_id: quickTask.id,
+          name: title || quickTask.name,
+          description: detail || null,
+          start_date: quickTask.start_date,
+          end_date: endDate,
+          status: "not_started",
+          progress: 0,
+          assignee_id: selectedMember,
+          assignee_label: m?.name ?? null,
+          assignment_status: "assigned",
+          assigned_at: new Date().toISOString(),
+          assigned_by: user?.id ?? null,
+        })
+        .select("id")
+        .single();
       if (error) throw error;
+
       const summary = [
         title || quickTask.name,
         m?.name ? `ผู้รับผิดชอบ: ${m.name}` : "",
-        due ? `ส่งมอบ ${fmtDate(due)}` : "",
+        endDate ? `ส่งมอบ ${fmtDate(endDate)}` : "",
       ]
         .filter(Boolean)
         .join(" · ");
       const { error: e2 } = await sb.from("project_task_updates").insert({
-        task_id: quickTask.id,
+        task_id: created!.id,
         project_id: id,
         author_id: user!.id,
         kind: "assign",
@@ -327,6 +339,7 @@ function AssignmentBoard() {
       });
       if (e2) throw e2;
     },
+
     onSuccess: () => {
       toast.success("มอบหมายภารกิจเรียบร้อย");
       setQuickTask(null);
