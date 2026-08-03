@@ -4,7 +4,7 @@ import {
   LayoutDashboard, FileText, FileSignature, FileSpreadsheet,
   Users, FolderKanban, Calendar, Bell, BarChart3, History, Settings,
   Search, LogOut, User as UserIcon, Menu, X, ChevronDown, PanelLeftClose, PanelLeftOpen,
-  Building2, ShieldCheck, LayoutGrid, LifeBuoy,
+  Building2, ShieldCheck, LayoutGrid, LifeBuoy, ClipboardList, ChevronRight,
 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 import { OrgSwitcher } from "@/components/org-switcher";
@@ -22,7 +22,13 @@ import { useIsPlatformOwner, useSwitchOrg } from "@/lib/org";
 import { useSupportSession } from "@/lib/support-access";
 
 // Sidebar organized by workflow order: daily work → sales pipeline → post-sale docs → governance
-type NavItem = { to: string; icon: React.ComponentType<{ className?: string }>; label: string; key: PageKey };
+type NavItem = {
+  to: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  key: PageKey;
+  children?: { to: string; label: string }[];
+};
 type NavSection = { label: string; items: NavItem[] };
 
 const NAV_SECTIONS: NavSection[] = [
@@ -38,11 +44,19 @@ const NAV_SECTIONS: NavSection[] = [
     label: "งานขายและโครงการ",
     items: [
       { to: "/projects", icon: FolderKanban, label: "โครงการ", key: "projects" },
+      {
+        to: "/assignments",
+        icon: ClipboardList,
+        label: "การมอบหมายงาน",
+        key: "assignments",
+        children: [{ to: "/assignments/execution", label: "การดำเนินโครงการ" }],
+      },
       { to: "/quotations", icon: FileSpreadsheet, label: "ใบเสนอราคา", key: "quotations" },
       
       { to: "/partners", icon: Users, label: "คู่ค้าและลูกค้า", key: "partners" },
     ],
   },
+
   {
     label: "เอกสารและสัญญา",
     items: [
