@@ -308,6 +308,8 @@ function AssignmentBoard() {
       qc.invalidateQueries({ queryKey: ["project-tasks", id] });
       qc.invalidateQueries({ queryKey: ["my-assigned-tasks"] });
       qc.invalidateQueries({ queryKey: ["tasks-i-assigned"] });
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+      qc.invalidateQueries({ queryKey: ["notifications-unread"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
