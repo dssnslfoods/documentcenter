@@ -86,12 +86,13 @@ function AssignmentProjectTimeline() {
 
   const { current, upcoming } = useMemo(() => {
     const all = tasks.data ?? [];
-    const pending = all.filter((t) => t.status !== "done");
+    const isClosed = p?.status === "completed";
+    const pending = all.filter((t) => t.status !== "done" && !isClosed);
     const cur = pending.filter((t) => t.start_date <= today && t.end_date >= today);
     const late = pending.filter((t) => t.end_date < today);
     const next = pending.filter((t) => t.start_date > today).slice(0, 3);
     return { current: [...late, ...cur], upcoming: next };
-  }, [tasks.data, today]);
+  }, [tasks.data, today, p?.status]);
 
   if (!guard.allowed) return guard.node;
 
