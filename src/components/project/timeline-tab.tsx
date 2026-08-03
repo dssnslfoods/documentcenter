@@ -65,6 +65,7 @@ export function TimelineTab({
   const [zoom, setZoom] = useState<Zoom>("week");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
+  const [trackTask, setTrackTask] = useState<string | null>(null);
 
   const { data: tasks, isLoading, error: tasksError } = useQuery({
     retry: false,
