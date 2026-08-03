@@ -245,13 +245,9 @@ export function PortfolioTimeline() {
           .filter((x) => !Number.isNaN(x.start) && !Number.isNaN(x.end))
           .sort((a, b) => a.start - b.start);
 
-        const rowEnds: number[] = [];
-        for (const st of steps) {
-          let r = rowEnds.findIndex((e) => st.start > e);
-          if (r === -1) r = rowEnds.length;
-          rowEnds[r] = st.end;
-          st.row = r;
-        }
+        steps.forEach((st, i) => {
+          st.row = i;
+        });
 
         const openDue = deliveries.filter((d) => !d.done).map((d) => d.date);
         return {
@@ -373,7 +369,7 @@ export function PortfolioTimeline() {
                   const left = pct(lane.start);
                   const width = Math.max(pct(lane.end) - left, 0.6);
                   const stepRows = lane.steps.length ? Math.max(...lane.steps.map((s) => s.row)) + 1 : 0;
-                  const asgTop = 38 + stepRows * 18 + (stepRows ? 6 : 6);
+                  const asgTop = 38 + stepRows * 22 + 10;
 
                   const dueIn = daysUntil(lane.finalDue);
                   const health = HEALTH[p.health_status ?? "grey"] ?? HEALTH.grey;
@@ -427,7 +423,7 @@ export function PortfolioTimeline() {
 
                       <div
                         className="relative flex-1"
-                        style={{ minHeight: Math.max(64, asgTop + lane.assignments.length * 18 + 8) }}
+                        style={{ minHeight: Math.max(64, asgTop + lane.assignments.length * 28 + 10) }}
                       >
                         {months.map((m) => (
                           <div
@@ -486,8 +482,8 @@ export function PortfolioTimeline() {
                               <TooltipTrigger asChild>
                                 <button
                                   type="button"
-                                  className={`absolute h-4 overflow-hidden rounded-sm px-1 text-left text-[9px] leading-4 text-foreground/80 ring-1 ring-inset ${tone}`}
-                                  style={{ top: 38 + st.row * 18, left: `${sLeft}%`, width: `${sWidth}%` }}
+                                  className={`absolute flex h-[18px] items-center overflow-hidden whitespace-nowrap rounded-sm px-1.5 text-left text-[10px] leading-[18px] text-foreground/80 ring-1 ring-inset ${tone}`}
+                                  style={{ top: 38 + st.row * 22, left: `${sLeft}%`, width: `${sWidth}%`, minWidth: 10 }}
                                   aria-label={st.label}
                                 >
                                   <span className="truncate">{st.label}</span>
@@ -518,12 +514,18 @@ export function PortfolioTimeline() {
                               <TooltipTrigger asChild>
                                 <button
                                   type="button"
-                                  className={`absolute h-3 rounded-sm ring-1 ring-inset ${tone}`}
-                                  style={{ top: asgTop + i * 18, left: `${aLeft}%`, width: `${aWidth}%` }}
+                                  className={`absolute flex h-6 items-center gap-1 overflow-hidden rounded-md px-1.5 text-left shadow-sm ring-1 ring-inset ${tone}`}
+                                  style={{ top: asgTop + i * 28, left: `${aLeft}%`, width: `${aWidth}%`, minWidth: 14 }}
                                   aria-label={`${a.assignee} · ${a.label}`}
                                 >
-                                  <span className="pointer-events-none absolute left-full ml-1 whitespace-nowrap text-[9px] leading-3 text-muted-foreground">
+                                  <span className="truncate rounded bg-background/80 px-1 text-[9px] font-semibold leading-4 text-foreground">
                                     {a.assignee}
+                                  </span>
+                                  <span className="truncate text-[10px] font-medium leading-4 text-background">
+                                    {a.label}
+                                  </span>
+                                  <span className="pointer-events-none absolute left-full ml-1 whitespace-nowrap text-[9px] leading-4 text-muted-foreground">
+                                    {fmtDate(a.endDate)}
                                   </span>
                                 </button>
                               </TooltipTrigger>
