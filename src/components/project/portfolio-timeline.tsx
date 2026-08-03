@@ -378,9 +378,17 @@ export function PortfolioTimeline() {
                             </span>
                           )}
                         </div>
+                        {lane.assignments.length > 0 && (
+                          <div className="text-[10px] font-medium text-primary">
+                            งานที่มอบหมาย {lane.assignments.length} งาน
+                          </div>
+                        )}
                       </div>
 
-                      <div className="relative min-h-[64px] flex-1">
+                      <div
+                        className="relative flex-1"
+                        style={{ minHeight: Math.max(64, 44 + lane.assignments.length * 18 + 8) }}
+                      >
                         {months.map((m) => (
                           <div
                             key={`g-${p.id}-${m.left}`}
@@ -393,8 +401,8 @@ export function PortfolioTimeline() {
                           style={{ left: `${pct(Date.now())}%` }}
                         />
                         <div
-                          className="absolute top-1/2 h-3 -translate-y-1/2 rounded-full bg-primary/25 ring-1 ring-inset ring-primary/40"
-                          style={{ left: `${left}%`, width: `${width}%` }}
+                          className="absolute h-3 rounded-full bg-primary/25 ring-1 ring-inset ring-primary/40"
+                          style={{ top: 16, left: `${left}%`, width: `${width}%` }}
                         />
                         {lane.deliveries.map((d, i) => {
                           const late = !d.done && (daysUntil(d.date) ?? 0) < 0;
@@ -404,8 +412,8 @@ export function PortfolioTimeline() {
                               <TooltipTrigger asChild>
                                 <button
                                   type="button"
-                                  className={`absolute top-1/2 flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 rotate-45 items-center justify-center rounded-[3px] ring-2 ring-background ${color}`}
-                                  style={{ left: `${pct(t(d.date))}%` }}
+                                  className={`absolute flex h-5 w-5 -translate-x-1/2 rotate-45 items-center justify-center rounded-[3px] ring-2 ring-background ${color}`}
+                                  style={{ top: 10, left: `${pct(t(d.date))}%` }}
                                   aria-label={d.label}
                                 >
                                   <Flag className="h-2.5 w-2.5 -rotate-45 text-background" />
@@ -421,7 +429,43 @@ export function PortfolioTimeline() {
                             </Tooltip>
                           );
                         })}
+
+                        {lane.assignments.map((a, i) => {
+                          const aLeft = pct(a.start);
+                          const aWidth = Math.max(pct(a.end) - aLeft, 0.5);
+                          const late = !a.done && (daysUntil(a.endDate) ?? 0) < 0;
+                          const tone = a.done
+                            ? "bg-success/70 ring-success"
+                            : late
+                              ? "bg-destructive/70 ring-destructive"
+                              : "bg-sky-400/70 ring-sky-500";
+                          return (
+                            <Tooltip key={a.id}>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  className={`absolute h-3 rounded-sm ring-1 ring-inset ${tone}`}
+                                  style={{ top: 44 + i * 18, left: `${aLeft}%`, width: `${aWidth}%` }}
+                                  aria-label={`${a.assignee} · ${a.label}`}
+                                >
+                                  <span className="pointer-events-none absolute left-full ml-1 whitespace-nowrap text-[9px] leading-3 text-muted-foreground">
+                                    {a.assignee}
+                                  </span>
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs">
+                                <div className="text-xs font-medium">{a.label}</div>
+                                <div className="text-[11px]">ผู้รับผิดชอบ: {a.assignee}</div>
+                                <div className="text-[11px] text-muted-foreground">
+                                  ส่งมอบ {fmtDate(a.endDate)} · {ASSIGNMENT_META[a.status]?.label ?? a.status}
+                                  {late ? " · เลยกำหนด" : ""}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          );
+                        })}
                       </div>
+
                     </div>
                   );
                 })}
