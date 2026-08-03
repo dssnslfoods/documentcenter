@@ -18,7 +18,8 @@ import { getSupabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/use-supabase";
 import { usePageGuard } from "@/hooks/use-page-access";
 import { fmtDate } from "@/lib/format";
-import { CalendarClock, FolderKanban, MessagesSquare, Crown, UserRound, ArrowUpDown } from "lucide-react";
+import { CalendarClock, FolderKanban, MessagesSquare, Crown, UserRound, ArrowUpDown, Tag } from "lucide-react";
+import { akaBadgeClass } from "@/lib/aka-colors";
 import { TaskAssignmentDialog } from "@/components/project/task-assignment-dialog";
 import { ASSIGNMENT_META, splitMissions, type AssignmentStatus } from "@/lib/task-assignment";
 import { LIFECYCLE_LABEL, STATUS_TONE, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
@@ -55,11 +56,11 @@ type Row = {
   status: TaskStatus;
   assignment_status: AssignmentStatus | null;
   assignee_id: string | null;
-  projects: { id: string; name: string; code: string | null } | null;
+  projects: { id: string; name: string; code: string | null; customer_aka: string | null; customer_aka_color: string | null } | null;
 };
 
 const SELECT =
-  "id, project_id, name, description, start_date, end_date, progress, status, assignment_status, assignee_id, projects(id, name, code)";
+  "id, project_id, name, description, start_date, end_date, progress, status, assignment_status, assignee_id, projects(id, name, code, customer_aka, customer_aka_color)";
 
 type ExecProject = {
   id: string;
@@ -370,7 +371,7 @@ function TaskCard({ t, today, assigneeName, onOpen }: { t: MissionCard; today: s
             <p className="truncate text-xs text-muted-foreground">งานในแผน: {t.name}</p>
           )}
           {t.missionNote && <p className="line-clamp-2 text-xs text-muted-foreground">{t.missionNote}</p>}
-          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <CalendarClock className="h-3.5 w-3.5" />
               {fmtDate(t.start_date)} – {fmtDate(t.end_date)}
@@ -379,12 +380,18 @@ function TaskCard({ t, today, assigneeName, onOpen }: { t: MissionCard; today: s
               <Link
                 to="/projects/$id"
                 params={{ id: t.project_id }}
-                className="inline-flex items-center gap-1 text-primary hover:underline"
+                className="inline-flex items-center gap-1 rounded-md border border-muted-foreground/30 bg-muted/50 px-2 py-0.5 text-xs font-medium text-foreground hover:bg-muted"
               >
                 <FolderKanban className="h-3.5 w-3.5" />
                 {t.projects.code ? `${t.projects.code} · ` : ""}
                 {t.projects.name}
               </Link>
+            )}
+            {t.projects?.customer_aka && (
+              <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium ${akaBadgeClass(t.projects.customer_aka_color)}`}>
+                <Tag className="h-3.5 w-3.5" />
+                {t.projects.customer_aka}
+              </span>
             )}
           </div>
         </div>
