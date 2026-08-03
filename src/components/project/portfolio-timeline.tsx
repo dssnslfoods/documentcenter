@@ -157,6 +157,14 @@ export function PortfolioTimeline() {
       list.push(m);
       byProjectMs.set(m.project_id, list);
     }
+    const byProjectAsg = new Map<string, AssignRow[]>();
+    for (const a of data.assignments) {
+      const list = byProjectAsg.get(a.project_id) ?? [];
+      list.push(a);
+      byProjectAsg.set(a.project_id, list);
+    }
+
+
 
     const rows = data.projects
       .filter((p) => (scope === "all" ? p.status !== "lost" : ACTIVE_STATUSES.includes(p.status)))
