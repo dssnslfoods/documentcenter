@@ -97,6 +97,35 @@ function AssignmentBoard() {
   const [mission, setMission] = useState("");
   const [due, setDue] = useState("");
   const [threadTask, setThreadTask] = useState<string | null>(null);
+  const [showLoad, setShowLoad] = useState(true);
+
+  const workload = useQuery({
+    queryKey: ["member-workload", selectedMember],
+    enabled: guard.allowed && !!selectedMember && !!quickTask,
+    queryFn: async () => {
+      const { data } = await sb
+        .from("project_tasks")
+        .select("id, name, start_date, end_date, progress, assignment_status, project_id, projects(name)")
+        .eq("assignee_id", selectedMember!)
+        .order("start_date");
+      return (data ?? []).map((r) => {
+        const row = r as unknown as {
+          id: string;
+          name: string;
+          start_date: string;
+          end_date: string;
+          progress: number | null;
+          assignment_status: AssignmentStatus | null;
+          project_id: string;
+          projects: { name: string } | { name: string }[] | null;
+        };
+        const proj = Array.isArray(row.projects) ? row.projects[0] : row.projects;
+        return { ...row, project_name: proj?.name ?? null };
+      });
+    },
+  });
+
+
 
   const project = useQuery({
     queryKey: ["assignment-board-project", id],
