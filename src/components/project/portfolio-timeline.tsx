@@ -240,6 +240,7 @@ export function PortfolioTimeline() {
             endDate: x.end_date,
             done: x.status === "done",
             active: x.status === "in_progress",
+            row: 0,
           }))
           .filter((x) => !Number.isNaN(x.start) && !Number.isNaN(x.end))
           .sort((a, b) => a.start - b.start);
