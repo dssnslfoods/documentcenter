@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDateTime, fmtCurrency } from "@/lib/format";
 import { LIFECYCLE_LABEL } from "@/lib/project-lifecycle";
+import { useCanSeeMoney, MONEY_MASK } from "@/hooks/use-page-access";
 
 type Change = { field: string; old: unknown; new: unknown };
 type HistoryRow = {
@@ -105,6 +106,7 @@ function renderValue(field: string, v: unknown, canSeeMoney = true): string {
 
 export function ProjectHistoryTab({ projectId }: { projectId: string }) {
   const sb = getSupabase();
+  const { canSeeMoney } = useCanSeeMoney();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["project-history", projectId],
@@ -268,9 +270,9 @@ export function ProjectHistoryTab({ projectId }: { projectId: string }) {
                       <tr key={`${h.id}-${c.field}-${i}`} className="border-t">
                         <td className="px-3 py-2 font-medium">{FIELD_LABEL[c.field] ?? c.field}</td>
                         <td className="px-3 py-2 text-muted-foreground line-through decoration-muted-foreground/40">
-                          {renderValue(c.field, c.old)}
+                          {renderValue(c.field, c.old, canSeeMoney)}
                         </td>
-                        <td className="px-3 py-2 font-medium text-foreground">{renderValue(c.field, c.new)}</td>
+                        <td className="px-3 py-2 font-medium text-foreground">{renderValue(c.field, c.new, canSeeMoney)}</td>
                       </tr>
                     ))}
                   </tbody>
