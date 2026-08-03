@@ -47,15 +47,40 @@ type MilestoneRow = {
   status: string;
 };
 
+type AssignRow = {
+  id: string;
+  project_id: string;
+  name: string;
+  description: string | null;
+  start_date: string;
+  end_date: string;
+  status: string;
+  assignment_status: string;
+  assignee_id: string | null;
+};
+
 type Delivery = { label: string; date: string; done: boolean; kind: "milestone" | "marker" };
+
+type Assignment = {
+  id: string;
+  label: string;
+  assignee: string;
+  start: number;
+  end: number;
+  endDate: string;
+  status: AssignmentStatus;
+  done: boolean;
+};
 
 type Lane = {
   project: ProjectRow;
   start: number;
   end: number;
   deliveries: Delivery[];
+  assignments: Assignment[];
   finalDue: string | null;
 };
+
 
 const DAY = 86_400_000;
 const t = (d: string | null | undefined) => (d ? new Date(`${d}T00:00:00`).getTime() : NaN);
