@@ -129,6 +129,7 @@ const HIDDEN_KEY = "portfolio-timeline:hidden-projects";
 export function PortfolioTimeline() {
   const sb = getSupabase();
   const [scope, setScope] = useState<"active" | "all">("active");
+  const [zoom, setZoom] = useState<"day" | "week" | "month">("month");
   const [editTaskId, setEditTaskId] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const [hidden, setHidden] = useState<Set<string>>(() => {
