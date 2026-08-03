@@ -578,6 +578,27 @@ function AssignmentBoard() {
             </div>
 
             <div className="space-y-1.5">
+              <Label>ชื่อภารกิจ</Label>
+              <Input
+                value={missionTitle}
+                onChange={(e) => setMissionTitle(e.target.value)}
+                placeholder="เช่น ออกแบบ mockup first draft"
+              />
+              <div className="flex flex-wrap gap-2 pt-1">
+                {[
+                  "ออกแบบ mockup first draft",
+                  "จัดทำ artwork / layout",
+                  "แก้ไขงานตาม comment",
+                  "เตรียมไฟล์ส่งลูกค้า",
+                ].map((t) => (
+                  <Button key={t} type="button" size="sm" variant="outline" onClick={() => setMissionTitle(t)}>
+                    {t}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
               <Label>รายละเอียดภารกิจ</Label>
               <Textarea
                 rows={3}
@@ -602,6 +623,14 @@ function AssignmentBoard() {
                 ))}
               </div>
             </div>
+
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+              <span className="text-muted-foreground">สรุปคำสั่งงาน: </span>
+              มอบหมายให้ <span className="font-medium">{member?.name ?? "สมาชิก"}</span>{" "}
+              <span className="font-medium">{missionTitle.trim() || quickTask?.name}</span>
+              {due ? ` ส่งมอบ ${fmtDate(due)}` : ""}
+            </div>
+
             <Button className="w-full" disabled={assign.isPending} onClick={() => assign.mutate()}>
               {assign.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
