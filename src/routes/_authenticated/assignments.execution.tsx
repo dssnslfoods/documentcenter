@@ -11,7 +11,7 @@ import { getSupabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/use-supabase";
 import { usePageGuard } from "@/hooks/use-page-access";
 import { fmtDate } from "@/lib/format";
-import { CalendarClock, FolderKanban, MessagesSquare, Crown } from "lucide-react";
+import { CalendarClock, FolderKanban, MessagesSquare, Crown, UserRound } from "lucide-react";
 import { TaskAssignmentDialog } from "@/components/project/task-assignment-dialog";
 import { ASSIGNMENT_META, splitMissions, type AssignmentStatus } from "@/lib/task-assignment";
 import { LIFECYCLE_LABEL, STATUS_TONE, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
@@ -218,7 +218,7 @@ function AssignmentsExecution() {
           ) : (
             <div className="space-y-3">
               {[...open, ...done].map((t, i) => (
-                <TaskCard key={`${t.id}-${i}`} t={t} today={today} onOpen={() => setOpenTask({ id: t.id, manage: false })} />
+                <TaskCard key={`${t.id}-${i}`} t={t} today={today} assigneeName={nameOf(t.assignee_id)} onOpen={() => setOpenTask({ id: t.id, manage: false })} />
               ))}
             </div>
           )}
@@ -235,7 +235,7 @@ function AssignmentsExecution() {
             </Card>
           ) : (
             tracked.map((t, i) => (
-              <TaskCard key={`${t.id}-${i}`} t={t} today={today} onOpen={() => setOpenTask({ id: t.id, manage: true })} />
+              <TaskCard key={`${t.id}-${i}`} t={t} today={today} assigneeName={nameOf(t.assignee_id)} onOpen={() => setOpenTask({ id: t.id, manage: true })} />
             ))
           )}
         </TabsContent>
@@ -263,7 +263,7 @@ function toMissionCards(rows: Row[]): MissionCard[] {
 
 }
 
-function TaskCard({ t, today, onOpen }: { t: MissionCard; today: string; onOpen: () => void }) {
+function TaskCard({ t, today, assigneeName, onOpen }: { t: MissionCard; today: string; assigneeName: string; onOpen: () => void }) {
   const overdue = t.status !== "done" && t.end_date < today;
   const asg = (t.assignment_status ?? "draft") as AssignmentStatus;
   return (
@@ -271,6 +271,10 @@ function TaskCard({ t, today, onOpen }: { t: MissionCard; today: string; onOpen:
       <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+              <UserRound className="h-3.5 w-3.5" />
+              {assigneeName}
+            </span>
             <span className="truncate font-medium">{t.missionTitle ?? t.name}</span>
             <Badge variant="outline" className={STATUS_META[t.status].badge}>{STATUS_META[t.status].label}</Badge>
             <Badge variant="outline" className={ASSIGNMENT_META[asg].badge}>{ASSIGNMENT_META[asg].label}</Badge>
