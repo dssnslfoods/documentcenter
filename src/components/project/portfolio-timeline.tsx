@@ -174,6 +174,34 @@ export function PortfolioTimeline() {
     el.scrollLeft = dragRef.current.scrollLeft - walk;
   };
 
+  const scrollToMonth = (index: number) => {
+    const el = scrollRef.current;
+    if (!el || !months.length) return;
+    const clamped = Math.max(0, Math.min(index, months.length - 1));
+    const target = (months[clamped].left / 100) * el.scrollWidth;
+    el.scrollTo({ left: target, behavior: "smooth" });
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    const el = scrollRef.current;
+    if (!el || !months.length) return;
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
+    e.preventDefault();
+
+    if (e.key === "Home") return scrollToMonth(0);
+    if (e.key === "End") return scrollToMonth(months.length - 1);
+
+    const currentIndex = months.findIndex((m, i) => {
+      const leftPx = (m.left / 100) * el.scrollWidth;
+      const nextLeftPx = i < months.length - 1 ? (months[i + 1].left / 100) * el.scrollWidth : el.scrollWidth;
+      return el.scrollLeft >= leftPx && el.scrollLeft < nextLeftPx;
+    });
+
+    const base = currentIndex === -1 ? months.length - 1 : currentIndex;
+    scrollToMonth(e.key === "ArrowLeft" ? base - 1 : base + 1);
+  };
+
+
 
   const { data, isLoading } = useQuery({
     queryKey: ["portfolio-timeline", "delegated-status-v2"],
