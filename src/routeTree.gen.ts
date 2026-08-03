@@ -41,6 +41,7 @@ import { Route as AuthenticatedSettingsCategoriesRouteImport } from './routes/_a
 import { Route as AuthenticatedSettingsAccessRouteImport } from './routes/_authenticated/settings.access'
 import { Route as AuthenticatedQuotationsNewRouteImport } from './routes/_authenticated/quotations.new'
 import { Route as AuthenticatedQuotationsIdRouteImport } from './routes/_authenticated/quotations.$id'
+import { Route as AuthenticatedProjectsTimelineRouteImport } from './routes/_authenticated/projects.timeline'
 import { Route as AuthenticatedProjectsNewRouteImport } from './routes/_authenticated/projects.new'
 import { Route as AuthenticatedProjectsIdRouteImport } from './routes/_authenticated/projects.$id'
 import { Route as AuthenticatedPlatformMenusRouteImport } from './routes/_authenticated/platform.menus'
@@ -234,6 +235,12 @@ const AuthenticatedQuotationsIdRoute =
     path: '/quotations/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedProjectsTimelineRoute =
+  AuthenticatedProjectsTimelineRouteImport.update({
+    id: '/projects/timeline',
+    path: '/projects/timeline',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedProjectsNewRoute =
   AuthenticatedProjectsNewRouteImport.update({
     id: '/projects/new',
@@ -335,6 +342,7 @@ export interface FileRoutesByFullPath {
   '/platform/menus': typeof AuthenticatedPlatformMenusRoute
   '/projects/$id': typeof AuthenticatedProjectsIdRoute
   '/projects/new': typeof AuthenticatedProjectsNewRoute
+  '/projects/timeline': typeof AuthenticatedProjectsTimelineRoute
   '/quotations/$id': typeof AuthenticatedQuotationsIdRoute
   '/quotations/new': typeof AuthenticatedQuotationsNewRoute
   '/settings/access': typeof AuthenticatedSettingsAccessRoute
@@ -381,6 +389,7 @@ export interface FileRoutesByTo {
   '/platform/menus': typeof AuthenticatedPlatformMenusRoute
   '/projects/$id': typeof AuthenticatedProjectsIdRoute
   '/projects/new': typeof AuthenticatedProjectsNewRoute
+  '/projects/timeline': typeof AuthenticatedProjectsTimelineRoute
   '/quotations/$id': typeof AuthenticatedQuotationsIdRoute
   '/quotations/new': typeof AuthenticatedQuotationsNewRoute
   '/settings/access': typeof AuthenticatedSettingsAccessRoute
@@ -429,6 +438,7 @@ export interface FileRoutesById {
   '/_authenticated/platform/menus': typeof AuthenticatedPlatformMenusRoute
   '/_authenticated/projects/$id': typeof AuthenticatedProjectsIdRoute
   '/_authenticated/projects/new': typeof AuthenticatedProjectsNewRoute
+  '/_authenticated/projects/timeline': typeof AuthenticatedProjectsTimelineRoute
   '/_authenticated/quotations/$id': typeof AuthenticatedQuotationsIdRoute
   '/_authenticated/quotations/new': typeof AuthenticatedQuotationsNewRoute
   '/_authenticated/settings/access': typeof AuthenticatedSettingsAccessRoute
@@ -477,6 +487,7 @@ export interface FileRouteTypes {
     | '/platform/menus'
     | '/projects/$id'
     | '/projects/new'
+    | '/projects/timeline'
     | '/quotations/$id'
     | '/quotations/new'
     | '/settings/access'
@@ -523,6 +534,7 @@ export interface FileRouteTypes {
     | '/platform/menus'
     | '/projects/$id'
     | '/projects/new'
+    | '/projects/timeline'
     | '/quotations/$id'
     | '/quotations/new'
     | '/settings/access'
@@ -570,6 +582,7 @@ export interface FileRouteTypes {
     | '/_authenticated/platform/menus'
     | '/_authenticated/projects/$id'
     | '/_authenticated/projects/new'
+    | '/_authenticated/projects/timeline'
     | '/_authenticated/quotations/$id'
     | '/_authenticated/quotations/new'
     | '/_authenticated/settings/access'
@@ -831,6 +844,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedQuotationsIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/projects/timeline': {
+      id: '/_authenticated/projects/timeline'
+      path: '/projects/timeline'
+      fullPath: '/projects/timeline'
+      preLoaderRoute: typeof AuthenticatedProjectsTimelineRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/projects/new': {
       id: '/_authenticated/projects/new'
       path: '/projects/new'
@@ -942,6 +962,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPlatformMenusRoute: typeof AuthenticatedPlatformMenusRoute
   AuthenticatedProjectsIdRoute: typeof AuthenticatedProjectsIdRoute
   AuthenticatedProjectsNewRoute: typeof AuthenticatedProjectsNewRoute
+  AuthenticatedProjectsTimelineRoute: typeof AuthenticatedProjectsTimelineRoute
   AuthenticatedQuotationsIdRoute: typeof AuthenticatedQuotationsIdRoute
   AuthenticatedQuotationsNewRoute: typeof AuthenticatedQuotationsNewRoute
   AuthenticatedSettingsAccessRoute: typeof AuthenticatedSettingsAccessRoute
@@ -981,6 +1002,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPlatformMenusRoute: AuthenticatedPlatformMenusRoute,
   AuthenticatedProjectsIdRoute: AuthenticatedProjectsIdRoute,
   AuthenticatedProjectsNewRoute: AuthenticatedProjectsNewRoute,
+  AuthenticatedProjectsTimelineRoute: AuthenticatedProjectsTimelineRoute,
   AuthenticatedQuotationsIdRoute: AuthenticatedQuotationsIdRoute,
   AuthenticatedQuotationsNewRoute: AuthenticatedQuotationsNewRoute,
   AuthenticatedSettingsAccessRoute: AuthenticatedSettingsAccessRoute,
