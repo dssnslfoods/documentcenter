@@ -375,10 +375,6 @@ function AssignmentBoard() {
 
   const openQuick = (t: Task) => {
     if (!canManage) return;
-    if (!selectedMember) {
-      toast.info("เลือกสมาชิกทางด้านซ้ายก่อน แล้วจึงคลิกงานที่ต้องการมอบหมาย");
-      return;
-    }
     setQuickTask(t);
     setMissionTitle("");
     setMission(t.description ?? "");
@@ -632,13 +628,13 @@ function AssignmentBoard() {
         <DialogContent className="w-[95vw] max-w-lg">
           <DialogHeader>
             <DialogTitle className="pr-6 text-base">
-              มอบหมาย: {quickTask?.name} → {member?.name}
+              มอบหมาย: {quickTask?.name}{member ? ` → ${member.name}` : ""}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             {/* ── เลือกผู้รับผิดชอบจากชื่อสมาชิก ── */}
             <div className="space-y-1.5">
-              <Label>ผู้รับผิดชอบ</Label>
+              <Label>ผู้รับผิดชอบ {!selectedMember && <span className="text-xs text-muted-foreground">— เลือกชื่อสมาชิก</span>}</Label>
               <div className="flex flex-wrap gap-1.5">
                 {(members.data ?? []).map((m) => {
                   const active = m.id === selectedMember;
@@ -773,12 +769,12 @@ function AssignmentBoard() {
 
             <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
               <span className="text-muted-foreground">สรุปคำสั่งงาน: </span>
-              มอบหมายให้ <span className="font-medium">{member?.name ?? "สมาชิก"}</span>{" "}
+              มอบหมายให้ <span className="font-medium">{member?.name ?? "— ยังไม่เลือกสมาชิก —"}</span>{" "}
               <span className="font-medium">{missionTitle.trim() || quickTask?.name}</span>
               {due ? ` ส่งมอบ ${fmtDate(due)}` : ""}
             </div>
 
-            <Button className="w-full" disabled={assign.isPending} onClick={() => assign.mutate()}>
+            <Button className="w-full" disabled={assign.isPending || !selectedMember} onClick={() => assign.mutate()}>
               {assign.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
