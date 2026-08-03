@@ -398,6 +398,61 @@ function AssignmentBoard() {
         </div>
       )}
 
+      {current && (() => {
+        const t = current.task;
+        const left = dayLeft(t.end_date);
+        const toStart = dayLeft(t.start_date);
+        const tone =
+          current.kind === "overdue"
+            ? "border-destructive/40 bg-destructive/5"
+            : current.kind === "upcoming"
+              ? "border-muted-foreground/20 bg-muted/40"
+              : left <= 2
+                ? "border-warning/50 bg-warning/10"
+                : "border-primary/40 bg-primary/5";
+        const idx = list.findIndex((x) => x.id === t.id) + 1;
+        const owner =
+          t.assignee_label || (members.data ?? []).find((m) => m.id === t.assignee_id)?.name || "ยังไม่มอบหมาย";
+        return (
+          <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border p-4 ${tone}`}>
+            <div className="flex min-w-0 flex-1 items-start gap-3">
+              <Hourglass className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+              <div className="min-w-0">
+                <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  {current.kind === "upcoming" ? "ขั้นตอนถัดไป" : "ขั้นตอนปัจจุบัน"} · ขั้นที่ {idx} จาก {list.length}
+                </div>
+                <div className="truncate text-base font-semibold">{t.name}</div>
+                <div className="text-xs text-muted-foreground">
+                  ผู้รับผิดชอบ {owner} · {fmtDate(t.start_date)} – {fmtDate(t.end_date)}
+                </div>
+              </div>
+            </div>
+            <div className="text-right">
+              {current.kind === "overdue" ? (
+                <>
+                  <div className="text-2xl font-bold tabular-nums text-destructive">เลย {Math.abs(left)} วัน</div>
+                  <div className="text-xs text-destructive">เกินกำหนดส่งมอบแล้ว</div>
+                </>
+              ) : current.kind === "upcoming" ? (
+                <>
+                  <div className="text-2xl font-bold tabular-nums">อีก {toStart} วัน</div>
+                  <div className="text-xs text-muted-foreground">จะเริ่มขั้นตอนนี้</div>
+                </>
+              ) : (
+                <>
+                  <div className={`text-2xl font-bold tabular-nums ${left <= 2 ? "text-warning" : "text-primary"}`}>
+                    {left === 0 ? "ครบกำหนดวันนี้" : `เหลือ ${left} วัน`}
+                  </div>
+                  <div className="text-xs text-muted-foreground">ถึงกำหนดส่งมอบ {fmtDate(t.end_date)}</div>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+
+
       <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
         {/* ── สมาชิกโครงการ ── */}
         <Card className="lg:sticky lg:top-4 lg:self-start">
