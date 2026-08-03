@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { EmptyState } from "@/components/page-header";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDate } from "@/lib/format";
+import { TaskAssignmentDialog } from "@/components/project/task-assignment-dialog";
+import { ASSIGNMENT_META, type AssignmentStatus } from "@/lib/task-assignment";
 
 type TaskStatus = "not_started" | "in_progress" | "done" | "blocked";
 
