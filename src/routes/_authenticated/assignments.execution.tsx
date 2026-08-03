@@ -7,11 +7,18 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { getSupabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/use-supabase";
 import { usePageGuard } from "@/hooks/use-page-access";
 import { fmtDate } from "@/lib/format";
-import { CalendarClock, FolderKanban, MessagesSquare, Crown, UserRound } from "lucide-react";
+import { CalendarClock, FolderKanban, MessagesSquare, Crown, UserRound, ArrowUpDown } from "lucide-react";
 import { TaskAssignmentDialog } from "@/components/project/task-assignment-dialog";
 import { ASSIGNMENT_META, splitMissions, type AssignmentStatus } from "@/lib/task-assignment";
 import { LIFECYCLE_LABEL, STATUS_TONE, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
@@ -63,11 +70,62 @@ type ExecProject = {
   end_date: string | null;
 };
 
+type SortKey = "end_date" | "start_date" | "progress" | "status" | "assignment_status" | "project" | "name";
+type SortDir = "asc" | "desc";
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "end_date", label: "กำหนดส่งมอบ" },
+  { value: "start_date", label: "วันเริ่มงาน" },
+  { value: "progress", label: "ความคืบหน้า" },
+  { value: "status", label: "สถานะงาน" },
+  { value: "assignment_status", label: "สถานะการมอบหมาย" },
+  { value: "project", label: "โครงการ" },
+  { value: "name", label: "ชื่อภารกิจ" },
+];
+
+const STATUS_ORDER: Record<TaskStatus, number> = { blocked: 0, in_progress: 1, not_started: 2, done: 3 };
+const ASG_ORDER: Record<AssignmentStatus, number> = {
+  revision: 0,
+  assigned: 1,
+  acknowledged: 2,
+  in_review: 3,
+  draft: 4,
+  accepted: 5,
+};
+
+function sortCards(rows: MissionCard[], key: SortKey, dir: SortDir): MissionCard[] {
+  const sign = dir === "asc" ? 1 : -1;
+  const cmp = (a: MissionCard, b: MissionCard): number => {
+    switch (key) {
+      case "end_date":
+        return a.end_date.localeCompare(b.end_date);
+      case "start_date":
+        return a.start_date.localeCompare(b.start_date);
+      case "progress":
+        return (a.progress ?? 0) - (b.progress ?? 0);
+      case "status":
+        return STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
+      case "assignment_status":
+        return (
+          ASG_ORDER[(a.assignment_status ?? "draft") as AssignmentStatus] -
+          ASG_ORDER[(b.assignment_status ?? "draft") as AssignmentStatus]
+        );
+      case "project":
+        return (a.projects?.name ?? "").localeCompare(b.projects?.name ?? "", "th");
+      case "name":
+        return (a.missionTitle ?? a.name).localeCompare(b.missionTitle ?? b.name, "th");
+    }
+  };
+  return [...rows].sort((a, b) => sign * cmp(a, b));
+}
+
 
 function AssignmentsExecution() {
   const guard = usePageGuard("assignments", "การมอบหมายงาน");
   const { user } = useAuth();
   const [openTask, setOpenTask] = useState<{ id: string; manage: boolean } | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>("end_date");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   const mine = useQuery({
     queryKey: ["my-assigned-tasks", user?.id],
@@ -141,11 +199,11 @@ function AssignmentsExecution() {
   if (!guard.allowed) return guard.node;
 
   const nameOf = (id: string | null) => (id ? profiles.data?.[id] ?? "…" : "ยังไม่ระบุผู้รับผิดชอบ");
-  const rows = toMissionCards(mine.data ?? []);
+  const rows = sortCards(toMissionCards(mine.data ?? []), sortKey, sortDir);
   const open = rows.filter((r) => r.status !== "done");
   const done = rows.filter((r) => r.status === "done");
   const today = new Date().toISOString().slice(0, 10);
-  const tracked = toMissionCards(assigned.data ?? []);
+  const tracked = sortCards(toMissionCards(assigned.data ?? []), sortKey, sortDir);
   const led = execProjects.data ?? [];
 
 
@@ -195,10 +253,38 @@ function AssignmentsExecution() {
 
 
       <Tabs defaultValue="mine">
-        <TabsList>
-          <TabsTrigger value="mine">งานที่ได้รับมอบหมาย ({rows.length})</TabsTrigger>
-          <TabsTrigger value="tracking">งานที่ฉันมอบหมาย ({tracked.length})</TabsTrigger>
-        </TabsList>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <TabsList>
+            <TabsTrigger value="mine">งานที่ได้รับมอบหมาย ({rows.length})</TabsTrigger>
+            <TabsTrigger value="tracking">งานที่ฉันมอบหมาย ({tracked.length})</TabsTrigger>
+          </TabsList>
+          <div className="flex items-center gap-2">
+            <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">เรียงตาม</span>
+            <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+              <SelectTrigger className="h-9 w-[190px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SORT_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={sortDir} onValueChange={(v) => setSortDir(v as SortDir)}>
+              <SelectTrigger className="h-9 w-[130px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="asc">น้อย → มาก</SelectItem>
+                <SelectItem value="desc">มาก → น้อย</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
 
         <TabsContent value="mine" className="space-y-4 pt-4">
           <div className="grid gap-3 sm:grid-cols-3">
