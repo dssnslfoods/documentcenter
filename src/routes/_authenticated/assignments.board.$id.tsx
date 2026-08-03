@@ -547,19 +547,39 @@ function AssignmentBoard() {
                 const owner =
                   t.assignee_label || (members.data ?? []).find((m) => m.id === t.assignee_id)?.name || "ยังไม่มอบหมาย";
                 const mine = !!selectedMember && t.assignee_id === selectedMember;
+                const isCurrent = current?.task.id === t.id;
+                const left = dayLeft(t.end_date);
                 return (
                   <div
                     key={t.id}
                     className={`rounded-lg border p-3 transition ${
-                      mine ? "border-primary/50 bg-primary/5" : "hover:bg-muted/40"
+                      isCurrent
+                        ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+                        : mine
+                          ? "border-primary/50 bg-primary/5"
+                          : "hover:bg-muted/40"
                     }`}
                   >
                     <div className="flex flex-wrap items-center gap-2">
+                      {isCurrent && (
+                        <Badge className="gap-1 bg-primary text-primary-foreground">
+                          <Hourglass className="h-3 w-3" />
+                          {current?.kind === "upcoming" ? "ขั้นตอนถัดไป" : "ขั้นตอนปัจจุบัน"}
+                        </Badge>
+                      )}
                       <span className="text-sm font-medium">{t.name}</span>
                       <Badge variant="outline" className={ASSIGNMENT_META[st].badge}>
                         {ASSIGNMENT_META[st].label}
                       </Badge>
+                      {isCurrent && (
+                        <span
+                          className={`text-[11px] font-semibold ${left < 0 ? "text-destructive" : left <= 2 ? "text-warning" : "text-primary"}`}
+                        >
+                          {left < 0 ? `เลยกำหนด ${Math.abs(left)} วัน` : left === 0 ? "ครบกำหนดวันนี้" : `เหลืออีก ${left} วัน`}
+                        </span>
+                      )}
                       <span className="text-[11px] text-muted-foreground">· {owner}</span>
+
                       <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-muted-foreground">
                         <CalendarClock className="h-3.5 w-3.5" />
                         {fmtDate(t.start_date)} – {fmtDate(t.end_date)}
