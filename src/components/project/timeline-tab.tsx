@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, Loader2, Trash2, Pencil, GanttChartSquare, CalendarRange, FileSpreadsheet, X } from "lucide-react";
+import { Plus, Loader2, Trash2, Pencil, GanttChartSquare, CalendarRange, FileSpreadsheet, X, MessagesSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { EmptyState } from "@/components/page-header";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDate } from "@/lib/format";
+import { TaskAssignmentDialog } from "@/components/project/task-assignment-dialog";
+import { ASSIGNMENT_META, type AssignmentStatus } from "@/lib/task-assignment";
 
 type TaskStatus = "not_started" | "in_progress" | "done" | "blocked";
 
@@ -36,6 +38,7 @@ type Task = {
   progress: number;
   status: TaskStatus;
   sort_order: number;
+  assignment_status?: AssignmentStatus | null;
 };
 
 const DAY = 86_400_000;
@@ -62,6 +65,7 @@ export function TimelineTab({
   const [zoom, setZoom] = useState<Zoom>("week");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
+  const [trackTask, setTrackTask] = useState<string | null>(null);
 
   const { data: tasks, isLoading, error: tasksError } = useQuery({
     retry: false,
@@ -356,26 +360,41 @@ export function TimelineTab({
               <div className="flex h-12 items-center border-b bg-muted/40 px-3 text-xs font-semibold text-muted-foreground">
                 รายการงาน
               </div>
-              {rows.map(({ task, depth }) => (
+              {rows.map(({ task, depth }) => {
+                const asg = (task.assignment_status ?? "draft") as AssignmentStatus;
+                return (
                 <div key={task.id} className="group flex h-12 items-center gap-2 border-b px-3 last:border-b-0">
                   <div className="min-w-0 flex-1" style={{ paddingLeft: depth * 12 }}>
                     <div className="truncate text-xs font-medium">{task.name}</div>
                     <div className="truncate text-[10px] text-muted-foreground">
                       {task.assignee_label || members?.find((m) => m.id === task.assignee_id)?.name || "ไม่ระบุผู้รับผิดชอบ"}
+                      {task.assignee_id && <> · {ASSIGNMENT_META[asg].label}</>}
                     </div>
                   </div>
-                  {canEdit && (
-                    <div className="flex shrink-0 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(task)}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => remove.mutate(task.id)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  )}
+                  <div className="flex shrink-0 items-center">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      title="มอบหมาย / ติดตามงาน"
+                      onClick={() => setTrackTask(task.id)}
+                    >
+                      <MessagesSquare className="h-3.5 w-3.5" />
+                    </Button>
+                    {canEdit && (
+                      <>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(task)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => remove.mutate(task.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Right: gantt */}
@@ -401,6 +420,13 @@ export function TimelineTab({
         parents={(tasks ?? []).filter((t) => !t.parent_id && t.id !== editing?.id)}
         members={members ?? []}
         milestones={milestones ?? []}
+      />
+
+      <TaskAssignmentDialog
+        taskId={trackTask}
+        open={!!trackTask}
+        onOpenChange={(v) => !v && setTrackTask(null)}
+        canManage={canEdit}
       />
     </div>
   );
