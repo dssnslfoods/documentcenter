@@ -4,7 +4,7 @@ import {
   LayoutDashboard, FileText, FileSignature, FileSpreadsheet,
   Users, FolderKanban, Calendar, Bell, BarChart3, History, Settings,
   Search, LogOut, User as UserIcon, Menu, X, ChevronDown, PanelLeftClose, PanelLeftOpen,
-  Building2, ShieldCheck, LayoutGrid, LifeBuoy, ClipboardList, ChevronRight,
+  Building2, ShieldCheck, LayoutGrid, LifeBuoy, ClipboardList, ChevronRight, GanttChartSquare,
 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 import { OrgSwitcher } from "@/components/org-switcher";
