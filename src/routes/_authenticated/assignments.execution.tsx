@@ -357,74 +357,74 @@ function TaskCard({ t, today, assigneeName, onOpen }: { t: MissionCard; today: s
   const asg = (t.assignment_status ?? "draft") as AssignmentStatus;
   const remaining = daysUntil(t.end_date);
   return (
-    <Card>
-      <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1 space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-              <UserRound className="h-3.5 w-3.5" />
-              {assigneeName}
-            </span>
-            <span className="truncate font-medium">{t.missionTitle ?? t.name}</span>
-            <Badge variant="outline" className={STATUS_META[t.status].badge}>{STATUS_META[t.status].label}</Badge>
-            <Badge variant="outline" className={ASSIGNMENT_META[asg].badge}>{ASSIGNMENT_META[asg].label}</Badge>
-            {overdue && <Badge variant="destructive">เลยกำหนด</Badge>}
-          </div>
-          {t.missionTitle && (
-            <p className="truncate text-xs text-muted-foreground">งานในแผน: {t.name}</p>
-          )}
-          {t.missionNote && <p className="line-clamp-2 text-xs text-muted-foreground">{t.missionNote}</p>}
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1">
-              <CalendarClock className="h-3.5 w-3.5" />
-              {fmtDate(t.start_date)} – {fmtDate(t.end_date)}
-            </span>
-            {t.projects && (
-              <Link
-                to="/projects/$id"
-                params={{ id: t.project_id }}
-                className="inline-flex items-center gap-1 rounded-md border border-muted-foreground/30 bg-muted/50 px-2 py-0.5 text-xs font-medium text-foreground hover:bg-muted"
-              >
-                <FolderKanban className="h-3.5 w-3.5" />
-                {t.projects.code ? `${t.projects.code} · ` : ""}
-                {t.projects.name}
-              </Link>
-            )}
-            {t.projects?.customer_aka && (
-              <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium ${akaBadgeClass(t.projects.customer_aka_color)}`}>
-                <Tag className="h-3.5 w-3.5" />
-                {t.projects.customer_aka}
+    <Card className="flex flex-col">
+      <CardContent className="flex flex-1 flex-col gap-2 p-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <span className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                <UserRound className="h-3 w-3" />
+                {assigneeName}
               </span>
+            </div>
+            <p className="mt-1 line-clamp-1 text-sm font-medium">{t.missionTitle ?? t.name}</p>
+            {t.missionTitle && (
+              <p className="line-clamp-1 text-[10px] text-muted-foreground">งานในแผน: {t.name}</p>
+            )}
+          </div>
+          <div className={`flex shrink-0 flex-col items-center rounded-md border px-2 py-1 ${overdue ? "border-destructive/40 bg-destructive/10" : "border-primary/30 bg-primary/10"}`}>
+            <div className="text-[10px] text-muted-foreground">ส่งมอบ</div>
+            <div className={`text-xs font-semibold ${overdue ? "text-destructive" : "text-primary"}`}>
+              {fmtDate(t.end_date)}
+            </div>
+            {t.status === "done" ? (
+              <div className="text-[10px] font-medium text-success">เสร็จสิ้น</div>
+            ) : remaining == null ? null : remaining < 0 ? (
+              <div className="text-[10px] font-semibold text-destructive">เลย {Math.abs(remaining)} วัน</div>
+            ) : remaining === 0 ? (
+              <div className="text-[10px] font-semibold text-warning">วันนี้</div>
+            ) : (
+              <div className="text-[10px] font-semibold text-primary">เหลือ {remaining} วัน</div>
             )}
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-col gap-2 sm:items-end">
-          <div className={`flex items-center gap-3 rounded-lg border px-4 py-2 sm:flex-col sm:items-center sm:gap-0 sm:px-5 sm:py-3 ${overdue ? "border-destructive/40 bg-destructive/10" : "border-primary/30 bg-primary/10"}`}>
-            <div className="text-xs text-muted-foreground sm:mb-0.5">กำหนดส่งมอบ</div>
-            <div className={`text-base font-semibold sm:text-lg ${overdue ? "text-destructive" : "text-primary"}`}>
-              {fmtDate(t.end_date)}
-            </div>
-            {t.status === "done" ? (
-              <div className="text-xs font-medium text-success">เสร็จสิ้น</div>
-            ) : remaining == null ? null : remaining < 0 ? (
-              <div className="text-xs font-semibold text-destructive">เลยกำหนด {Math.abs(remaining)} วัน</div>
-            ) : remaining === 0 ? (
-              <div className="text-xs font-semibold text-warning">ครบกำหนดวันนี้</div>
-            ) : (
-              <div className="text-xs font-semibold text-primary">เหลืออีก {remaining} วัน</div>
-            )}
-          </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Badge variant="outline" className={`text-[10px] ${STATUS_META[t.status].badge}`}>{STATUS_META[t.status].label}</Badge>
+          <Badge variant="outline" className={`text-[10px] ${ASSIGNMENT_META[asg].badge}`}>{ASSIGNMENT_META[asg].label}</Badge>
+          {overdue && <Badge variant="destructive" className="text-[10px]">เลยกำหนด</Badge>}
+        </div>
 
-          <div className="flex w-full items-center gap-3 sm:w-auto sm:flex-col sm:items-stretch sm:gap-2">
-            <div className="w-full sm:w-32">
-              <Progress value={t.progress ?? 0} className="h-2" />
-              <div className="mt-1 text-right text-[11px] text-muted-foreground">{t.progress ?? 0}%</div>
-            </div>
-            <Button size="sm" variant="outline" onClick={onOpen}>
-              <MessagesSquare className="mr-2 h-4 w-4" />เปิดงาน
-            </Button>
+        {t.missionNote && <p className="line-clamp-2 text-[11px] text-muted-foreground">{t.missionNote}</p>}
+
+        <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+          {t.projects && (
+            <Link
+              to="/projects/$id"
+              params={{ id: t.project_id }}
+              className="inline-flex items-center gap-1 rounded-md border border-muted-foreground/30 bg-muted/50 px-1.5 py-0.5 font-medium text-foreground hover:bg-muted"
+            >
+              <FolderKanban className="h-3 w-3" />
+              {t.projects.code ? `${t.projects.code} · ` : ""}
+              {t.projects.name}
+            </Link>
+          )}
+          {t.projects?.customer_aka && (
+            <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-medium ${akaBadgeClass(t.projects.customer_aka_color)}`}>
+              <Tag className="h-3 w-3" />
+              {t.projects.customer_aka}
+            </span>
+          )}
+        </div>
+
+        <div className="mt-auto flex items-center gap-2 pt-1">
+          <div className="flex-1">
+            <Progress value={t.progress ?? 0} className="h-1.5" />
+            <div className="mt-0.5 text-right text-[10px] text-muted-foreground">{t.progress ?? 0}%</div>
           </div>
+          <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={onOpen}>
+            <MessagesSquare className="mr-1.5 h-3.5 w-3.5" />เปิดงาน
+          </Button>
         </div>
       </CardContent>
     </Card>
