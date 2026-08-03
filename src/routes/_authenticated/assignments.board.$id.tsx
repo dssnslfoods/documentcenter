@@ -367,6 +367,66 @@ function AssignmentBoard() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* ── ภาระงานปัจจุบันของสมาชิก ── */}
+            <div className="rounded-lg border bg-muted/30">
+              <button
+                type="button"
+                onClick={() => setShowLoad((v) => !v)}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium"
+              >
+                <Layers className="h-4 w-4 text-primary" />
+                ภาระงานปัจจุบันของ {member?.name ?? "สมาชิก"}
+                <Badge variant="outline" className="ml-1">
+                  {workload.isLoading ? "…" : `${workloadRows.length} งานค้าง`}
+                </Badge>
+                {overlapCount > 0 && (
+                  <Badge variant="outline" className="border-warning/40 bg-warning/10 text-warning-foreground">
+                    ทับช่วงเวลานี้ {overlapCount}
+                  </Badge>
+                )}
+                <ChevronDown
+                  className={`ml-auto h-4 w-4 text-muted-foreground transition ${showLoad ? "rotate-180" : ""}`}
+                />
+              </button>
+              {showLoad && (
+                <div className="max-h-52 space-y-1.5 overflow-y-auto border-t p-2">
+                  {workload.isLoading ? (
+                    <p className="px-1 py-2 text-xs text-muted-foreground">กำลังโหลดภาระงาน...</p>
+                  ) : workloadRows.length === 0 ? (
+                    <p className="px-1 py-2 text-xs text-muted-foreground">ยังไม่มีงานค้างอยู่ — ว่างรับงานใหม่ได้</p>
+                  ) : (
+                    workloadRows.map((w) => {
+                      const st = (w.assignment_status ?? "assigned") as AssignmentStatus;
+                      return (
+                        <div
+                          key={w.id}
+                          className={`rounded-md border p-2 text-xs ${
+                            w.overlap ? "border-warning/50 bg-warning/10" : "bg-background"
+                          }`}
+                        >
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="font-medium">{w.name}</span>
+                            <Badge variant="outline" className={ASSIGNMENT_META[st].badge}>
+                              {ASSIGNMENT_META[st].label}
+                            </Badge>
+                            {w.overlap && <span className="text-[10px] text-warning-foreground">· ทับช่วงเวลา</span>}
+                          </div>
+                          <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                            <span className="inline-flex items-center gap-1">
+                              <CalendarClock className="h-3 w-3" />
+                              {fmtDate(w.start_date)} – {fmtDate(w.end_date)}
+                            </span>
+                            {w.project_name && <span>· {w.project_name}</span>}
+                            <span>· {w.progress ?? 0}%</span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="space-y-1.5">
               <Label>รายละเอียดภารกิจ</Label>
               <Textarea
