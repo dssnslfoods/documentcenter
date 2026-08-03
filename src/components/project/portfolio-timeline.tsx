@@ -17,6 +17,7 @@ import { fmtDate, daysUntil } from "@/lib/format";
 import { akaBadgeClass } from "@/lib/aka-colors";
 import { LIFECYCLE_LABEL, STATUS_TONE, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 import { ASSIGNMENT_META, splitMissions, type AssignmentStatus } from "@/lib/task-assignment";
+import { TaskAssignmentDialog } from "@/components/project/task-assignment-dialog";
 
 
 type ProjectRow = {
@@ -66,6 +67,7 @@ type Delivery = { label: string; date: string; done: boolean; kind: "milestone" 
 
 type Assignment = {
   id: string;
+  taskId: string;
   label: string;
   assignee: string;
   start: number;
@@ -112,6 +114,7 @@ const ACTIVE_STATUSES = ["won", "in_progress"];
 export function PortfolioTimeline() {
   const sb = getSupabase();
   const [scope, setScope] = useState<"active" | "all">("active");
+  const [editTaskId, setEditTaskId] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["portfolio-timeline", "delegated-status-v2"],
@@ -233,6 +236,7 @@ export function PortfolioTimeline() {
             };
             return labels.map((label, idx) => ({
               id: `${a.id}-${idx}`,
+              taskId: a.id,
               label,
               ...base,
             }));
@@ -525,9 +529,10 @@ export function PortfolioTimeline() {
                               <TooltipTrigger asChild>
                                 <button
                                   type="button"
-                                  className={`absolute flex h-6 items-center gap-1 overflow-hidden rounded-md px-1.5 text-left shadow-sm ring-1 ring-inset ${tone}`}
+                                   className={`absolute flex h-6 cursor-pointer items-center gap-1 overflow-hidden rounded-md px-1.5 text-left shadow-sm ring-1 ring-inset ${tone}`}
                                   style={{ top: asgTop + i * 28, left: `${aLeft}%`, width: `${aWidth}%`, minWidth: 14 }}
                                   aria-label={`${a.assignee} · ${a.label}`}
+                                   onDoubleClick={() => setEditTaskId(a.taskId)}
                                 >
                                   <span className="truncate rounded bg-background/80 px-1 text-[9px] font-semibold leading-4 text-foreground">
                                     {a.assignee}
@@ -580,6 +585,14 @@ export function PortfolioTimeline() {
 
         </span>
       </div>
+
+      <TaskAssignmentDialog
+        taskId={editTaskId}
+        open={editTaskId !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditTaskId(null);
+        }}
+      />
     </div>
   );
 }

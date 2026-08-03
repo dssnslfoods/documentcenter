@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Send, CheckCircle2, Undo2, MessageSquare, ClipboardCheck, UserCheck } from "lucide-react";
+import { Loader2, Send, CheckCircle2, Undo2, MessageSquare, ClipboardCheck, UserCheck, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getSupabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/use-supabase";
 import { fmtDate } from "@/lib/format";
+import { useProjectPermissions } from "@/hooks/use-project-permissions";
 import {
   ASSIGNMENT_META,
   UPDATE_KIND_LABEL,
@@ -45,7 +46,7 @@ export function TaskAssignmentDialog({
   open: boolean;
   onOpenChange: (v: boolean) => void;
   /** ผู้บริหารโครงการ (มอบหมาย / ตรวจรับงานได้) */
-  canManage: boolean;
+  canManage?: boolean;
 }) {
   const sb = getSupabase();
   const qc = useQueryClient();
@@ -53,6 +54,10 @@ export function TaskAssignmentDialog({
   const [message, setMessage] = useState("");
   const [progress, setProgress] = useState("");
   const [assignee, setAssignee] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editStartDate, setEditStartDate] = useState("");
+  const [editEndDate, setEditEndDate] = useState("");
 
   const { data: task } = useQuery({
     queryKey: ["task-assignment", taskId],
@@ -63,6 +68,18 @@ export function TaskAssignmentDialog({
       return data as unknown as TaskRow | null;
     },
   });
+
+  const projectPermissions = useProjectPermissions(task?.project_id);
+  const mayManage = canManage ?? Boolean(projectPermissions.data?.canEditTimeline);
+
+  useEffect(() => {
+    if (!task) return;
+    setEditName(task.name);
+    setEditDescription(task.description ?? "");
+    setEditStartDate(task.start_date);
+    setEditEndDate(task.end_date);
+    setAssignee(task.assignee_id);
+  }, [task]);
 
   const { data: updates, error: updatesError } = useQuery({
     retry: false,
@@ -94,7 +111,7 @@ export function TaskAssignmentDialog({
 
   const { data: members } = useQuery({
     queryKey: ["task-project-members", task?.project_id],
-    enabled: !!task?.project_id && canManage,
+    enabled: !!task?.project_id && mayManage,
     queryFn: async () => {
       const { data: mem } = await sb.from("project_members").select("user_id").eq("project_id", task!.project_id);
       const ids = (mem ?? []).map((m) => m.user_id).filter(Boolean) as string[];
@@ -107,21 +124,55 @@ export function TaskAssignmentDialog({
     },
   });
 
-  const saveAssignee = useMutation({
-    mutationFn: async (userId: string) => {
-      const name = (members ?? []).find((m) => m.id === userId)?.name ?? null;
+  const saveDetails = useMutation({
+    mutationFn: async () => {
+      if (!task) return;
+      if (!editName.trim()) throw new Error("กรุณาระบุชื่อภารกิจ");
+      if (!editStartDate || !editEndDate) throw new Error("กรุณาระบุวันที่เริ่มและวันส่งมอบ");
+      if (editEndDate < editStartDate) throw new Error("วันส่งมอบต้องไม่น้อยกว่าวันเริ่มงาน");
+
+      const selected = (members ?? []).find((member) => member.id === assignee);
       const { error } = await sb
         .from("project_tasks")
-        .update({ assignee_id: userId, assignee_label: name })
-        .eq("id", task!.id);
+        .update({
+          name: editName.trim(),
+          description: editDescription.trim() || null,
+          start_date: editStartDate,
+          end_date: editEndDate,
+          assignee_id: assignee,
+          assignee_label: selected?.name ?? task.assignee_label,
+        })
+        .eq("id", task.id);
       if (error) throw error;
+
+      const changed = [
+        task.name !== editName.trim() ? `ชื่อภารกิจ: ${editName.trim()}` : "",
+        (task.description ?? "") !== editDescription.trim() ? "แก้ไขรายละเอียดภารกิจ" : "",
+        task.start_date !== editStartDate ? `วันเริ่ม: ${fmtDate(editStartDate)}` : "",
+        task.end_date !== editEndDate ? `ส่งมอบ: ${fmtDate(editEndDate)}` : "",
+        task.assignee_id !== assignee ? `ผู้รับผิดชอบ: ${selected?.name ?? "ยังไม่ระบุ"}` : "",
+      ].filter(Boolean);
+      if (changed.length && user) {
+        await sb.from("project_task_updates").insert({
+          task_id: task.id,
+          project_id: task.project_id,
+          author_id: user.id,
+          kind: "feedback",
+          message: `แก้ไขงาน · ${changed.join(" · ")}`,
+        });
+      }
     },
     onSuccess: () => {
-      toast.success("บันทึกผู้รับผิดชอบเรียบร้อย");
+      toast.success("บันทึกรายละเอียดงานเรียบร้อย");
       qc.invalidateQueries({ queryKey: ["task-assignment", taskId] });
+      qc.invalidateQueries({ queryKey: ["task-updates", taskId] });
       qc.invalidateQueries({ queryKey: ["project-tasks", task?.project_id] });
+      qc.invalidateQueries({ queryKey: ["assignment-board-tasks", task?.project_id] });
+      qc.invalidateQueries({ queryKey: ["my-assigned-tasks"] });
+      qc.invalidateQueries({ queryKey: ["tasks-i-assigned"] });
+      qc.invalidateQueries({ queryKey: ["portfolio-timeline"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (error: Error) => toast.error(error.message),
   });
 
   const missingTable = /project_task_updates/.test(updatesError?.message ?? "");
@@ -201,13 +252,37 @@ export function TaskAssignmentDialog({
               </div>
             </div>
 
-            {canManage && !missingTable && (
-              <div className="space-y-2">
-                <Label>เลือกสมาชิกผู้รับผิดชอบ</Label>
+            {mayManage && (
+              <div className="space-y-4 rounded-lg border p-4">
+                <div className="space-y-2">
+                  <Label htmlFor="task-name">ชื่อภารกิจ</Label>
+                  <Input id="task-name" value={editName} onChange={(event) => setEditName(event.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="task-description">รายละเอียด</Label>
+                  <Textarea
+                    id="task-description"
+                    rows={3}
+                    value={editDescription}
+                    onChange={(event) => setEditDescription(event.target.value)}
+                  />
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="task-start-date">วันเริ่มงาน</Label>
+                    <Input id="task-start-date" type="date" value={editStartDate} onChange={(event) => setEditStartDate(event.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="task-end-date">กำหนดส่งมอบ</Label>
+                    <Input id="task-end-date" type="date" value={editEndDate} onChange={(event) => setEditEndDate(event.target.value)} />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>ผู้รับผิดชอบ</Label>
                 <Select
                   value={assignee ?? task.assignee_id ?? ""}
                   onValueChange={(v) => setAssignee(v)}
-                  disabled={saveAssignee.isPending}
+                  disabled={saveDetails.isPending}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="เลือกสมาชิกโครงการ" />
@@ -220,21 +295,11 @@ export function TaskAssignmentDialog({
                     ))}
                   </SelectContent>
                 </Select>
-                {assignee && assignee !== task.assignee_id && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={saveAssignee.isPending}
-                    onClick={() => saveAssignee.mutate(assignee)}
-                  >
-                    {saveAssignee.isPending ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <UserCheck className="mr-2 h-4 w-4" />
-                    )}
-                    บันทึกผู้รับผิดชอบ
-                  </Button>
-                )}
+                </div>
+                <Button size="sm" disabled={saveDetails.isPending} onClick={() => saveDetails.mutate()}>
+                  {saveDetails.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                  บันทึกรายละเอียดงาน
+                </Button>
               </div>
             )}
 
@@ -272,7 +337,7 @@ export function TaskAssignmentDialog({
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  {canManage && task.assignee_id && (st === "draft" || st === "accepted") && (
+                  {mayManage && task.assignee_id && (st === "draft" || st === "accepted") && (
                     <Button
                       size="sm"
                       disabled={busy}
@@ -328,7 +393,7 @@ export function TaskAssignmentDialog({
                     </Button>
                   )}
 
-                  {canManage && (
+                  {mayManage && (
                     <Button
                       size="sm"
                       variant="outline"
@@ -339,7 +404,7 @@ export function TaskAssignmentDialog({
                     </Button>
                   )}
 
-                  {canManage && st === "in_review" && (
+                  {mayManage && st === "in_review" && (
                     <>
                       <Button
                         size="sm"
