@@ -113,6 +113,14 @@ function AssignmentProjectTimeline() {
       <PageHeader
         title={p ? `${p.code ? `${p.code} · ` : ""}${p.name}` : "แผนการดำเนินโครงการ"}
         description="แผนการดำเนินงานแบบเต็มหน้าจอ — เลือกขั้นตอนที่ต้องการ แล้วมอบหมายงานให้สมาชิกโครงการ"
+        actions={
+          <Button asChild>
+            <Link to="/assignments/board/$id" params={{ id }}>
+              <UserCheck className="mr-2 h-4 w-4" />
+              ศูนย์มอบหมายงาน
+            </Link>
+          </Button>
+        }
       />
 
       {p && (
