@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { useMyRoles, useCanSeeMoney, MONEY_MASK } from "@/hooks/use-page-access";
+import { useMyRoles, useCanSeeMoney } from "@/hooks/use-page-access";
 import { useAuth } from "@/hooks/use-supabase";
 import { canCreateProjects } from "@/lib/project-roles";
 import { ProjectMembersPeek } from "@/components/project/project-members-peek";

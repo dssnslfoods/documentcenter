@@ -19,7 +19,7 @@ import { TeamTab } from "@/components/project/team-tab";
 import { ProjectHistoryTab } from "@/components/project/history-tab";
 
 import { useProjectPermissions } from "@/hooks/use-project-permissions";
-import { useCanSeeMoney, MONEY_MASK } from "@/hooks/use-page-access";
+import { useCanSeeMoney } from "@/hooks/use-page-access";
 import {
   LIFECYCLE_LABEL, STATUS_TONE, nextStatuses,
   type ProjectLifecycleStatus,

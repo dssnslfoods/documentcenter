@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDate, fmtCurrency } from "@/lib/format";
-import { useCanSeeMoney, MONEY_MASK } from "@/hooks/use-page-access";
+import { useCanSeeMoney } from "@/hooks/use-page-access";
 import { ContractStatusBadge } from "@/components/status-badge";
 import { ContractNotesList } from "@/components/contract/notes-list";
 import type { ContractStatus } from "@/lib/types";

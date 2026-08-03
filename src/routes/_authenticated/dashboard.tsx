@@ -7,7 +7,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { useCanSeeMoney, MONEY_MASK, useMyRoles, useCanAccess } from "@/hooks/use-page-access";
+import { useCanSeeMoney, useMyRoles, useCanAccess } from "@/hooks/use-page-access";
 import { ROLES } from "@/lib/pages";
 import { canCreateProjects } from "@/lib/project-roles";
 import { getSupabase } from "@/lib/supabase";

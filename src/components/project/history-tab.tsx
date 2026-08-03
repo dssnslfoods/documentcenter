@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDateTime, fmtCurrency } from "@/lib/format";
 import { LIFECYCLE_LABEL } from "@/lib/project-lifecycle";
-import { useCanSeeMoney, MONEY_MASK } from "@/hooks/use-page-access";
+import { useCanSeeMoney } from "@/hooks/use-page-access";
 
 type Change = { field: string; old: unknown; new: unknown };
 type HistoryRow = {
