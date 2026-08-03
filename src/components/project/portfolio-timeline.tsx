@@ -74,11 +74,14 @@ type Assignment = {
   done: boolean;
 };
 
+type Step = { key: string; label: string; start: number; end: number; endDate: string; done: boolean; active: boolean };
+
 type Lane = {
   project: ProjectRow;
   start: number;
   end: number;
   deliveries: Delivery[];
+  steps: Step[];
   assignments: Assignment[];
   finalDue: string | null;
 };
@@ -118,6 +121,7 @@ export function PortfolioTimeline() {
         sb
           .from("project_tasks")
           .select("id, project_id, name, description, start_date, end_date, status, assignment_status, assignee_id")
+          .not("parent_id", "is", null)
           .not("assignee_id", "is", null),
 
       ]);
@@ -217,12 +221,27 @@ export function PortfolioTimeline() {
           .filter((a) => !Number.isNaN(a.start) && !Number.isNaN(a.end))
           .sort((a, b) => a.end - b.end);
 
+        const steps: Step[] = tasks
+          .filter((x) => !x.is_milestone_marker)
+          .map<Step>((x) => ({
+            key: `${p.id}-${x.name}-${x.start_date}`,
+            label: x.name,
+            start: t(x.start_date),
+            end: Math.max(t(x.end_date), t(x.start_date)),
+            endDate: x.end_date,
+            done: x.status === "done",
+            active: x.status === "in_progress",
+          }))
+          .filter((x) => !Number.isNaN(x.start) && !Number.isNaN(x.end))
+          .sort((a, b) => a.start - b.start);
+
         const openDue = deliveries.filter((d) => !d.done).map((d) => d.date);
         return {
           project: p,
           start: Math.min(...starts),
           end: Math.max(...ends),
           deliveries,
+          steps,
           assignments,
           finalDue: openDue[0] ?? p.end_date ?? null,
         };
