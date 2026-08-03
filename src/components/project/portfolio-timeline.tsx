@@ -129,6 +129,7 @@ const HIDDEN_KEY = "portfolio-timeline:hidden-projects";
 export function PortfolioTimeline() {
   const sb = getSupabase();
   const [scope, setScope] = useState<"active" | "all">("active");
+  const [zoom, setZoom] = useState<"day" | "week" | "month">("month");
   const [editTaskId, setEditTaskId] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const [hidden, setHidden] = useState<Set<string>>(() => {
@@ -429,23 +430,50 @@ export function PortfolioTimeline() {
 
   const months = useMemo(() => {
     if (!range) return [];
-    const out: { label: string; left: number; width: number }[] = [];
+    const out: { label: string; sub?: string; left: number; width: number; weekend?: boolean }[] = [];
     const span = range.max - range.min;
     const cursor = new Date(range.min);
-    cursor.setDate(1);
+    cursor.setHours(0, 0, 0, 0);
+
+    if (zoom === "month") cursor.setDate(1);
+    if (zoom === "week") cursor.setDate(cursor.getDate() - cursor.getDay());
+
     while (cursor.getTime() < range.max) {
       const startMs = Math.max(cursor.getTime(), range.min);
-      const next = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1).getTime();
-      const endMs = Math.min(next, range.max);
+      const nextDate = new Date(cursor);
+      if (zoom === "month") nextDate.setMonth(nextDate.getMonth() + 1, 1);
+      else if (zoom === "week") nextDate.setDate(nextDate.getDate() + 7);
+      else nextDate.setDate(nextDate.getDate() + 1);
+      const endMs = Math.min(nextDate.getTime(), range.max);
+
+      const d = new Date(cursor);
       out.push({
-        label: new Date(cursor).toLocaleDateString("th-TH", { month: "short", year: "2-digit" }),
+        label:
+          zoom === "month"
+            ? d.toLocaleDateString("th-TH", { month: "short", year: "2-digit" })
+            : zoom === "week"
+              ? `${d.toLocaleDateString("th-TH", { day: "numeric", month: "short" })}`
+              : `${d.getDate()}`,
+        sub:
+          zoom === "day"
+            ? d.toLocaleDateString("th-TH", { weekday: "narrow" })
+            : zoom === "week"
+              ? `สัปดาห์`
+              : undefined,
+        weekend: zoom === "day" && (d.getDay() === 0 || d.getDay() === 6),
         left: ((startMs - range.min) / span) * 100,
         width: ((endMs - startMs) / span) * 100,
       });
-      cursor.setMonth(cursor.getMonth() + 1);
+      cursor.setTime(nextDate.getTime());
     }
     return out;
-  }, [range]);
+  }, [range, zoom]);
+
+  const contentMinWidth = useMemo(() => {
+    const perTick = zoom === "day" ? 44 : zoom === "week" ? 96 : 90;
+    return Math.max(900, 256 + months.length * perTick);
+  }, [months.length, zoom]);
+
 
   const pct = (ms: number) => (range ? ((ms - range.min) / (range.max - range.min)) * 100 : 0);
 
@@ -476,15 +504,38 @@ export function PortfolioTimeline() {
             {live ? "อัปเดตอัตโนมัติ (Realtime)" : "กำลังเชื่อมต่อ Realtime…"}
           </span>
         </div>
-        <Select value={scope} onValueChange={(v) => setScope(v as "active" | "all")}>
-          <SelectTrigger className="h-9 w-[190px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="active">เฉพาะโครงการที่ดำเนินการ</SelectItem>
-            <SelectItem value="all">ทุกโครงการ (ยกเว้นแพ้งาน)</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-md border p-0.5">
+            {(
+              [
+                { v: "day", label: "รายวัน" },
+                { v: "week", label: "รายสัปดาห์" },
+                { v: "month", label: "รายเดือน" },
+              ] as const
+            ).map((o) => (
+              <button
+                key={o.v}
+                type="button"
+                onClick={() => setZoom(o.v)}
+                aria-pressed={zoom === o.v}
+                className={`rounded px-2.5 py-1 text-[11px] font-medium transition ${
+                  zoom === o.v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+          <Select value={scope} onValueChange={(v) => setScope(v as "active" | "all")}>
+            <SelectTrigger className="h-9 w-[190px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">เฉพาะโครงการที่ดำเนินการ</SelectItem>
+              <SelectItem value="all">ทุกโครงการ (ยกเว้นแพ้งาน)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {allLanes.length > 0 && (
@@ -589,7 +640,7 @@ export function PortfolioTimeline() {
               onMouseMove={onMouseMove}
               onKeyDown={onKeyDown}
             >
-              <div className="min-w-[900px]">
+              <div style={{ minWidth: contentMinWidth }}>
                 <div className="flex border-b bg-muted/40">
                   <div className="w-64 shrink-0 border-r px-4 py-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                     โครงการ
@@ -598,12 +649,22 @@ export function PortfolioTimeline() {
                     {months.map((m) => (
                       <div
                         key={m.label + m.left}
-                        className="absolute top-0 h-full border-l text-[10px] text-muted-foreground"
+                        className={`absolute top-0 h-full overflow-hidden border-l text-[10px] text-muted-foreground ${
+                          m.weekend ? "bg-muted/60" : ""
+                        }`}
                         style={{ left: `${m.left}%`, width: `${m.width}%` }}
                       >
-                        <span className="pl-1.5 leading-9">{m.label}</span>
+                        {zoom === "day" ? (
+                          <span className="flex h-full flex-col items-center justify-center leading-none">
+                            <span className="text-[9px]">{m.sub}</span>
+                            <span className="font-medium">{m.label}</span>
+                          </span>
+                        ) : (
+                          <span className="pl-1.5 leading-9">{m.label}</span>
+                        )}
                       </div>
                     ))}
+
                     <div className="absolute top-0 h-full w-px bg-destructive" style={{ left: `${pct(Date.now())}%` }} />
                   </div>
                 </div>
