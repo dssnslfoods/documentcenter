@@ -70,6 +70,55 @@ type ExecProject = {
   end_date: string | null;
 };
 
+type SortKey = "end_date" | "start_date" | "progress" | "status" | "assignment_status" | "project" | "name";
+type SortDir = "asc" | "desc";
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "end_date", label: "กำหนดส่งมอบ" },
+  { value: "start_date", label: "วันเริ่มงาน" },
+  { value: "progress", label: "ความคืบหน้า" },
+  { value: "status", label: "สถานะงาน" },
+  { value: "assignment_status", label: "สถานะการมอบหมาย" },
+  { value: "project", label: "โครงการ" },
+  { value: "name", label: "ชื่อภารกิจ" },
+];
+
+const STATUS_ORDER: Record<TaskStatus, number> = { blocked: 0, in_progress: 1, not_started: 2, done: 3 };
+const ASG_ORDER: Record<AssignmentStatus, number> = {
+  revision: 0,
+  assigned: 1,
+  acknowledged: 2,
+  in_review: 3,
+  draft: 4,
+  accepted: 5,
+};
+
+function sortCards(rows: MissionCard[], key: SortKey, dir: SortDir): MissionCard[] {
+  const sign = dir === "asc" ? 1 : -1;
+  const cmp = (a: MissionCard, b: MissionCard): number => {
+    switch (key) {
+      case "end_date":
+        return a.end_date.localeCompare(b.end_date);
+      case "start_date":
+        return a.start_date.localeCompare(b.start_date);
+      case "progress":
+        return (a.progress ?? 0) - (b.progress ?? 0);
+      case "status":
+        return STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
+      case "assignment_status":
+        return (
+          ASG_ORDER[(a.assignment_status ?? "draft") as AssignmentStatus] -
+          ASG_ORDER[(b.assignment_status ?? "draft") as AssignmentStatus]
+        );
+      case "project":
+        return (a.projects?.name ?? "").localeCompare(b.projects?.name ?? "", "th");
+      case "name":
+        return (a.missionTitle ?? a.name).localeCompare(b.missionTitle ?? b.name, "th");
+    }
+  };
+  return [...rows].sort((a, b) => sign * cmp(a, b));
+}
+
 
 function AssignmentsExecution() {
   const guard = usePageGuard("assignments", "การมอบหมายงาน");
