@@ -282,7 +282,8 @@ export function ProjectHistoryTab({ projectId }: { projectId: string }) {
                   </tbody>
                 </table>
               </div>
-            )}
+              );
+            })()}
           </li>
         ))}
       </ol>
