@@ -420,8 +420,6 @@ function AssignmentBoard() {
                 ? "border-warning/50 bg-warning/10"
                 : "border-primary/40 bg-primary/5";
         const idx = list.findIndex((x) => x.id === t.id) + 1;
-        const owner =
-          t.assignee_label || (members.data ?? []).find((m) => m.id === t.assignee_id)?.name || "ยังไม่มอบหมาย";
         return (
           <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border p-4 ${tone}`}>
             <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -432,7 +430,7 @@ function AssignmentBoard() {
                 </div>
                 <div className="truncate text-base font-semibold">{t.name}</div>
                 <div className="text-xs text-muted-foreground">
-                  ผู้รับผิดชอบ {owner} · {fmtDate(t.start_date)} – {fmtDate(t.end_date)}
+                  {fmtDate(t.start_date)} – {fmtDate(t.end_date)}
                 </div>
               </div>
             </div>
@@ -553,8 +551,6 @@ function AssignmentBoard() {
             ) : (
               list.map((t) => {
                 const st = (t.assignment_status ?? "draft") as AssignmentStatus;
-                const owner =
-                  t.assignee_label || (members.data ?? []).find((m) => m.id === t.assignee_id)?.name || "ยังไม่มอบหมาย";
                 const mine = !!selectedMember && t.assignee_id === selectedMember;
                 const isCurrent = current?.task.id === t.id;
                 const left = dayLeft(t.end_date);
@@ -587,7 +583,6 @@ function AssignmentBoard() {
                           {left < 0 ? `เลยกำหนด ${Math.abs(left)} วัน` : left === 0 ? "ครบกำหนดวันนี้" : `เหลืออีก ${left} วัน`}
                         </span>
                       )}
-                      <span className="text-[11px] text-muted-foreground">· {owner}</span>
 
                       <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-muted-foreground">
                         <CalendarClock className="h-3.5 w-3.5" />
