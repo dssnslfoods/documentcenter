@@ -371,6 +371,9 @@ export function PortfolioTimeline() {
                   const p = lane.project;
                   const left = pct(lane.start);
                   const width = Math.max(pct(lane.end) - left, 0.6);
+                  const stepRows = lane.steps.length ? Math.max(...lane.steps.map((s) => s.row)) + 1 : 0;
+                  const asgTop = 38 + stepRows * 18 + (stepRows ? 6 : 6);
+
                   const dueIn = daysUntil(lane.finalDue);
                   const health = HEALTH[p.health_status ?? "grey"] ?? HEALTH.grey;
                   return (
