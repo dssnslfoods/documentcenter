@@ -1,0 +1,415 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import {
+  ArrowLeft,
+  CalendarClock,
+  Loader2,
+  MessageSquare,
+  Send,
+  Users,
+  Zap,
+} from "lucide-react";
+import { PageHeader } from "@/components/page-header";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { getSupabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/use-supabase";
+import { usePageGuard } from "@/hooks/use-page-access";
+import { useProjectPermissions } from "@/hooks/use-project-permissions";
+import { fmtDate } from "@/lib/format";
+import { TaskAssignmentDialog } from "@/components/project/task-assignment-dialog";
+import { LIFECYCLE_LABEL, STATUS_TONE, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
+import { ASSIGNMENT_META, type AssignmentStatus } from "@/lib/task-assignment";
+
+export const Route = createFileRoute("/_authenticated/assignments/board/$id")({
+  head: () => ({
+    meta: [
+      { title: "ศูนย์มอบหมายงาน | Document Hub" },
+      {
+        name: "description",
+        content: "หน้าจอเฉพาะสำหรับผู้บริหารโครงการ เลือกสมาชิกแล้วมอบหมายภารกิจลงบน Timeline ได้ทันที",
+      },
+      { property: "og:title", content: "ศูนย์มอบหมายงาน | Document Hub" },
+      {
+        property: "og:description",
+        content: "หน้าจอเฉพาะสำหรับผู้บริหารโครงการ เลือกสมาชิกแล้วมอบหมายภารกิจลงบน Timeline ได้ทันที",
+      },
+    ],
+  }),
+  component: AssignmentBoard,
+});
+
+type Task = {
+  id: string;
+  name: string;
+  description: string | null;
+  start_date: string;
+  end_date: string;
+  progress: number;
+  status: string;
+  assignee_id: string | null;
+  assignee_label: string | null;
+  assignment_status: AssignmentStatus | null;
+};
+
+type Member = { id: string; name: string; role: string | null; position: string | null };
+
+const BAR_TONE: Record<AssignmentStatus, string> = {
+  draft: "bg-muted-foreground/25",
+  assigned: "bg-warning/60",
+  acknowledged: "bg-primary/60",
+  in_review: "bg-primary",
+  revision: "bg-destructive/60",
+  accepted: "bg-success/70",
+};
+
+const iso = (d: Date) => d.toISOString().slice(0, 10);
+const addDays = (n: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return iso(d);
+};
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
+}
+
+function AssignmentBoard() {
+  const { id } = Route.useParams();
+  const sb = getSupabase();
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  const guard = usePageGuard("assignments", "การมอบหมายงาน");
+  const perms = useProjectPermissions(id);
+
+  const [selectedMember, setSelectedMember] = useState<string | null>(null);
+  const [quickTask, setQuickTask] = useState<Task | null>(null);
+  const [mission, setMission] = useState("");
+  const [due, setDue] = useState("");
+  const [threadTask, setThreadTask] = useState<string | null>(null);
+
+  const project = useQuery({
+    queryKey: ["assignment-board-project", id],
+    enabled: guard.allowed,
+    queryFn: async () => {
+      const { data } = await sb
+        .from("projects")
+        .select("id, name, code, status, progress")
+        .eq("id", id)
+        .maybeSingle();
+      return data as { id: string; name: string; code: string | null; status: string; progress: number | null } | null;
+    },
+  });
+
+  const members = useQuery({
+    queryKey: ["assignment-board-members", id],
+    enabled: guard.allowed,
+    queryFn: async () => {
+      const { data: mem } = await sb
+        .from("project_members")
+        .select("user_id, project_role, position")
+        .eq("project_id", id);
+      const rows = (mem ?? []) as { user_id: string | null; project_role: string | null; position: string | null }[];
+      const ids = rows.map((m) => m.user_id).filter(Boolean) as string[];
+      if (!ids.length) return [] as Member[];
+      const { data: profs } = await sb.from("profiles").select("id, full_name, email").in("id", ids);
+      const byId = new Map((profs ?? []).map((p) => [p.id as string, p]));
+      return rows.map((m) => {
+        const p = byId.get(m.user_id!);
+        return {
+          id: m.user_id!,
+          name: ((p?.full_name as string) || (p?.email as string) || "ไม่ทราบชื่อ") as string,
+          role: m.project_role,
+          position: m.position,
+        };
+      }) as Member[];
+    },
+  });
+
+  const tasks = useQuery({
+    queryKey: ["assignment-board-tasks", id],
+    enabled: guard.allowed,
+    queryFn: async () => {
+      const { data } = await sb
+        .from("project_tasks")
+        .select(
+          "id, name, description, start_date, end_date, progress, status, assignee_id, assignee_label, assignment_status",
+        )
+        .eq("project_id", id)
+        .order("start_date");
+      return (data ?? []) as unknown as Task[];
+    },
+  });
+
+  const canManage = !!perms.data?.canEditTimeline || !!perms.data?.isAdmin;
+  const list = tasks.data ?? [];
+
+  const range = useMemo(() => {
+    if (!list.length) return null;
+    const min = list.reduce((a, t) => (t.start_date < a ? t.start_date : a), list[0].start_date);
+    const max = list.reduce((a, t) => (t.end_date > a ? t.end_date : a), list[0].end_date);
+    const s = new Date(min).getTime();
+    const e = new Date(max).getTime();
+    return { s, e, span: Math.max(1, e - s) };
+  }, [list]);
+
+  const bar = (t: Task) => {
+    if (!range) return { left: "0%", width: "100%" };
+    const s = new Date(t.start_date).getTime();
+    const e = new Date(t.end_date).getTime();
+    return {
+      left: `${((s - range.s) / range.span) * 100}%`,
+      width: `${Math.max(3, ((e - s) / range.span) * 100)}%`,
+    };
+  };
+
+  const assign = useMutation({
+    mutationFn: async () => {
+      if (!quickTask || !selectedMember) throw new Error("กรุณาเลือกสมาชิกและงาน");
+      const m = (members.data ?? []).find((x) => x.id === selectedMember);
+      const patch: Record<string, unknown> = {
+        assignee_id: selectedMember,
+        assignee_label: m?.name ?? null,
+        assignment_status: "assigned",
+        assigned_at: new Date().toISOString(),
+        assigned_by: user?.id ?? null,
+      };
+      if (mission.trim()) patch.description = mission.trim();
+      if (due) patch.end_date = due;
+      const { error } = await sb.from("project_tasks").update(patch).eq("id", quickTask.id);
+      if (error) throw error;
+      const { error: e2 } = await sb.from("project_task_updates").insert({
+        task_id: quickTask.id,
+        project_id: id,
+        author_id: user!.id,
+        kind: "assign",
+        message: mission.trim() || null,
+      });
+      if (e2) throw e2;
+    },
+    onSuccess: () => {
+      toast.success("มอบหมายภารกิจเรียบร้อย");
+      setQuickTask(null);
+      setMission("");
+      setDue("");
+      qc.invalidateQueries({ queryKey: ["assignment-board-tasks", id] });
+      qc.invalidateQueries({ queryKey: ["project-tasks", id] });
+      qc.invalidateQueries({ queryKey: ["my-assigned-tasks"] });
+      qc.invalidateQueries({ queryKey: ["tasks-i-assigned"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  if (!guard.allowed) return guard.node;
+
+  const p = project.data;
+  const member = (members.data ?? []).find((m) => m.id === selectedMember) ?? null;
+  const countFor = (uid: string) => list.filter((t) => t.assignee_id === uid).length;
+
+  const openQuick = (t: Task) => {
+    if (!canManage) return;
+    if (!selectedMember) {
+      toast.info("เลือกสมาชิกทางด้านซ้ายก่อน แล้วจึงคลิกงานที่ต้องการมอบหมาย");
+      return;
+    }
+    setQuickTask(t);
+    setMission(t.description ?? "");
+    setDue(t.end_date);
+  };
+
+  return (
+    <div className="space-y-5">
+      <Link
+        to="/assignments/project/$id"
+        params={{ id }}
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        กลับไปหน้าแผนโครงการ
+      </Link>
+
+      <PageHeader
+        title={p ? `ศูนย์มอบหมายงาน · ${p.name}` : "ศูนย์มอบหมายงาน"}
+        description="เลือกสมาชิกทางซ้าย แล้วคลิกแถบงานบน Timeline เพื่อมอบหมายภารกิจ พร้อมกำหนดรายละเอียดและวันส่งมอบ"
+      />
+
+      {p && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className={STATUS_TONE[p.status as ProjectLifecycleStatus]}>
+            {LIFECYCLE_LABEL[p.status as ProjectLifecycleStatus] ?? p.status}
+          </Badge>
+          {p.code && <span className="text-xs text-muted-foreground">{p.code}</span>}
+          <span className="text-xs text-muted-foreground">· {list.length} งานในแผน</span>
+        </div>
+      )}
+
+      <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+        {/* ── สมาชิกโครงการ ── */}
+        <Card className="lg:sticky lg:top-4 lg:self-start">
+          <CardContent className="space-y-2 p-3">
+            <div className="flex items-center gap-2 px-1 pb-1 text-sm font-medium">
+              <Users className="h-4 w-4 text-primary" />
+              สมาชิกโครงการ
+            </div>
+            {members.isLoading ? (
+              <p className="px-1 text-xs text-muted-foreground">กำลังโหลด...</p>
+            ) : (members.data ?? []).length === 0 ? (
+              <p className="px-1 text-xs text-muted-foreground">ยังไม่มีสมาชิกในโครงการนี้</p>
+            ) : (
+              (members.data ?? []).map((m) => {
+                const active = m.id === selectedMember;
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setSelectedMember(active ? null : m.id)}
+                    className={`flex w-full items-center gap-3 rounded-lg border p-2 text-left transition ${
+                      active ? "border-primary bg-primary/5" : "border-transparent hover:bg-muted/60"
+                    }`}
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                      {initials(m.name)}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium">{m.name}</span>
+                      <span className="block truncate text-[11px] text-muted-foreground">
+                        {m.position || m.role || "สมาชิก"} · {countFor(m.id)} งาน
+                      </span>
+                    </span>
+                  </button>
+                );
+              })
+            )}
+            {member && (
+              <p className="rounded-md bg-primary/5 px-2 py-1.5 text-[11px] text-primary">
+                กำลังมอบหมายให้ <strong>{member.name}</strong> — คลิกงานที่ต้องการทางขวา
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ── Timeline โฟกัส ── */}
+        <Card>
+          <CardContent className="space-y-2 p-3">
+            {tasks.isLoading ? (
+              <p className="p-4 text-sm text-muted-foreground">กำลังโหลดแผนงาน...</p>
+            ) : list.length === 0 ? (
+              <p className="p-6 text-center text-sm text-muted-foreground">
+                ยังไม่มีแผนงานในโครงการนี้ — เพิ่มแผนงานได้ที่แท็บ "ดำเนินโครงการ"
+              </p>
+            ) : (
+              list.map((t) => {
+                const st = (t.assignment_status ?? "draft") as AssignmentStatus;
+                const owner =
+                  t.assignee_label || (members.data ?? []).find((m) => m.id === t.assignee_id)?.name || "ยังไม่มอบหมาย";
+                const mine = !!selectedMember && t.assignee_id === selectedMember;
+                return (
+                  <div
+                    key={t.id}
+                    className={`rounded-lg border p-3 transition ${
+                      mine ? "border-primary/50 bg-primary/5" : "hover:bg-muted/40"
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-medium">{t.name}</span>
+                      <Badge variant="outline" className={ASSIGNMENT_META[st].badge}>
+                        {ASSIGNMENT_META[st].label}
+                      </Badge>
+                      <span className="text-[11px] text-muted-foreground">· {owner}</span>
+                      <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                        <CalendarClock className="h-3.5 w-3.5" />
+                        {fmtDate(t.start_date)} – {fmtDate(t.end_date)}
+                      </span>
+                    </div>
+
+                    {t.description && (
+                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{t.description}</p>
+                    )}
+
+                    <div className="mt-2 h-3 w-full rounded-full bg-muted/60">
+                      <div className={`h-3 rounded-full ${BAR_TONE[st]}`} style={{ ...bar(t), position: "relative" }} />
+                    </div>
+
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {canManage && (
+                        <Button size="sm" variant={selectedMember ? "default" : "outline"} onClick={() => openQuick(t)}>
+                          <Zap className="mr-2 h-4 w-4" />
+                          มอบหมายภารกิจ
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" onClick={() => setThreadTask(t.id)}>
+                        <MessageSquare className="mr-2 h-4 w-4" />
+                        ติดตาม / ตรวจรับ
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── มอบหมายด่วน ── */}
+      <Dialog open={!!quickTask} onOpenChange={(v) => !v && setQuickTask(null)}>
+        <DialogContent className="w-[95vw] max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="pr-6 text-base">
+              มอบหมาย: {quickTask?.name} → {member?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>รายละเอียดภารกิจ</Label>
+              <Textarea
+                rows={3}
+                value={mission}
+                onChange={(e) => setMission(e.target.value)}
+                placeholder="เช่น วาง layout หน้า 10-15 ส่งมอบไฟล์ต้นฉบับ"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>กำหนดส่งมอบ</Label>
+              <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
+              <div className="flex flex-wrap gap-2 pt-1">
+                {[
+                  { label: "วันนี้", v: addDays(0) },
+                  { label: "พรุ่งนี้", v: addDays(1) },
+                  { label: "3 วัน", v: addDays(3) },
+                  { label: "1 สัปดาห์", v: addDays(7) },
+                ].map((o) => (
+                  <Button key={o.label} type="button" size="sm" variant="outline" onClick={() => setDue(o.v)}>
+                    {o.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <Button className="w-full" disabled={assign.isPending} onClick={() => assign.mutate()}>
+              {assign.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="mr-2 h-4 w-4" />
+              )}
+              ส่งมอบหมายให้สมาชิก
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <TaskAssignmentDialog
+        taskId={threadTask}
+        open={!!threadTask}
+        onOpenChange={(v) => !v && setThreadTask(null)}
+        canManage={canManage}
+      />
+    </div>
+  );
+}
