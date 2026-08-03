@@ -115,9 +115,9 @@ function AssignmentBoard() {
     queryFn: async () => {
       const { data: mem } = await sb
         .from("project_members")
-        .select("user_id, project_role, position")
+        .select("user_id, project_role, role_title")
         .eq("project_id", id);
-      const rows = (mem ?? []) as { user_id: string | null; project_role: string | null; position: string | null }[];
+      const rows = (mem ?? []) as { user_id: string | null; project_role: string | null; role_title: string | null }[];
       const ids = rows.map((m) => m.user_id).filter(Boolean) as string[];
       if (!ids.length) return [] as Member[];
       const { data: profs } = await sb.from("profiles").select("id, full_name, email").in("id", ids);
@@ -128,7 +128,7 @@ function AssignmentBoard() {
           id: m.user_id!,
           name: ((p?.full_name as string) || (p?.email as string) || "ไม่ทราบชื่อ") as string,
           role: m.project_role,
-          position: m.position,
+          position: m.role_title,
         };
       }) as Member[];
     },
