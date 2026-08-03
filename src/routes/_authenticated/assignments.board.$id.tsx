@@ -245,6 +245,17 @@ function AssignmentBoard() {
   const member = (members.data ?? []).find((m) => m.id === selectedMember) ?? null;
   const countFor = (uid: string) => list.filter((t) => t.assignee_id === uid).length;
 
+  const winStart = quickTask?.start_date ?? "";
+  const winEnd = due || quickTask?.end_date || "";
+  const workloadRows = (workload.data ?? [])
+    .filter((w) => w.id !== quickTask?.id && w.assignment_status !== "accepted")
+    .map((w) => ({
+      ...w,
+      overlap: !!winStart && !!winEnd && w.start_date <= winEnd && w.end_date >= winStart,
+    }));
+  const overlapCount = workloadRows.filter((w) => w.overlap).length;
+
+
   const openQuick = (t: Task) => {
     if (!canManage) return;
     if (!selectedMember) {
