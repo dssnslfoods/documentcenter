@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -130,6 +131,7 @@ function AssignmentsExecution() {
   const [sortKey, setSortKey] = useState<SortKey>("end_date");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [tab, setTab] = useState("overview");
+  const [hideCompleted, setHideCompleted] = useState(true);
 
 
   const mine = useQuery({
@@ -205,10 +207,12 @@ function AssignmentsExecution() {
 
   const nameOf = (id: string | null) => (id ? profiles.data?.[id] ?? "…" : "ยังไม่ระบุผู้รับผิดชอบ");
   const rows = sortCards(toMissionCards(mine.data ?? []), sortKey, sortDir);
-  const open = rows.filter((r) => r.status !== "done" && r.projects?.status !== "completed");
-  const done = rows.filter((r) => r.status === "done" || r.projects?.status === "completed");
+  const filteredRows = hideCompleted ? rows.filter((r) => r.projects?.status !== "completed") : rows;
+  const open = filteredRows.filter((r) => r.status !== "done" && r.projects?.status !== "completed");
+  const done = filteredRows.filter((r) => r.status === "done" || r.projects?.status === "completed");
   const today = new Date().toISOString().slice(0, 10);
-  const tracked = sortCards(toMissionCards(assigned.data ?? []), sortKey, sortDir);
+  const trackedAll = sortCards(toMissionCards(assigned.data ?? []), sortKey, sortDir);
+  const tracked = hideCompleted ? trackedAll.filter((r) => r.projects?.status !== "completed") : trackedAll;
   const led = execProjects.data ?? [];
 
 
@@ -261,34 +265,44 @@ function AssignmentsExecution() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <TabsList>
             <TabsTrigger value="overview">ภาพรวมกำหนดส่งมอบ</TabsTrigger>
-            <TabsTrigger value="mine">งานที่ได้รับมอบหมาย ({rows.length})</TabsTrigger>
+            <TabsTrigger value="mine">งานที่ได้รับมอบหมาย ({filteredRows.length})</TabsTrigger>
             <TabsTrigger value="tracking">งานที่ฉันมอบหมาย ({tracked.length})</TabsTrigger>
           </TabsList>
-          <div className={`flex items-center gap-2 ${tab === "overview" ? "hidden" : ""}`}>
+          <div className={`flex flex-wrap items-center gap-3 ${tab === "overview" ? "hidden" : ""}`}>
+            <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+              <Checkbox
+                id="hide-completed"
+                checked={hideCompleted}
+                onCheckedChange={(v) => setHideCompleted(!!v)}
+              />
+              <span>ซ่อนโครงการที่ปิดแล้ว</span>
+            </label>
 
-            <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">เรียงตาม</span>
-            <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
-              <SelectTrigger className="h-9 w-[190px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SORT_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={sortDir} onValueChange={(v) => setSortDir(v as SortDir)}>
-              <SelectTrigger className="h-9 w-[130px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="asc">น้อย → มาก</SelectItem>
-                <SelectItem value="desc">มาก → น้อย</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">เรียงตาม</span>
+              <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+                <SelectTrigger className="h-9 w-[190px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SORT_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={sortDir} onValueChange={(v) => setSortDir(v as SortDir)}>
+                <SelectTrigger className="h-9 w-[130px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="asc">น้อย → มาก</SelectItem>
+                  <SelectItem value="desc">มาก → น้อย</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 
@@ -307,10 +321,12 @@ function AssignmentsExecution() {
 
           {mine.isLoading ? (
             <p className="text-sm text-muted-foreground">กำลังโหลด...</p>
-          ) : rows.length === 0 ? (
+          ) : filteredRows.length === 0 ? (
             <Card>
               <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                ยังไม่มีงานที่มอบหมายให้คุณในแผนการดำเนินโครงการ
+                {hideCompleted
+                  ? "ไม่มีงานที่ต้องดำเนินการในโครงการที่ยังเปิดอยู่"
+                  : "ยังไม่มีงานที่มอบหมายให้คุณในแผนการดำเนินโครงการ"}
               </CardContent>
             </Card>
           ) : (
