@@ -698,9 +698,15 @@ export function PortfolioTimeline() {
         </span>
         <span className="flex items-center gap-1.5">
           <span className="h-3 w-px bg-destructive" />วันนี้
-
         </span>
       </div>
+
+      <p className="text-[11px] text-muted-foreground">
+        คลิกที่ไทม์ไลน์แล้วใช้ปุ่ม <kbd className="rounded border bg-muted px-1 py-0.5 font-mono text-[10px]">←</kbd>{" "}
+        <kbd className="rounded border bg-muted px-1 py-0.5 font-mono text-[10px]">→</kbd> เพื่อเลื่อนเป็นเดือน{" "}
+        <kbd className="rounded border bg-muted px-1 py-0.5 font-mono text-[10px]">Home</kbd> /{" "}
+        <kbd className="rounded border bg-muted px-1 py-0.5 font-mono text-[10px]">End</kbd> เพื่อกระโดดไปต้น/ปลายไทม์ไลน์
+      </p>
 
       <TaskAssignmentDialog
         taskId={editTaskId}
