@@ -421,6 +421,13 @@ export function TimelineTab({
         members={members ?? []}
         milestones={milestones ?? []}
       />
+
+      <TaskAssignmentDialog
+        taskId={trackTask}
+        open={!!trackTask}
+        onOpenChange={(v) => !v && setTrackTask(null)}
+        canManage={canEdit}
+      />
     </div>
   );
 }
