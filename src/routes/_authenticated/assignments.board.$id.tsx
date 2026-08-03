@@ -324,6 +324,7 @@ function AssignmentBoard() {
       return;
     }
     setQuickTask(t);
+    setMissionTitle("");
     setMission(t.description ?? "");
     setDue(t.end_date);
   };
