@@ -101,7 +101,7 @@ export function PortfolioTimeline() {
   const { data, isLoading } = useQuery({
     queryKey: ["portfolio-timeline"],
     queryFn: async () => {
-      const [pr, tk, ms] = await Promise.all([
+      const [pr, tk, ms, asg] = await Promise.all([
         sb
           .from("projects")
           .select(
@@ -113,14 +113,33 @@ export function PortfolioTimeline() {
           .select("project_id, name, start_date, end_date, status, is_milestone_marker")
           .is("parent_id", null),
         sb.from("project_milestones").select("project_id, milestone_number, description, due_date, status"),
+        sb
+          .from("project_tasks")
+          .select("id, project_id, name, description, start_date, end_date, status, assignment_status, assignee_id")
+          .not("parent_id", "is", null)
+          .not("assignee_id", "is", null),
       ]);
+      const assignments = (asg.data ?? []) as unknown as AssignRow[];
+      const ids = [...new Set(assignments.map((a) => a.assignee_id).filter(Boolean))] as string[];
+      const people = ids.length
+        ? ((await sb.from("profiles").select("id, full_name, email").in("id", ids)).data ?? [])
+        : [];
+      const nameById = new Map<string, string>(
+        (people as { id: string; full_name: string | null; email: string | null }[]).map((p) => [
+          p.id,
+          p.full_name || p.email || "ไม่ระบุชื่อ",
+        ]),
+      );
       return {
         projects: (pr.data ?? []) as ProjectRow[],
         tasks: (tk.data ?? []) as TaskRow[],
         milestones: (ms.data ?? []) as MilestoneRow[],
+        assignments,
+        nameById,
       };
     },
   });
+
 
   const lanes: Lane[] = useMemo(() => {
     if (!data) return [];
