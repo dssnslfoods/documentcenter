@@ -13,7 +13,7 @@ import { usePageGuard } from "@/hooks/use-page-access";
 import { fmtDate } from "@/lib/format";
 import { CalendarClock, FolderKanban, MessagesSquare, Crown } from "lucide-react";
 import { TaskAssignmentDialog } from "@/components/project/task-assignment-dialog";
-import { ASSIGNMENT_META, type AssignmentStatus } from "@/lib/task-assignment";
+import { ASSIGNMENT_META, splitMissions, type AssignmentStatus } from "@/lib/task-assignment";
 import { LIFECYCLE_LABEL, STATUS_TONE, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 
 export const Route = createFileRoute("/_authenticated/assignments/execution")({
@@ -192,8 +192,8 @@ function AssignmentsExecution() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {[...open, ...done].map((t) => (
-                <TaskCard key={t.id} t={t} today={today} onOpen={() => setOpenTask({ id: t.id, manage: false })} />
+              {[...open, ...done].map((t, i) => (
+                <TaskCard key={`${t.id}-${i}`} t={t} today={today} onOpen={() => setOpenTask({ id: t.id, manage: false })} />
               ))}
             </div>
           )}
@@ -209,8 +209,8 @@ function AssignmentsExecution() {
               </CardContent>
             </Card>
           ) : (
-            tracked.map((t) => (
-              <TaskCard key={t.id} t={t} today={today} onOpen={() => setOpenTask({ id: t.id, manage: true })} />
+            tracked.map((t, i) => (
+              <TaskCard key={`${t.id}-${i}`} t={t} today={today} onOpen={() => setOpenTask({ id: t.id, manage: true })} />
             ))
           )}
         </TabsContent>
