@@ -321,10 +321,12 @@ function AssignmentsExecution() {
 
           {mine.isLoading ? (
             <p className="text-sm text-muted-foreground">กำลังโหลด...</p>
-          ) : rows.length === 0 ? (
+          ) : filteredRows.length === 0 ? (
             <Card>
               <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                ยังไม่มีงานที่มอบหมายให้คุณในแผนการดำเนินโครงการ
+                {hideCompleted
+                  ? "ไม่มีงานที่ต้องดำเนินการในโครงการที่ยังเปิดอยู่"
+                  : "ยังไม่มีงานที่มอบหมายให้คุณในแผนการดำเนินโครงการ"}
               </CardContent>
             </Card>
           ) : (
