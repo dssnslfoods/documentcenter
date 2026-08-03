@@ -466,11 +466,15 @@ export function PortfolioTimeline() {
             </Button>
             <div
               ref={scrollRef}
-              className="cursor-grab overflow-x-auto"
+              tabIndex={0}
+              role="region"
+              aria-label="ไทม์ไลน์โครงการ"
+              className="cursor-grab overflow-x-auto outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
               onMouseDown={onMouseDown}
               onMouseLeave={onMouseLeave}
               onMouseUp={onMouseUp}
               onMouseMove={onMouseMove}
+              onKeyDown={onKeyDown}
             >
               <div className="min-w-[900px]">
                 <div className="flex border-b bg-muted/40">
