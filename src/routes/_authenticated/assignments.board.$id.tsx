@@ -275,22 +275,33 @@ function AssignmentBoard() {
         assigned_at: new Date().toISOString(),
         assigned_by: user?.id ?? null,
       };
-      if (mission.trim()) patch.description = mission.trim();
+      const title = missionTitle.trim();
+      const detail = mission.trim();
+      const body = [title ? `ภารกิจ: ${title}` : "", detail].filter(Boolean).join("\n");
+      if (body) patch.description = body;
       if (due) patch.end_date = due;
       const { error } = await sb.from("project_tasks").update(patch).eq("id", quickTask.id);
       if (error) throw error;
+      const summary = [
+        title || quickTask.name,
+        m?.name ? `ผู้รับผิดชอบ: ${m.name}` : "",
+        due ? `ส่งมอบ ${fmtDate(due)}` : "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
       const { error: e2 } = await sb.from("project_task_updates").insert({
         task_id: quickTask.id,
         project_id: id,
         author_id: user!.id,
         kind: "assign",
-        message: mission.trim() || null,
+        message: [summary, detail].filter(Boolean).join("\n"),
       });
       if (e2) throw e2;
     },
     onSuccess: () => {
       toast.success("มอบหมายภารกิจเรียบร้อย");
       setQuickTask(null);
+      setMissionTitle("");
       setMission("");
       setDue("");
       qc.invalidateQueries({ queryKey: ["assignment-board-tasks", id] });
