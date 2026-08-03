@@ -166,6 +166,45 @@ export function TaskAssignmentDialog({
               </div>
             </div>
 
+            {canManage && !missingTable && (
+              <div className="space-y-2">
+                <Label>เลือกสมาชิกผู้รับผิดชอบ</Label>
+                <Select
+                  value={assignee ?? task.assignee_id ?? ""}
+                  onValueChange={(v) => setAssignee(v)}
+                  disabled={saveAssignee.isPending}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="เลือกสมาชิกโครงการ" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(members ?? []).map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {assignee && assignee !== task.assignee_id && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={saveAssignee.isPending}
+                    onClick={() => saveAssignee.mutate(assignee)}
+                  >
+                    {saveAssignee.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <UserCheck className="mr-2 h-4 w-4" />
+                    )}
+                    บันทึกผู้รับผิดชอบ
+                  </Button>
+                )}
+              </div>
+            )}
+
+
+
             {missingTable ? (
               <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
                 <div className="font-semibold text-destructive">ยังไม่ได้ติดตั้งระบบมอบหมายงาน</div>
