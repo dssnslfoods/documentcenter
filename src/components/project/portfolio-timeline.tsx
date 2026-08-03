@@ -463,9 +463,19 @@ export function PortfolioTimeline() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-muted-foreground">
-          ภาพรวมกำหนดส่งมอบของทุกโครงการ ก่อนมอบหมายงานให้สมาชิก
-        </p>
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">
+            ภาพรวมกำหนดส่งมอบของทุกโครงการ ก่อนมอบหมายงานให้สมาชิก
+          </p>
+          <span
+            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+              live ? "border-success/40 bg-success/10 text-success" : "border-border text-muted-foreground"
+            }`}
+          >
+            <RadioTower className="h-3 w-3" />
+            {live ? "อัปเดตอัตโนมัติ (Realtime)" : "กำลังเชื่อมต่อ Realtime…"}
+          </span>
+        </div>
         <Select value={scope} onValueChange={(v) => setScope(v as "active" | "all")}>
           <SelectTrigger className="h-9 w-[190px]">
             <SelectValue />
@@ -476,6 +486,58 @@ export function PortfolioTimeline() {
           </SelectContent>
         </Select>
       </div>
+
+      {allLanes.length > 0 && (
+        <div className="tile space-y-2 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[11px] font-semibold text-muted-foreground">
+              เลือกโครงการที่จะแสดงในไทม์ไลน์ ({lanes.length}/{allLanes.length})
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-[11px]"
+              onClick={() => {
+                setHidden(new Set());
+                try {
+                  window.localStorage.setItem(HIDDEN_KEY, "[]");
+                } catch {
+                  /* ignore */
+                }
+              }}
+            >
+              แสดงทั้งหมด
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {allLanes.map((l) => {
+              const off = hidden.has(l.project.id);
+              return (
+                <button
+                  key={l.project.id}
+                  type="button"
+                  onClick={() => toggleProject(l.project.id)}
+                  aria-pressed={!off}
+                  className={`inline-flex max-w-[240px] items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition ${
+                    off
+                      ? "border-border bg-muted/40 text-muted-foreground line-through"
+                      : "border-primary/40 bg-primary/10 font-medium text-primary"
+                  }`}
+                >
+                  {off ? <EyeOff className="h-3 w-3 shrink-0" /> : <Eye className="h-3 w-3 shrink-0" />}
+                  {l.project.customer_aka && (
+                    <Badge className={`h-4 px-1 text-[9px] ${akaBadgeClass(l.project.customer_aka_color)}`}>
+                      {l.project.customer_aka}
+                    </Badge>
+                  )}
+                  <span className="truncate">{l.project.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard icon={CalendarClock} tone="text-primary" label="โครงการในไทม์ไลน์" value={kpi.projects} />
