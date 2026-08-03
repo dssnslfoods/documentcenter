@@ -21,6 +21,8 @@ import { fmtDate, daysUntil } from "@/lib/format";
 import { Crown, UserRound, ArrowUpDown, Tag, FolderKanban, MessagesSquare } from "lucide-react";
 import { akaBadgeClass } from "@/lib/aka-colors";
 import { TaskAssignmentDialog } from "@/components/project/task-assignment-dialog";
+import { PortfolioTimeline } from "@/components/project/portfolio-timeline";
+
 import { ASSIGNMENT_META, splitMissions, type AssignmentStatus } from "@/lib/task-assignment";
 import { LIFECYCLE_LABEL, STATUS_TONE, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 
