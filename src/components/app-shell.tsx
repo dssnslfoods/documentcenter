@@ -70,6 +70,7 @@ const NAV_SECTIONS: NavSection[] = [
     label: "กำกับและควบคุม",
     items: [
       
+      { to: "/projects/timeline", icon: GanttChartSquare, label: "ไทม์ไลน์ภาพรวมโครงการ", key: "reports" },
       { to: "/reports", icon: BarChart3, label: "รายงาน", key: "reports" },
       { to: "/audit-log", icon: History, label: "Audit Log", key: "audit-log" },
       { to: "/settings", icon: Settings, label: "ตั้งค่าระบบ", key: "settings" },
