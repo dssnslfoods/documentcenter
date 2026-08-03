@@ -16,6 +16,8 @@ import { getSupabase } from "@/lib/supabase";
 import { fmtDate, daysUntil } from "@/lib/format";
 import { akaBadgeClass } from "@/lib/aka-colors";
 import { LIFECYCLE_LABEL, STATUS_TONE, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
+import { ASSIGNMENT_META, splitMissions, type AssignmentStatus } from "@/lib/task-assignment";
+
 
 type ProjectRow = {
   id: string;
@@ -47,15 +49,40 @@ type MilestoneRow = {
   status: string;
 };
 
+type AssignRow = {
+  id: string;
+  project_id: string;
+  name: string;
+  description: string | null;
+  start_date: string;
+  end_date: string;
+  status: string;
+  assignment_status: string;
+  assignee_id: string | null;
+};
+
 type Delivery = { label: string; date: string; done: boolean; kind: "milestone" | "marker" };
+
+type Assignment = {
+  id: string;
+  label: string;
+  assignee: string;
+  start: number;
+  end: number;
+  endDate: string;
+  status: AssignmentStatus;
+  done: boolean;
+};
 
 type Lane = {
   project: ProjectRow;
   start: number;
   end: number;
   deliveries: Delivery[];
+  assignments: Assignment[];
   finalDue: string | null;
 };
+
 
 const DAY = 86_400_000;
 const t = (d: string | null | undefined) => (d ? new Date(`${d}T00:00:00`).getTime() : NaN);
@@ -76,7 +103,7 @@ export function PortfolioTimeline() {
   const { data, isLoading } = useQuery({
     queryKey: ["portfolio-timeline"],
     queryFn: async () => {
-      const [pr, tk, ms] = await Promise.all([
+      const [pr, tk, ms, asg] = await Promise.all([
         sb
           .from("projects")
           .select(
@@ -88,14 +115,33 @@ export function PortfolioTimeline() {
           .select("project_id, name, start_date, end_date, status, is_milestone_marker")
           .is("parent_id", null),
         sb.from("project_milestones").select("project_id, milestone_number, description, due_date, status"),
+        sb
+          .from("project_tasks")
+          .select("id, project_id, name, description, start_date, end_date, status, assignment_status, assignee_id")
+          .not("parent_id", "is", null)
+          .not("assignee_id", "is", null),
       ]);
+      const assignments = (asg.data ?? []) as unknown as AssignRow[];
+      const ids = [...new Set(assignments.map((a) => a.assignee_id).filter(Boolean))] as string[];
+      const people = ids.length
+        ? ((await sb.from("profiles").select("id, full_name, email").in("id", ids)).data ?? [])
+        : [];
+      const nameById = new Map<string, string>(
+        (people as { id: string; full_name: string | null; email: string | null }[]).map((p) => [
+          p.id,
+          p.full_name || p.email || "ไม่ระบุชื่อ",
+        ]),
+      );
       return {
         projects: (pr.data ?? []) as ProjectRow[],
         tasks: (tk.data ?? []) as TaskRow[],
         milestones: (ms.data ?? []) as MilestoneRow[],
+        assignments,
+        nameById,
       };
     },
   });
+
 
   const lanes: Lane[] = useMemo(() => {
     if (!data) return [];
@@ -111,12 +157,21 @@ export function PortfolioTimeline() {
       list.push(m);
       byProjectMs.set(m.project_id, list);
     }
+    const byProjectAsg = new Map<string, AssignRow[]>();
+    for (const a of data.assignments) {
+      const list = byProjectAsg.get(a.project_id) ?? [];
+      list.push(a);
+      byProjectAsg.set(a.project_id, list);
+    }
+
+
 
     const rows = data.projects
       .filter((p) => (scope === "all" ? p.status !== "lost" : ACTIVE_STATUSES.includes(p.status)))
       .map<Lane | null>((p) => {
         const tasks = byProjectTasks.get(p.id) ?? [];
         const mss = byProjectMs.get(p.id) ?? [];
+        const asgs = byProjectAsg.get(p.id) ?? [];
 
         const starts = [t(p.start_date), ...tasks.map((x) => t(x.start_date))].filter((n) => !Number.isNaN(n));
         const ends = [
@@ -145,14 +200,33 @@ export function PortfolioTimeline() {
             })),
         ].sort((a, b) => t(a.date) - t(b.date));
 
+        const assignments: Assignment[] = asgs
+          .map<Assignment>((a) => {
+            const missions = splitMissions(a.description).missions;
+            return {
+              id: a.id,
+              label: missions[0] ?? a.name,
+              assignee: data.nameById.get(a.assignee_id!) ?? "ไม่ระบุชื่อ",
+              start: t(a.start_date),
+              end: t(a.end_date),
+              endDate: a.end_date,
+              status: (a.assignment_status as AssignmentStatus) ?? "draft",
+              done: a.status === "done" || a.assignment_status === "accepted",
+            };
+          })
+          .filter((a) => !Number.isNaN(a.start) && !Number.isNaN(a.end))
+          .sort((a, b) => a.end - b.end);
+
         const openDue = deliveries.filter((d) => !d.done).map((d) => d.date);
         return {
           project: p,
           start: Math.min(...starts),
           end: Math.max(...ends),
           deliveries,
+          assignments,
           finalDue: openDue[0] ?? p.end_date ?? null,
         };
+
       })
       .filter((x): x is Lane => x !== null);
 
@@ -304,9 +378,17 @@ export function PortfolioTimeline() {
                             </span>
                           )}
                         </div>
+                        {lane.assignments.length > 0 && (
+                          <div className="text-[10px] font-medium text-primary">
+                            งานที่มอบหมาย {lane.assignments.length} งาน
+                          </div>
+                        )}
                       </div>
 
-                      <div className="relative min-h-[64px] flex-1">
+                      <div
+                        className="relative flex-1"
+                        style={{ minHeight: Math.max(64, 44 + lane.assignments.length * 18 + 8) }}
+                      >
                         {months.map((m) => (
                           <div
                             key={`g-${p.id}-${m.left}`}
@@ -319,8 +401,8 @@ export function PortfolioTimeline() {
                           style={{ left: `${pct(Date.now())}%` }}
                         />
                         <div
-                          className="absolute top-1/2 h-3 -translate-y-1/2 rounded-full bg-primary/25 ring-1 ring-inset ring-primary/40"
-                          style={{ left: `${left}%`, width: `${width}%` }}
+                          className="absolute h-3 rounded-full bg-primary/25 ring-1 ring-inset ring-primary/40"
+                          style={{ top: 16, left: `${left}%`, width: `${width}%` }}
                         />
                         {lane.deliveries.map((d, i) => {
                           const late = !d.done && (daysUntil(d.date) ?? 0) < 0;
@@ -330,8 +412,8 @@ export function PortfolioTimeline() {
                               <TooltipTrigger asChild>
                                 <button
                                   type="button"
-                                  className={`absolute top-1/2 flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 rotate-45 items-center justify-center rounded-[3px] ring-2 ring-background ${color}`}
-                                  style={{ left: `${pct(t(d.date))}%` }}
+                                  className={`absolute flex h-5 w-5 -translate-x-1/2 rotate-45 items-center justify-center rounded-[3px] ring-2 ring-background ${color}`}
+                                  style={{ top: 10, left: `${pct(t(d.date))}%` }}
                                   aria-label={d.label}
                                 >
                                   <Flag className="h-2.5 w-2.5 -rotate-45 text-background" />
@@ -347,7 +429,43 @@ export function PortfolioTimeline() {
                             </Tooltip>
                           );
                         })}
+
+                        {lane.assignments.map((a, i) => {
+                          const aLeft = pct(a.start);
+                          const aWidth = Math.max(pct(a.end) - aLeft, 0.5);
+                          const late = !a.done && (daysUntil(a.endDate) ?? 0) < 0;
+                          const tone = a.done
+                            ? "bg-success/70 ring-success"
+                            : late
+                              ? "bg-destructive/70 ring-destructive"
+                              : "bg-sky-400/70 ring-sky-500";
+                          return (
+                            <Tooltip key={a.id}>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  className={`absolute h-3 rounded-sm ring-1 ring-inset ${tone}`}
+                                  style={{ top: 44 + i * 18, left: `${aLeft}%`, width: `${aWidth}%` }}
+                                  aria-label={`${a.assignee} · ${a.label}`}
+                                >
+                                  <span className="pointer-events-none absolute left-full ml-1 whitespace-nowrap text-[9px] leading-3 text-muted-foreground">
+                                    {a.assignee}
+                                  </span>
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs">
+                                <div className="text-xs font-medium">{a.label}</div>
+                                <div className="text-[11px]">ผู้รับผิดชอบ: {a.assignee}</div>
+                                <div className="text-[11px] text-muted-foreground">
+                                  ส่งมอบ {fmtDate(a.endDate)} · {ASSIGNMENT_META[a.status]?.label ?? a.status}
+                                  {late ? " · เลยกำหนด" : ""}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          );
+                        })}
                       </div>
+
                     </div>
                   );
                 })}
@@ -368,7 +486,11 @@ export function PortfolioTimeline() {
           <span className="h-3 w-3 rotate-45 rounded-[2px] bg-destructive" />เลยกำหนด
         </span>
         <span className="flex items-center gap-1.5">
+          <span className="h-2 w-5 rounded-sm bg-sky-400/70" />งานที่มอบหมายให้สมาชิก
+        </span>
+        <span className="flex items-center gap-1.5">
           <span className="h-3 w-px bg-destructive" />วันนี้
+
         </span>
       </div>
     </div>
