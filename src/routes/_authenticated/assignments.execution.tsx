@@ -131,6 +131,7 @@ function AssignmentsExecution() {
   const [sortKey, setSortKey] = useState<SortKey>("end_date");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [tab, setTab] = useState("overview");
+  const [hideCompleted, setHideCompleted] = useState(true);
 
 
   const mine = useQuery({
