@@ -205,8 +205,8 @@ function AssignmentsExecution() {
 
   const nameOf = (id: string | null) => (id ? profiles.data?.[id] ?? "…" : "ยังไม่ระบุผู้รับผิดชอบ");
   const rows = sortCards(toMissionCards(mine.data ?? []), sortKey, sortDir);
-  const open = rows.filter((r) => r.status !== "done");
-  const done = rows.filter((r) => r.status === "done");
+  const open = rows.filter((r) => r.status !== "done" && r.projects?.status !== "completed");
+  const done = rows.filter((r) => r.status === "done" || r.projects?.status === "completed");
   const today = new Date().toISOString().slice(0, 10);
   const tracked = sortCards(toMissionCards(assigned.data ?? []), sortKey, sortDir);
   const led = execProjects.data ?? [];
