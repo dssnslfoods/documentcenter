@@ -125,13 +125,14 @@ export function PortfolioTimeline() {
         sb
           .from("project_tasks")
           .select("project_id, name, start_date, end_date, status, is_milestone_marker")
-          .is("parent_id", null),
+          .is("parent_id", null)
+          .is("assignee_id", null),
         sb.from("project_milestones").select("project_id, milestone_number, description, due_date, status"),
         sb
           .from("project_tasks")
           .select("id, project_id, name, description, start_date, end_date, status, assignment_status, assignee_id")
-          .not("parent_id", "is", null)
           .not("assignee_id", "is", null),
+
 
       ]);
       const assignments = (asg.data ?? []) as unknown as AssignRow[];
