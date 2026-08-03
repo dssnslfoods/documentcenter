@@ -299,7 +299,7 @@ export function PortfolioTimeline() {
   });
 
 
-  const lanes: Lane[] = useMemo(() => {
+  const allLanes: Lane[] = useMemo(() => {
     if (!data) return [];
     const byProjectTasks = new Map<string, TaskRow[]>();
     for (const task of data.tasks) {
