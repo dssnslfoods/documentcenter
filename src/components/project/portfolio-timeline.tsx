@@ -74,7 +74,16 @@ type Assignment = {
   done: boolean;
 };
 
-type Step = { key: string; label: string; start: number; end: number; endDate: string; done: boolean; active: boolean };
+type Step = {
+  key: string;
+  label: string;
+  start: number;
+  end: number;
+  endDate: string;
+  done: boolean;
+  active: boolean;
+  row: number;
+};
 
 type Lane = {
   project: ProjectRow;
@@ -234,6 +243,14 @@ export function PortfolioTimeline() {
           }))
           .filter((x) => !Number.isNaN(x.start) && !Number.isNaN(x.end))
           .sort((a, b) => a.start - b.start);
+
+        const rowEnds: number[] = [];
+        for (const st of steps) {
+          let r = rowEnds.findIndex((e) => st.start > e);
+          if (r === -1) r = rowEnds.length;
+          rowEnds[r] = st.end;
+          st.row = r;
+        }
 
         const openDue = deliveries.filter((d) => !d.done).map((d) => d.date);
         return {
@@ -406,7 +423,7 @@ export function PortfolioTimeline() {
 
                       <div
                         className="relative flex-1"
-                        style={{ minHeight: Math.max(64, 44 + lane.assignments.length * 18 + 8) }}
+                        style={{ minHeight: Math.max(64, asgTop + lane.assignments.length * 18 + 8) }}
                       >
                         {months.map((m) => (
                           <div
@@ -449,6 +466,40 @@ export function PortfolioTimeline() {
                           );
                         })}
 
+                        {lane.steps.map((st) => {
+                          const sLeft = pct(st.start);
+                          const sWidth = Math.max(pct(st.end) - sLeft, 0.6);
+                          const late = !st.done && (daysUntil(st.endDate) ?? 0) < 0;
+                          const tone = st.done
+                            ? "bg-muted-foreground/25 ring-muted-foreground/30"
+                            : late
+                              ? "bg-destructive/20 ring-destructive/50"
+                              : st.active
+                                ? "bg-primary/40 ring-primary/60"
+                                : "bg-muted ring-border";
+                          return (
+                            <Tooltip key={st.key}>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  className={`absolute h-4 overflow-hidden rounded-sm px-1 text-left text-[9px] leading-4 text-foreground/80 ring-1 ring-inset ${tone}`}
+                                  style={{ top: 38 + st.row * 18, left: `${sLeft}%`, width: `${sWidth}%` }}
+                                  aria-label={st.label}
+                                >
+                                  <span className="truncate">{st.label}</span>
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs">
+                                <div className="text-xs font-medium">ขั้นตอน: {st.label}</div>
+                                <div className="text-[11px] text-muted-foreground">
+                                  สิ้นสุด {fmtDate(st.endDate)} ·{" "}
+                                  {st.done ? "เสร็จแล้ว" : late ? "เลยกำหนด" : st.active ? "กำลังดำเนินการ" : "ยังไม่เริ่ม"}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          );
+                        })}
+
                         {lane.assignments.map((a, i) => {
                           const aLeft = pct(a.start);
                           const aWidth = Math.max(pct(a.end) - aLeft, 0.5);
@@ -464,7 +515,7 @@ export function PortfolioTimeline() {
                                 <button
                                   type="button"
                                   className={`absolute h-3 rounded-sm ring-1 ring-inset ${tone}`}
-                                  style={{ top: 44 + i * 18, left: `${aLeft}%`, width: `${aWidth}%` }}
+                                  style={{ top: asgTop + i * 18, left: `${aLeft}%`, width: `${aWidth}%` }}
                                   aria-label={`${a.assignee} · ${a.label}`}
                                 >
                                   <span className="pointer-events-none absolute left-full ml-1 whitespace-nowrap text-[9px] leading-3 text-muted-foreground">
