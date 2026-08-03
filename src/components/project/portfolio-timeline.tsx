@@ -294,7 +294,7 @@ export function PortfolioTimeline() {
             .map<Delivery>((m) => ({
               label: `งวด ${m.milestone_number} · ${m.description}`,
               date: m.due_date!,
-              done: m.status === "completed",
+              done: m.status === "completed" || p.status === "completed",
               kind: "milestone",
             })),
           ...tasks
@@ -302,7 +302,7 @@ export function PortfolioTimeline() {
             .map<Delivery>((x) => ({
               label: x.name,
               date: x.end_date,
-              done: x.status === "done",
+              done: x.status === "done" || p.status === "completed",
               kind: "marker",
             })),
         ].sort((a, b) => t(a.date) - t(b.date));
@@ -319,7 +319,7 @@ export function PortfolioTimeline() {
               end: t(a.end_date),
               endDate: a.end_date,
               status: (a.assignment_status as AssignmentStatus) ?? "draft",
-              done: a.status === "done" || a.assignment_status === "accepted",
+              done: a.status === "done" || a.assignment_status === "accepted" || p.status === "completed",
             };
             return labels.map((label, idx) => ({
               id: `${a.id}-${idx}`,
@@ -340,8 +340,8 @@ export function PortfolioTimeline() {
             start: t(x.start_date),
             end: Math.max(t(x.end_date), t(x.start_date)),
             endDate: x.end_date,
-            done: x.status === "done",
-            active: x.status === "in_progress",
+            done: x.status === "done" || p.status === "completed",
+            active: x.status === "in_progress" && p.status !== "completed",
             row: 0,
           }))
           .filter((x) => !Number.isNaN(x.start) && !Number.isNaN(x.end))
@@ -502,7 +502,7 @@ export function PortfolioTimeline() {
                   const stepRows = lane.steps.length ? Math.max(...lane.steps.map((s) => s.row)) + 1 : 0;
                   const asgTop = 38 + stepRows * 22 + 10;
 
-                  const dueIn = daysUntil(lane.finalDue);
+                  const dueIn = p.status === "completed" ? null : daysUntil(lane.finalDue);
                   const health = HEALTH[p.health_status ?? "grey"] ?? HEALTH.grey;
                   return (
                     <div key={p.id} className="flex border-b last:border-b-0 hover:bg-muted/30">
@@ -534,15 +534,21 @@ export function PortfolioTimeline() {
                           </Badge>
                         </div>
                         <div className="text-[10px] text-muted-foreground">
-                          ส่งมอบถัดไป {fmtDate(lane.finalDue)}
-                          {dueIn != null && (
-                            <span
-                              className={
-                                dueIn < 0 ? "ml-1 font-semibold text-destructive" : "ml-1 font-semibold text-foreground"
-                              }
-                            >
-                              {dueIn < 0 ? `เลย ${Math.abs(dueIn)} วัน` : `อีก ${dueIn} วัน`}
-                            </span>
+                          {p.status === "completed" ? (
+                            <span className="font-medium text-success">ปิดโครงการแล้ว</span>
+                          ) : (
+                            <>
+                              ส่งมอบถัดไป {fmtDate(lane.finalDue)}
+                              {dueIn != null && (
+                                <span
+                                  className={
+                                    dueIn < 0 ? "ml-1 font-semibold text-destructive" : "ml-1 font-semibold text-foreground"
+                                  }
+                                >
+                                  {dueIn < 0 ? `เลย ${Math.abs(dueIn)} วัน` : `อีก ${dueIn} วัน`}
+                                </span>
+                              )}
+                            </>
                           )}
                         </div>
                         {lane.assignments.length > 0 && (
