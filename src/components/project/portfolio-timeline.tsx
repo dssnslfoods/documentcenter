@@ -1,14 +1,17 @@
 import { Link } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   CalendarClock,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Eye,
+  EyeOff,
   Flag,
   Loader2,
+  RadioTower,
   Timer,
 } from "lucide-react";
 import { EmptyState } from "@/components/page-header";
@@ -121,11 +124,57 @@ const HEALTH: Record<string, { label: string; dot: string }> = {
 };
 
 const ACTIVE_STATUSES = ["won", "in_progress"];
+const HIDDEN_KEY = "portfolio-timeline:hidden-projects";
 
 export function PortfolioTimeline() {
   const sb = getSupabase();
   const [scope, setScope] = useState<"active" | "all">("active");
   const [editTaskId, setEditTaskId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const [hidden, setHidden] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const raw = window.localStorage.getItem(HIDDEN_KEY);
+      return new Set<string>(raw ? (JSON.parse(raw) as string[]) : []);
+    } catch {
+      return new Set<string>();
+    }
+  });
+  const [live, setLive] = useState(false);
+
+  const toggleProject = (id: string) => {
+    setHidden((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      try {
+        window.localStorage.setItem(HIDDEN_KEY, JSON.stringify([...next]));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
+
+  // Realtime: refresh the timeline whenever projects / plans / assignments change
+  useEffect(() => {
+    const channel = sb
+      .channel("portfolio-timeline-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "projects" }, () =>
+        queryClient.invalidateQueries({ queryKey: ["portfolio-timeline"] }),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "project_tasks" }, () =>
+        queryClient.invalidateQueries({ queryKey: ["portfolio-timeline"] }),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "project_milestones" }, () =>
+        queryClient.invalidateQueries({ queryKey: ["portfolio-timeline"] }),
+      )
+      .subscribe((status) => setLive(status === "SUBSCRIBED"));
+    return () => {
+      void sb.removeChannel(channel);
+    };
+  }, [sb, queryClient]);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ isDragging: boolean; startX: number; scrollLeft: number }>({
     isDragging: false,
@@ -250,7 +299,7 @@ export function PortfolioTimeline() {
   });
 
 
-  const lanes: Lane[] = useMemo(() => {
+  const allLanes: Lane[] = useMemo(() => {
     if (!data) return [];
     const byProjectTasks = new Map<string, TaskRow[]>();
     for (const task of data.tasks) {
@@ -368,6 +417,8 @@ export function PortfolioTimeline() {
     return rows.sort((a, b) => (t(a.finalDue) || a.end) - (t(b.finalDue) || b.end));
   }, [data, scope]);
 
+  const lanes = useMemo(() => allLanes.filter((l) => !hidden.has(l.project.id)), [allLanes, hidden]);
+
   const range = useMemo(() => {
     if (!lanes.length) return null;
     const min = Math.min(...lanes.map((l) => l.start), Date.now());
@@ -412,9 +463,19 @@ export function PortfolioTimeline() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-muted-foreground">
-          ภาพรวมกำหนดส่งมอบของทุกโครงการ ก่อนมอบหมายงานให้สมาชิก
-        </p>
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">
+            ภาพรวมกำหนดส่งมอบของทุกโครงการ ก่อนมอบหมายงานให้สมาชิก
+          </p>
+          <span
+            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+              live ? "border-success/40 bg-success/10 text-success" : "border-border text-muted-foreground"
+            }`}
+          >
+            <RadioTower className="h-3 w-3" />
+            {live ? "อัปเดตอัตโนมัติ (Realtime)" : "กำลังเชื่อมต่อ Realtime…"}
+          </span>
+        </div>
         <Select value={scope} onValueChange={(v) => setScope(v as "active" | "all")}>
           <SelectTrigger className="h-9 w-[190px]">
             <SelectValue />
@@ -425,6 +486,58 @@ export function PortfolioTimeline() {
           </SelectContent>
         </Select>
       </div>
+
+      {allLanes.length > 0 && (
+        <div className="tile space-y-2 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[11px] font-semibold text-muted-foreground">
+              เลือกโครงการที่จะแสดงในไทม์ไลน์ ({lanes.length}/{allLanes.length})
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-[11px]"
+              onClick={() => {
+                setHidden(new Set());
+                try {
+                  window.localStorage.setItem(HIDDEN_KEY, "[]");
+                } catch {
+                  /* ignore */
+                }
+              }}
+            >
+              แสดงทั้งหมด
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {allLanes.map((l) => {
+              const off = hidden.has(l.project.id);
+              return (
+                <button
+                  key={l.project.id}
+                  type="button"
+                  onClick={() => toggleProject(l.project.id)}
+                  aria-pressed={!off}
+                  className={`inline-flex max-w-[240px] items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition ${
+                    off
+                      ? "border-border bg-muted/40 text-muted-foreground line-through"
+                      : "border-primary/40 bg-primary/10 font-medium text-primary"
+                  }`}
+                >
+                  {off ? <EyeOff className="h-3 w-3 shrink-0" /> : <Eye className="h-3 w-3 shrink-0" />}
+                  {l.project.customer_aka && (
+                    <Badge className={`h-4 px-1 text-[9px] ${akaBadgeClass(l.project.customer_aka_color)}`}>
+                      {l.project.customer_aka}
+                    </Badge>
+                  )}
+                  <span className="truncate">{l.project.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard icon={CalendarClock} tone="text-primary" label="โครงการในไทม์ไลน์" value={kpi.projects} />
