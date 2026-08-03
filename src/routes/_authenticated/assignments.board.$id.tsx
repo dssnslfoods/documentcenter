@@ -361,6 +361,17 @@ function AssignmentBoard() {
             <div className="flex items-center gap-2 px-1 pb-1 text-sm font-medium">
               <Users className="h-4 w-4 text-primary" />
               สมาชิกโครงการ
+              {canManage && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="ml-auto h-7 px-2 text-xs"
+                  onClick={() => setManageOpen(true)}
+                >
+                  <UserPlus className="mr-1 h-3.5 w-3.5" />
+                  เพิ่ม
+                </Button>
+              )}
             </div>
             {members.isLoading ? (
               <p className="px-1 text-xs text-muted-foreground">กำลังโหลด...</p>
@@ -370,24 +381,46 @@ function AssignmentBoard() {
               (members.data ?? []).map((m) => {
                 const active = m.id === selectedMember;
                 return (
-                  <button
+                  <div
                     key={m.id}
-                    type="button"
-                    onClick={() => setSelectedMember(active ? null : m.id)}
-                    className={`flex w-full items-center gap-3 rounded-lg border p-2 text-left transition ${
+                    className={`flex w-full items-center gap-2 rounded-lg border p-2 transition ${
                       active ? "border-primary bg-primary/5" : "border-transparent hover:bg-muted/60"
                     }`}
                   >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                      {initials(m.name)}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">{m.name}</span>
-                      <span className="block truncate text-[11px] text-muted-foreground">
-                        {m.position || m.role || "สมาชิก"} · {countFor(m.id)} งาน
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMember(active ? null : m.id)}
+                      className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                    >
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                        {initials(m.name)}
                       </span>
-                    </span>
-                  </button>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">{m.name}</span>
+                        <span className="block truncate text-[11px] text-muted-foreground">
+                          {m.position || m.role || "สมาชิก"} · {countFor(m.id)} งาน
+                        </span>
+                      </span>
+                    </button>
+                    {canManage && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+                        title="นำออกจากโครงการ"
+                        disabled={removeMember.isPending}
+                        onClick={() => {
+                          if (countFor(m.id) > 0) {
+                            toast.error("สมาชิกคนนี้ยังมีงานที่รับผิดชอบอยู่ — โปรดย้ายงานก่อนนำออก");
+                            return;
+                          }
+                          if (window.confirm(`นำ ${m.name} ออกจากโครงการ?`)) removeMember.mutate(m);
+                        }}
+                      >
+                        <UserMinus className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 );
               })
             )}
@@ -396,6 +429,7 @@ function AssignmentBoard() {
                 กำลังมอบหมายให้ <strong>{member.name}</strong> — คลิกงานที่ต้องการทางขวา
               </p>
             )}
+
           </CardContent>
         </Card>
 
