@@ -601,7 +601,46 @@ function AssignmentBoard() {
         </DialogContent>
       </Dialog>
 
+      {/* ── เพิ่มสมาชิกเข้าโครงการ ── */}
+      <Dialog open={manageOpen} onOpenChange={setManageOpen}>
+        <DialogContent className="w-[95vw] max-w-md">
+          <DialogHeader>
+            <DialogTitle className="pr-6 text-base">เพิ่มสมาชิกเข้าโครงการ</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] space-y-1.5 overflow-y-auto">
+            {candidates.isLoading ? (
+              <p className="p-2 text-xs text-muted-foreground">กำลังโหลดรายชื่อ...</p>
+            ) : (
+              (() => {
+                const existing = new Set((members.data ?? []).map((m) => m.id));
+                const rows = (candidates.data ?? []).filter((c) => !existing.has(c.id));
+                if (!rows.length)
+                  return <p className="p-2 text-xs text-muted-foreground">ผู้ใช้ทุกคนอยู่ในโครงการนี้แล้ว</p>;
+                return rows.map((c) => (
+                  <div key={c.id} className="flex items-center gap-2 rounded-md border p-2">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
+                      {initials(c.full_name || c.email || "?")}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm">{c.full_name || c.email}</span>
+                      {c.full_name && c.email && (
+                        <span className="block truncate text-[11px] text-muted-foreground">{c.email}</span>
+                      )}
+                    </span>
+                    <Button size="sm" disabled={addMember.isPending} onClick={() => addMember.mutate(c.id)}>
+                      <UserPlus className="mr-1 h-3.5 w-3.5" />
+                      เพิ่ม
+                    </Button>
+                  </div>
+                ));
+              })()
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <TaskAssignmentDialog
+
         taskId={threadTask}
         open={!!threadTask}
         onOpenChange={(v) => !v && setThreadTask(null)}
