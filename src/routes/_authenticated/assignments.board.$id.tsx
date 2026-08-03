@@ -97,6 +97,7 @@ function AssignmentBoard() {
 
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
   const [quickTask, setQuickTask] = useState<Task | null>(null);
+  const [missionTitle, setMissionTitle] = useState("");
   const [mission, setMission] = useState("");
   const [due, setDue] = useState("");
   const [threadTask, setThreadTask] = useState<string | null>(null);
