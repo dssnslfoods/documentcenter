@@ -246,6 +246,34 @@ function AssignmentBoard() {
   const canManage = !!perms.data?.canEditTimeline || !!perms.data?.isAdmin;
   const list = tasks.data ?? [];
 
+  // ── ขั้นตอนปัจจุบันตามแผนงาน + นับถอยหลัง ──
+  const todayTs = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }, []);
+  const dayLeft = (date: string) =>
+    Math.round((new Date(`${date}T00:00:00`).getTime() - todayTs) / 86400000);
+
+  const current = useMemo(() => {
+    if (!list.length) return null;
+    const running = list
+      .filter((t) => t.status !== "completed")
+      .filter((t) => dayLeft(t.start_date) <= 0 && dayLeft(t.end_date) >= 0)
+      .sort((a, b) => dayLeft(a.end_date) - dayLeft(b.end_date));
+    if (running.length) return { task: running[0], kind: "running" as const };
+    const overdue = list
+      .filter((t) => t.status !== "completed" && dayLeft(t.end_date) < 0)
+      .sort((a, b) => dayLeft(b.end_date) - dayLeft(a.end_date));
+    if (overdue.length) return { task: overdue[0], kind: "overdue" as const };
+    const upcoming = list
+      .filter((t) => t.status !== "completed" && dayLeft(t.start_date) > 0)
+      .sort((a, b) => dayLeft(a.start_date) - dayLeft(b.start_date));
+    if (upcoming.length) return { task: upcoming[0], kind: "upcoming" as const };
+    return null;
+  }, [list, todayTs]);
+
+
   const range = useMemo(() => {
     if (!list.length) return null;
     const min = list.reduce((a, t) => (t.start_date < a ? t.start_date : a), list[0].start_date);
