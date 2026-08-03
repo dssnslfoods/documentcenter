@@ -116,12 +116,13 @@ function AssignmentsExecution() {
 
   if (!guard.allowed) return guard.node;
 
-  const rows = mine.data ?? [];
+  const rows = toMissionCards(mine.data ?? []);
   const open = rows.filter((r) => r.status !== "done");
   const done = rows.filter((r) => r.status === "done");
   const today = new Date().toISOString().slice(0, 10);
-  const tracked = assigned.data ?? [];
+  const tracked = toMissionCards(assigned.data ?? []);
   const led = execProjects.data ?? [];
+
 
   return (
     <div className="space-y-6">
