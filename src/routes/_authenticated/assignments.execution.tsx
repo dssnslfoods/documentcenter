@@ -107,7 +107,10 @@ function AssignmentsExecution() {
         .eq("project_role", "exec");
       return (data ?? [])
         .map((r) => (r as unknown as { projects: ExecProject | null }).projects)
-        .filter((p): p is ExecProject => !!p && p.status !== "closed" && p.status !== "lost");
+        .filter(
+          (p): p is ExecProject =>
+            !!p && p.status !== "completed" && p.status !== "lost"
+        );
     },
   });
 
