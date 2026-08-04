@@ -53,7 +53,7 @@ function AssignmentProjectTimeline() {
     queryFn: async () => {
       const { data } = await getSupabase()
         .from("projects")
-        .select("id, name, code, status, progress, start_date, end_date")
+        .select("id, name, code, status, progress, start_date, end_date, is_inhouse")
         .eq("id", id)
         .maybeSingle();
       return data as {
@@ -135,7 +135,7 @@ function AssignmentProjectTimeline() {
                 {p.start_date ? fmtDate(p.start_date) : "—"} – {p.end_date ? fmtDate(p.end_date) : "—"}
               </span>
             </div>
-            <LifecycleStepper status={p.status as ProjectLifecycleStatus} />
+            <LifecycleStepper status={p.status as ProjectLifecycleStatus} isInhouse={!!(p as { is_inhouse?: boolean }).is_inhouse} />
             <div>
               <Progress value={p.progress ?? 0} className="h-2" />
               <div className="mt-1 text-right text-[11px] text-muted-foreground">

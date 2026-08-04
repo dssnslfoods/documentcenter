@@ -64,8 +64,37 @@ const NEXT: Record<ProjectLifecycleStatus, ProjectLifecycleStatus[]> = {
   completed: [],
 };
 
-export function nextStatuses(status: ProjectLifecycleStatus): ProjectLifecycleStatus[] {
+export function nextStatuses(
+  status: ProjectLifecycleStatus,
+  isInhouse = false,
+): ProjectLifecycleStatus[] {
+  // งานผลิตภายใน: ข้ามขั้น RFQ และรับใบเสนอราคา Supplier
+  if (isInhouse && (status === "draft" || status === "rfq_sent" || status === "quotation_received")) {
+    return ["proposal_submitted"];
+  }
   return NEXT[status] ?? [];
+}
+
+/** ขั้นตอนที่แสดงในแถบ stepper (งานผลิตภายในจะตัด RFQ / Supplier ออก) */
+export function lifecyclePhases(isInhouse = false) {
+  return isInhouse
+    ? LIFECYCLE_PHASES.filter((p) => p.key !== "rfq_sent" && p.key !== "quotation_received")
+    : LIFECYCLE_PHASES;
+}
+
+/** ตำแหน่งขั้นตอนปัจจุบันภายในชุดขั้นตอนที่แสดงจริง */
+export function visiblePhaseIndex(
+  status: ProjectLifecycleStatus | null | undefined,
+  isInhouse = false,
+): number {
+  const phases = lifecyclePhases(isInhouse);
+  const idx = phaseIndex(status);
+  // map absolute order -> index ในรายการที่แสดง
+  let last = 0;
+  phases.forEach((p, i) => {
+    if (ORDER[p.key] <= idx) last = i;
+  });
+  return last;
 }
 
 export const STATUS_TONE: Record<ProjectLifecycleStatus, string> = {
