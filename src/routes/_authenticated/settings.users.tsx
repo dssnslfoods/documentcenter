@@ -21,8 +21,9 @@ import {
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
-import { ShieldAlert, UserPlus, Search, Copy } from "lucide-react";
+import { ShieldAlert, UserPlus, Search, Copy, Pencil, KeyRound } from "lucide-react";
 import { adminInviteUser } from "@/lib/admin-invite";
+import { adminUpdateUser, adminResetPassword } from "@/lib/admin-users.functions";
 import { useMyOrg } from "@/lib/org";
 import { useMySupportAccess, useSetSupportAccess, useRevokeSupportAccess, isSupportActive } from "@/lib/support-access";
 
