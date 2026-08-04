@@ -51,7 +51,7 @@ export function LifecycleStepper({
                 </span>
                 <span className={`whitespace-nowrap text-[11px] font-medium ${textClass}`}>{label}</span>
               </div>
-              {i < LIFECYCLE_PHASES.length - 1 && (
+              {i < phases.length - 1 && (
                 <div
                   className={`mb-6 h-0.5 w-8 rounded-full transition-colors ${
                     isDone ? "bg-primary" : "bg-border"
