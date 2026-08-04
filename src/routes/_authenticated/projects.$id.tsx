@@ -274,7 +274,7 @@ function ProjectDetail() {
 
       {/* Stepper */}
       <div className="tile p-3">
-        <LifecycleStepper status={status} />
+        <LifecycleStepper status={status} isInhouse={isInhouse} />
       </div>
 
       {/* Workflow tabs */}
