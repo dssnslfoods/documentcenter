@@ -42,33 +42,38 @@ type Ev = {
   short?: string;
 };
 
-const KIND_META: Record<Kind, { label: string; icon: typeof FileSignature; cls: string; bar: string }> = {
+const KIND_META: Record<Kind, { label: string; short: string; icon: typeof FileSignature; cls: string; bar: string }> = {
   contract_end: {
     label: "สัญญาสิ้นสุด",
+    short: "สัญญา",
     icon: FileSignature,
     cls: "bg-warning/20 text-warning-foreground",
     bar: "bg-warning/30 text-warning-foreground",
   },
   project_milestone: {
     label: "งวดงานโครงการ",
+    short: "งวดงาน",
     icon: Flag,
     cls: "bg-info/15 text-info",
     bar: "bg-info/20 text-info",
   },
   project_end: {
     label: "โครงการสิ้นสุด",
+    short: "ปิดโครงการ",
     icon: FolderKanban,
     cls: "bg-primary/15 text-primary",
     bar: "bg-primary/20 text-primary",
   },
   project_task: {
     label: "แผนงานโครงการ (Timeline)",
+    short: "แผนงาน",
     icon: GanttChartSquare,
     cls: "bg-success/15 text-success",
     bar: "bg-success/25 text-success",
   },
   custom: {
     label: "กำหนดการอื่น",
+    short: "อื่นๆ",
     icon: CalendarClock,
     cls: "bg-muted text-muted-foreground",
     bar: "bg-muted text-muted-foreground",
