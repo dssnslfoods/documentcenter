@@ -136,7 +136,7 @@ function CalendarPage() {
       });
       (projects.data ?? []).forEach((pr: { id: string; name: string; code?: string | null; end_date: string | null; customer_aka?: string | null; customer_aka_color?: string | null }) => {
         if (!pr.end_date) return;
-        list.push({ id: `pr-${pr.id}`, title: pr.name, start: pr.end_date, end: pr.end_date, kind: "project_end", link: `/projects/${pr.id}`, aka: pr.customer_aka, akaColor: pr.customer_aka_color, code: pr.code, short: pr.name });
+        list.push({ id: `pr-${pr.id}`, title: pr.name, start: pr.end_date, end: pr.end_date, kind: "project_end", link: `/projects/${pr.id}`, aka: pr.customer_aka, akaColor: pr.customer_aka_color, code: pr.code, short: pr.name, projectName: pr.name });
       });
       (custom.data ?? []).forEach((ev: { id: string; title: string; event_date: string }) => {
         list.push({ id: `e-${ev.id}`, title: ev.title, start: ev.event_date, end: ev.event_date, kind: "custom", link: "/calendar", short: ev.title });
