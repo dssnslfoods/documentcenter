@@ -325,6 +325,7 @@ function CalendarPage() {
                 );
               })}
             </div>
+          </TooltipProvider>
           </CardContent>
         </Card>
 
