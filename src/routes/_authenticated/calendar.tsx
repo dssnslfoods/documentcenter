@@ -333,9 +333,6 @@ function CalendarPage() {
                       {evs.length > 4 && (
                         <div className="px-1 text-[10px] text-muted-foreground">+{evs.length - 4} รายการ</div>
                       )}
-                      {evs.length > 6 && (
-                        <div className="px-1 text-[10px] text-muted-foreground">+{evs.length - 6}</div>
-                      )}
                     </div>
                   </button>
 
