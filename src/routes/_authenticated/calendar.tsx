@@ -332,6 +332,9 @@ function CalendarPage() {
                           </TooltipTrigger>
                           <TooltipContent side="top" className="max-w-64">
                             <div className="text-xs font-medium">{ev.title}</div>
+                            {ev.projectName && (
+                              <div className="text-[11px] font-medium text-primary opacity-90">{ev.projectName}</div>
+                            )}
                             <div className="text-[11px] opacity-80">
                               {KIND_META[ev.kind].label}
                               {ev.code ? ` · ${ev.code}` : ""}
