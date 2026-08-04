@@ -89,6 +89,56 @@ function UsersPage() {
       return data ?? [];
     },
   });
+  // ---------- Edit / reset password state ----------
+  const [editTarget, setEditTarget] = useState<{ id: string; email: string } | null>(null);
+  const [editForm, setEditForm] = useState({ email: "", fullName: "", phone: "", position: "" });
+  const [pwTarget, setPwTarget] = useState<{ id: string; email: string } | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [pwDone, setPwDone] = useState(false);
+
+  const getToken = async () => {
+    const { data } = await sb.auth.getSession();
+    const t = data.session?.access_token;
+    if (!t) throw new Error("เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่");
+    return t;
+  };
+
+  const updateUser = useMutation({
+    mutationFn: async () => {
+      if (!editTarget) return;
+      const accessToken = await getToken();
+      await adminUpdateUser({
+        data: {
+          accessToken,
+          userId: editTarget.id,
+          email: editForm.email.trim().toLowerCase(),
+          fullName: editForm.fullName.trim(),
+          phone: editForm.phone.trim(),
+          position: editForm.position.trim(),
+        },
+      });
+    },
+    onSuccess: () => {
+      toast.success("บันทึกข้อมูลผู้ใช้เรียบร้อย");
+      setEditTarget(null);
+      qc.invalidateQueries({ queryKey: ["users-list"] });
+    },
+    onError: (e: Error) => toast.error(e.message ?? "บันทึกไม่สำเร็จ"),
+  });
+
+  const resetPassword = useMutation({
+    mutationFn: async () => {
+      if (!pwTarget) return;
+      if (newPassword.length < 8) throw new Error("รหัสผ่านต้องยาวอย่างน้อย 8 ตัวอักษร");
+      const accessToken = await getToken();
+      await adminResetPassword({ data: { accessToken, userId: pwTarget.id, password: newPassword } });
+    },
+    onSuccess: () => {
+      setPwDone(true);
+      toast.success("รีเซ็ตรหัสผ่านเรียบร้อย");
+    },
+    onError: (e: Error) => toast.error(e.message ?? "รีเซ็ตรหัสผ่านไม่สำเร็จ"),
+  });
 
   const { data: rows, isLoading } = useQuery({
     queryKey: ["users-list"],
@@ -96,7 +146,8 @@ function UsersPage() {
     queryFn: async () => {
       const { data: profiles, error } = await sb
         .from("profiles")
-        .select("id, email, full_name, department_id, is_active, created_at, departments(name_th)")
+        .select("id, email, full_name, phone, position, department_id, is_active, created_at, departments(name_th)")
+        .order("created_at", { ascending: false });
         .order("created_at", { ascending: false });
       if (error) throw error;
       const ids = (profiles ?? []).map((p) => p.id);
