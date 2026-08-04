@@ -105,32 +105,35 @@ function CalendarPage() {
 
       const [contracts, milestones, projects, custom, tasks] = await Promise.all([
         sb.from("contracts").select("id, contract_no, title, end_date").gte("end_date", s).lte("end_date", e).neq("status", "archived"),
-        sb.from("project_milestones").select("id, project_id, description, due_date, projects(name, code)").gte("due_date", s).lte("due_date", e),
-        sb.from("projects").select("id, name, end_date").gte("end_date", s).lte("end_date", e),
+        sb.from("project_milestones").select("id, project_id, description, due_date, projects(name, code, customer_aka, customer_aka_color)").gte("due_date", s).lte("due_date", e),
+        sb.from("projects").select("id, name, end_date, customer_aka, customer_aka_color").gte("end_date", s).lte("end_date", e),
         sb.from("calendar_events").select("id, title, event_date, module, record_id").gte("event_date", s).lte("event_date", e),
         // RLS on project_tasks limits rows to projects the user is a member of (or admin)
-        sb.from("project_tasks").select("id, project_id, name, start_date, end_date, status, progress, assignee_label, projects(name, code)").lte("start_date", e).gte("end_date", s),
+        sb.from("project_tasks").select("id, project_id, name, start_date, end_date, status, progress, assignee_label, projects(name, code, customer_aka, customer_aka_color)").lte("start_date", e).gte("end_date", s),
       ]);
+
+      type ProjRel = { name: string; code: string | null; customer_aka?: string | null; customer_aka_color?: string | null };
+      const rel = (p: ProjRel | ProjRel[] | null) => (Array.isArray(p) ? p[0] : p);
 
       const list: Ev[] = [];
       (contracts.data ?? []).forEach((c: { id: string; contract_no: string | null; title: string; end_date: string }) => {
         list.push({ id: `c-${c.id}`, title: `${c.contract_no ?? ""} · ${c.title}`, start: c.end_date, end: c.end_date, kind: "contract_end", link: `/contracts/${c.id}` });
       });
-      (milestones.data ?? []).forEach((m: { id: string; project_id: string; description: string; due_date: string | null; projects: { name: string; code: string | null } | { name: string; code: string | null }[] | null }) => {
+      (milestones.data ?? []).forEach((m: { id: string; project_id: string; description: string; due_date: string | null; projects: ProjRel | ProjRel[] | null }) => {
         if (!m.due_date) return;
-        const proj = Array.isArray(m.projects) ? m.projects[0] : m.projects;
-        list.push({ id: `m-${m.id}`, title: `${proj?.code ?? ""} · ${m.description}`, start: m.due_date, end: m.due_date, kind: "project_milestone", link: `/projects/${m.project_id}` });
+        const proj = rel(m.projects);
+        list.push({ id: `m-${m.id}`, title: `${proj?.code ?? ""} · ${m.description}`, start: m.due_date, end: m.due_date, kind: "project_milestone", link: `/projects/${m.project_id}`, aka: proj?.customer_aka, akaColor: proj?.customer_aka_color });
       });
-      (projects.data ?? []).forEach((pr: { id: string; name: string; end_date: string | null }) => {
+      (projects.data ?? []).forEach((pr: { id: string; name: string; end_date: string | null; customer_aka?: string | null; customer_aka_color?: string | null }) => {
         if (!pr.end_date) return;
-        list.push({ id: `pr-${pr.id}`, title: pr.name, start: pr.end_date, end: pr.end_date, kind: "project_end", link: `/projects/${pr.id}` });
+        list.push({ id: `pr-${pr.id}`, title: pr.name, start: pr.end_date, end: pr.end_date, kind: "project_end", link: `/projects/${pr.id}`, aka: pr.customer_aka, akaColor: pr.customer_aka_color });
       });
       (custom.data ?? []).forEach((ev: { id: string; title: string; event_date: string }) => {
         list.push({ id: `e-${ev.id}`, title: ev.title, start: ev.event_date, end: ev.event_date, kind: "custom", link: "/calendar" });
       });
       if (!tasks.error) {
-        (tasks.data ?? []).forEach((t: { id: string; project_id: string; name: string; start_date: string; end_date: string; progress: number | null; assignee_label: string | null; projects: { name: string; code: string | null } | { name: string; code: string | null }[] | null }) => {
-          const proj = Array.isArray(t.projects) ? t.projects[0] : t.projects;
+        (tasks.data ?? []).forEach((t: { id: string; project_id: string; name: string; start_date: string; end_date: string; progress: number | null; assignee_label: string | null; projects: ProjRel | ProjRel[] | null }) => {
+          const proj = rel(t.projects);
           list.push({
             id: `t-${t.id}`,
             title: t.name,
@@ -139,6 +142,8 @@ function CalendarPage() {
             end: t.end_date < t.start_date ? t.start_date : t.end_date,
             kind: "project_task",
             link: `/projects/${t.project_id}`,
+            aka: proj?.customer_aka,
+            akaColor: proj?.customer_aka_color,
           });
         });
       }
