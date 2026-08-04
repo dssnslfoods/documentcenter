@@ -38,6 +38,8 @@ type Ev = {
   sub?: string;
   aka?: string | null;
   akaColor?: string | null;
+  code?: string | null;
+  short?: string;
 };
 
 const KIND_META: Record<Kind, { label: string; icon: typeof FileSignature; cls: string; bar: string }> = {
@@ -108,7 +110,7 @@ function CalendarPage() {
       const [contracts, milestones, projects, custom, tasks] = await Promise.all([
         sb.from("contracts").select("id, contract_no, title, end_date").gte("end_date", s).lte("end_date", e).neq("status", "archived"),
         sb.from("project_milestones").select("id, project_id, description, due_date, projects(name, code, customer_aka, customer_aka_color)").gte("due_date", s).lte("due_date", e),
-        sb.from("projects").select("id, name, end_date, customer_aka, customer_aka_color").gte("end_date", s).lte("end_date", e),
+        sb.from("projects").select("id, name, code, end_date, customer_aka, customer_aka_color").gte("end_date", s).lte("end_date", e),
         sb.from("calendar_events").select("id, title, event_date, module, record_id").gte("event_date", s).lte("event_date", e),
         // RLS on project_tasks limits rows to projects the user is a member of (or admin)
         sb.from("project_tasks").select("id, project_id, name, start_date, end_date, status, progress, assignee_label, projects(name, code, customer_aka, customer_aka_color)").lte("start_date", e).gte("end_date", s),
@@ -119,19 +121,19 @@ function CalendarPage() {
 
       const list: Ev[] = [];
       (contracts.data ?? []).forEach((c: { id: string; contract_no: string | null; title: string; end_date: string }) => {
-        list.push({ id: `c-${c.id}`, title: `${c.contract_no ?? ""} · ${c.title}`, start: c.end_date, end: c.end_date, kind: "contract_end", link: `/contracts/${c.id}` });
+        list.push({ id: `c-${c.id}`, title: `${c.contract_no ?? ""} · ${c.title}`, start: c.end_date, end: c.end_date, kind: "contract_end", link: `/contracts/${c.id}`, code: c.contract_no, short: c.title });
       });
       (milestones.data ?? []).forEach((m: { id: string; project_id: string; description: string; due_date: string | null; projects: ProjRel | ProjRel[] | null }) => {
         if (!m.due_date) return;
         const proj = rel(m.projects);
-        list.push({ id: `m-${m.id}`, title: `${proj?.code ?? ""} · ${m.description}`, start: m.due_date, end: m.due_date, kind: "project_milestone", link: `/projects/${m.project_id}`, aka: proj?.customer_aka, akaColor: proj?.customer_aka_color });
+        list.push({ id: `m-${m.id}`, title: `${proj?.code ?? ""} · ${m.description}`, start: m.due_date, end: m.due_date, kind: "project_milestone", link: `/projects/${m.project_id}`, aka: proj?.customer_aka, akaColor: proj?.customer_aka_color, code: proj?.code, short: m.description, sub: proj?.name });
       });
-      (projects.data ?? []).forEach((pr: { id: string; name: string; end_date: string | null; customer_aka?: string | null; customer_aka_color?: string | null }) => {
+      (projects.data ?? []).forEach((pr: { id: string; name: string; code?: string | null; end_date: string | null; customer_aka?: string | null; customer_aka_color?: string | null }) => {
         if (!pr.end_date) return;
-        list.push({ id: `pr-${pr.id}`, title: pr.name, start: pr.end_date, end: pr.end_date, kind: "project_end", link: `/projects/${pr.id}`, aka: pr.customer_aka, akaColor: pr.customer_aka_color });
+        list.push({ id: `pr-${pr.id}`, title: pr.name, start: pr.end_date, end: pr.end_date, kind: "project_end", link: `/projects/${pr.id}`, aka: pr.customer_aka, akaColor: pr.customer_aka_color, code: pr.code, short: pr.name });
       });
       (custom.data ?? []).forEach((ev: { id: string; title: string; event_date: string }) => {
-        list.push({ id: `e-${ev.id}`, title: ev.title, start: ev.event_date, end: ev.event_date, kind: "custom", link: "/calendar" });
+        list.push({ id: `e-${ev.id}`, title: ev.title, start: ev.event_date, end: ev.event_date, kind: "custom", link: "/calendar", short: ev.title });
       });
       if (!tasks.error) {
         (tasks.data ?? []).forEach((t: { id: string; project_id: string; name: string; start_date: string; end_date: string; progress: number | null; assignee_label: string | null; projects: ProjRel | ProjRel[] | null }) => {
@@ -146,6 +148,8 @@ function CalendarPage() {
             link: `/projects/${t.project_id}`,
             aka: proj?.customer_aka,
             akaColor: proj?.customer_aka_color,
+            code: proj?.code,
+            short: t.name,
           });
         });
       }
@@ -293,31 +297,41 @@ function CalendarPage() {
                       ))}
                     </div>
                     {/* Tablet & desktop: AKA chips with hover details */}
-                    <div className="hidden flex-wrap gap-1 sm:flex">
-                      {evs.slice(0, 6).map((ev) => (
+                    <div className="hidden space-y-0.5 sm:block">
+                      {evs.slice(0, 4).map((ev) => {
+                        const KIcon = KIND_META[ev.kind].icon;
+                        return (
                         <Tooltip key={ev.id}>
                           <TooltipTrigger asChild>
-                            <span
+                            <div
                               className={cn(
-                                "max-w-full truncate rounded px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase leading-tight",
-                                ev.aka ? akaBadgeClass(ev.akaColor) : KIND_META[ev.kind].bar,
+                                "flex w-full items-center gap-1 rounded px-1 py-0.5 text-[10px] leading-tight",
+                                KIND_META[ev.kind].bar,
                               )}
                             >
-                              {ev.aka ?? ev.title}
-                            </span>
+                              {ev.aka && (
+                                <span className={cn("shrink-0 rounded px-1 font-mono text-[9px] font-bold uppercase", akaBadgeClass(ev.akaColor))}>
+                                  {ev.aka}
+                                </span>
+                              )}
+                              <KIcon className="h-2.5 w-2.5 shrink-0 opacity-70" />
+                              <span className="truncate">{ev.code ? `${ev.code} · ` : ""}{ev.short ?? ev.title}</span>
+                            </div>
                           </TooltipTrigger>
                           <TooltipContent side="top" className="max-w-64">
                             <div className="text-xs font-medium">{ev.title}</div>
                             <div className="text-[11px] opacity-80">
                               {KIND_META[ev.kind].label}
+                              {ev.code ? ` · ${ev.code}` : ""}
                               {ev.sub ? ` · ${ev.sub}` : ""}
                             </div>
                             <div className="text-[11px] opacity-70">{fmtDate(ev.start)}{ev.end !== ev.start ? ` – ${fmtDate(ev.end)}` : ""}</div>
                           </TooltipContent>
                         </Tooltip>
-                      ))}
-                      {evs.length > 6 && (
-                        <div className="px-1 text-[10px] text-muted-foreground">+{evs.length - 6}</div>
+                        );
+                      })}
+                      {evs.length > 4 && (
+                        <div className="px-1 text-[10px] text-muted-foreground">+{evs.length - 4} รายการ</div>
                       )}
                     </div>
                   </button>
