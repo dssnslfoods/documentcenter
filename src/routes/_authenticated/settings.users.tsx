@@ -385,6 +385,8 @@ function UsersPage() {
                   <TableHead className="w-[200px]">เปลี่ยนบทบาท</TableHead>
                   <TableHead className="w-[200px]">แผนก</TableHead>
                   <TableHead className="w-[120px]">สถานะ</TableHead>
+                  <TableHead className="w-[150px] text-right">จัดการ</TableHead>
+
                 </TableRow>
               </TableHeader>
               <TableBody>
