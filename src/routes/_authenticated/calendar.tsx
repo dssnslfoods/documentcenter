@@ -132,7 +132,7 @@ function CalendarPage() {
       (milestones.data ?? []).forEach((m: { id: string; project_id: string; description: string; due_date: string | null; projects: ProjRel | ProjRel[] | null }) => {
         if (!m.due_date) return;
         const proj = rel(m.projects);
-        list.push({ id: `m-${m.id}`, title: `${proj?.code ?? ""} · ${m.description}`, start: m.due_date, end: m.due_date, kind: "project_milestone", link: `/projects/${m.project_id}`, aka: proj?.customer_aka, akaColor: proj?.customer_aka_color, code: proj?.code, short: m.description, sub: proj?.name });
+        list.push({ id: `m-${m.id}`, title: `${proj?.code ?? ""} · ${m.description}`, start: m.due_date, end: m.due_date, kind: "project_milestone", link: `/projects/${m.project_id}`, aka: proj?.customer_aka, akaColor: proj?.customer_aka_color, code: proj?.code, short: m.description, projectName: proj?.name });
       });
       (projects.data ?? []).forEach((pr: { id: string; name: string; code?: string | null; end_date: string | null; customer_aka?: string | null; customer_aka_color?: string | null }) => {
         if (!pr.end_date) return;
