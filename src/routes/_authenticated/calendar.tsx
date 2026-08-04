@@ -42,33 +42,38 @@ type Ev = {
   short?: string;
 };
 
-const KIND_META: Record<Kind, { label: string; icon: typeof FileSignature; cls: string; bar: string }> = {
+const KIND_META: Record<Kind, { label: string; short: string; icon: typeof FileSignature; cls: string; bar: string }> = {
   contract_end: {
     label: "สัญญาสิ้นสุด",
+    short: "สัญญา",
     icon: FileSignature,
     cls: "bg-warning/20 text-warning-foreground",
     bar: "bg-warning/30 text-warning-foreground",
   },
   project_milestone: {
     label: "งวดงานโครงการ",
+    short: "งวดงาน",
     icon: Flag,
     cls: "bg-info/15 text-info",
     bar: "bg-info/20 text-info",
   },
   project_end: {
     label: "โครงการสิ้นสุด",
+    short: "ปิดโครงการ",
     icon: FolderKanban,
     cls: "bg-primary/15 text-primary",
     bar: "bg-primary/20 text-primary",
   },
   project_task: {
     label: "แผนงานโครงการ (Timeline)",
+    short: "แผนงาน",
     icon: GanttChartSquare,
     cls: "bg-success/15 text-success",
     bar: "bg-success/25 text-success",
   },
   custom: {
     label: "กำหนดการอื่น",
+    short: "อื่นๆ",
     icon: CalendarClock,
     cls: "bg-muted text-muted-foreground",
     bar: "bg-muted text-muted-foreground",
@@ -296,26 +301,31 @@ function CalendarPage() {
                         <span key={ev.id} className={cn("h-1.5 w-1.5 rounded-full", KIND_META[ev.kind].bar)} />
                       ))}
                     </div>
-                    {/* Tablet & desktop: AKA chips with hover details */}
+                    {/* Tablet & desktop: two-tone AKA + kind label */}
                     <div className="hidden space-y-0.5 sm:block">
                       {evs.slice(0, 4).map((ev) => {
                         const KIcon = KIND_META[ev.kind].icon;
                         return (
                         <Tooltip key={ev.id}>
                           <TooltipTrigger asChild>
-                            <div
-                              className={cn(
-                                "flex w-full items-center gap-1 rounded px-1 py-0.5 text-[10px] leading-tight",
-                                KIND_META[ev.kind].bar,
-                              )}
-                            >
-                              {ev.aka && (
-                                <span className={cn("shrink-0 rounded px-1 font-mono text-[9px] font-bold uppercase", akaBadgeClass(ev.akaColor))}>
-                                  {ev.aka}
-                                </span>
-                              )}
-                              <KIcon className="h-2.5 w-2.5 shrink-0 opacity-70" />
-                              <span className="truncate">{ev.code ? `${ev.code} · ` : ""}{ev.short ?? ev.title}</span>
+                            <div className="flex w-full items-stretch overflow-hidden rounded text-[10px] leading-tight">
+                              <span
+                                className={cn(
+                                  "shrink-0 px-1 py-0.5 font-mono text-[9px] font-bold uppercase",
+                                  akaBadgeClass(ev.akaColor),
+                                )}
+                              >
+                                {ev.aka ?? "—"}
+                              </span>
+                              <span
+                                className={cn(
+                                  "flex min-w-0 flex-1 items-center gap-1 px-1 py-0.5",
+                                  KIND_META[ev.kind].bar,
+                                )}
+                              >
+                                <KIcon className="h-2.5 w-2.5 shrink-0 opacity-70" />
+                                <span className="truncate">{KIND_META[ev.kind].short}</span>
+                              </span>
                             </div>
                           </TooltipTrigger>
                           <TooltipContent side="top" className="max-w-64">
@@ -330,6 +340,7 @@ function CalendarPage() {
                         </Tooltip>
                         );
                       })}
+
                       {evs.length > 4 && (
                         <div className="px-1 text-[10px] text-muted-foreground">+{evs.length - 4} รายการ</div>
                       )}
