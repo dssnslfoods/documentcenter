@@ -296,26 +296,31 @@ function CalendarPage() {
                         <span key={ev.id} className={cn("h-1.5 w-1.5 rounded-full", KIND_META[ev.kind].bar)} />
                       ))}
                     </div>
-                    {/* Tablet & desktop: AKA chips with hover details */}
+                    {/* Tablet & desktop: two-tone AKA + kind label */}
                     <div className="hidden space-y-0.5 sm:block">
                       {evs.slice(0, 4).map((ev) => {
                         const KIcon = KIND_META[ev.kind].icon;
                         return (
                         <Tooltip key={ev.id}>
                           <TooltipTrigger asChild>
-                            <div
-                              className={cn(
-                                "flex w-full items-center gap-1 rounded px-1 py-0.5 text-[10px] leading-tight",
-                                KIND_META[ev.kind].bar,
-                              )}
-                            >
-                              {ev.aka && (
-                                <span className={cn("shrink-0 rounded px-1 font-mono text-[9px] font-bold uppercase", akaBadgeClass(ev.akaColor))}>
-                                  {ev.aka}
-                                </span>
-                              )}
-                              <KIcon className="h-2.5 w-2.5 shrink-0 opacity-70" />
-                              <span className="truncate">{ev.code ? `${ev.code} · ` : ""}{ev.short ?? ev.title}</span>
+                            <div className="flex w-full items-stretch overflow-hidden rounded text-[10px] leading-tight">
+                              <span
+                                className={cn(
+                                  "shrink-0 px-1 py-0.5 font-mono text-[9px] font-bold uppercase",
+                                  akaBadgeClass(ev.akaColor),
+                                )}
+                              >
+                                {ev.aka ?? "—"}
+                              </span>
+                              <span
+                                className={cn(
+                                  "flex min-w-0 flex-1 items-center gap-1 px-1 py-0.5",
+                                  KIND_META[ev.kind].bar,
+                                )}
+                              >
+                                <KIcon className="h-2.5 w-2.5 shrink-0 opacity-70" />
+                                <span className="truncate">{KIND_META[ev.kind].short}</span>
+                              </span>
                             </div>
                           </TooltipTrigger>
                           <TooltipContent side="top" className="max-w-64">
@@ -330,6 +335,7 @@ function CalendarPage() {
                         </Tooltip>
                         );
                       })}
+
                       {evs.length > 4 && (
                         <div className="px-1 text-[10px] text-muted-foreground">+{evs.length - 4} รายการ</div>
                       )}
