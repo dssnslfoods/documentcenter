@@ -148,7 +148,6 @@ function UsersPage() {
         .from("profiles")
         .select("id, email, full_name, phone, position, department_id, is_active, created_at, departments(name_th)")
         .order("created_at", { ascending: false });
-        .order("created_at", { ascending: false });
       if (error) throw error;
       const ids = (profiles ?? []).map((p) => p.id);
       const { data: rolesData } = await sb.from("user_roles").select("user_id, role").in("user_id", ids);
