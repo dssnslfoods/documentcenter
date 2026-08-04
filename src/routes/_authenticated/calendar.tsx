@@ -156,6 +156,7 @@ function CalendarPage() {
             akaColor: proj?.customer_aka_color,
             code: proj?.code,
             short: t.name,
+            projectName: proj?.name,
           });
         });
       }
