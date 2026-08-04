@@ -378,7 +378,14 @@ function CalendarPage() {
                             <meta.icon className="h-4 w-4" />
                           </span>
                           <div className="min-w-0 flex-1">
-                            <div className="truncate text-sm font-medium">{ev.title}</div>
+                            <div className="flex items-center gap-1.5 truncate text-sm font-medium">
+                              {ev.aka && (
+                                <span className={cn("shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase", akaBadgeClass(ev.akaColor))}>
+                                  {ev.aka}
+                                </span>
+                              )}
+                              <span className="truncate">{ev.title}</span>
+                            </div>
                             <div className="truncate text-xs text-muted-foreground">{meta.label} · {fmtDate(ev.start)}</div>
                           </div>
                           <Badge className={d !== null && d <= 7 ? "border-0 bg-destructive/15 text-destructive" : "border-0 bg-muted text-muted-foreground"}>
