@@ -484,6 +484,32 @@ function UsersPage() {
                         </Button>
                       )}
                     </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button size="sm" variant="outline"
+                          onClick={() => {
+                            setEditTarget({ id: u.id, email: u.email ?? "" });
+                            setEditForm({
+                              email: u.email ?? "",
+                              fullName: u.full_name ?? "",
+                              phone: (u as { phone?: string | null }).phone ?? "",
+                              position: (u as { position?: string | null }).position ?? "",
+                            });
+                          }}>
+                          <Pencil className="h-3.5 w-3.5 sm:mr-1" />
+                          <span className="hidden sm:inline">แก้ไข</span>
+                        </Button>
+                        <Button size="sm" variant="outline"
+                          onClick={() => {
+                            setPwTarget({ id: u.id, email: u.email ?? "" });
+                            setNewPassword(genPassword());
+                            setPwDone(false);
+                          }}>
+                          <KeyRound className="h-3.5 w-3.5 sm:mr-1" />
+                          <span className="hidden sm:inline">รีเซ็ตรหัส</span>
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
