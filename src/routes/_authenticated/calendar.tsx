@@ -19,6 +19,7 @@ import { getSupabase } from "@/lib/supabase";
 import { fmtDate, daysUntil } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { akaBadgeClass } from "@/lib/aka-colors";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export const Route = createFileRoute("/_authenticated/calendar")({
   head: () => ({ meta: [{ title: "ปฏิทินและกำหนดการ | Document Hub" }] }),
