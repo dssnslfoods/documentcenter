@@ -97,7 +97,7 @@ export function OverviewTab({
   });
 
   const progress = project.progress ?? 0;
-  const nexts = nextStatuses(project.status);
+  const nexts = nextStatuses(project.status, !!project.is_inhouse);
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
