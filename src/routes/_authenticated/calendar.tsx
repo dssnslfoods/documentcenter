@@ -294,10 +294,15 @@ function CalendarPage() {
                       {evs.slice(0, 3).map((ev) => (
                         <div
                           key={ev.id}
-                          title={ev.title}
-                          className={cn("truncate rounded px-1 py-0.5 text-[10px] leading-tight", KIND_META[ev.kind].bar)}
+                          title={ev.aka ? `[${ev.aka}] ${ev.title}` : ev.title}
+                          className={cn("flex items-center gap-1 truncate rounded px-1 py-0.5 text-[10px] leading-tight", KIND_META[ev.kind].bar)}
                         >
-                          {ev.title}
+                          {ev.aka && (
+                            <span className={cn("shrink-0 rounded px-1 font-mono text-[9px] font-bold uppercase", akaBadgeClass(ev.akaColor))}>
+                              {ev.aka}
+                            </span>
+                          )}
+                          <span className="truncate">{ev.title}</span>
                         </div>
                       ))}
                       {evs.length > 3 && (
