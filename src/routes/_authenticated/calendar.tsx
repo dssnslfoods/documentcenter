@@ -297,29 +297,42 @@ function CalendarPage() {
                       ))}
                     </div>
                     {/* Tablet & desktop: AKA chips with hover details */}
-                    <div className="hidden flex-wrap gap-1 sm:flex">
-                      {evs.slice(0, 6).map((ev) => (
+                    <div className="hidden space-y-0.5 sm:block">
+                      {evs.slice(0, 4).map((ev) => {
+                        const KIcon = KIND_META[ev.kind].icon;
+                        return (
                         <Tooltip key={ev.id}>
                           <TooltipTrigger asChild>
-                            <span
+                            <div
                               className={cn(
-                                "max-w-full truncate rounded px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase leading-tight",
-                                ev.aka ? akaBadgeClass(ev.akaColor) : KIND_META[ev.kind].bar,
+                                "flex w-full items-center gap-1 rounded px-1 py-0.5 text-[10px] leading-tight",
+                                KIND_META[ev.kind].bar,
                               )}
                             >
-                              {ev.aka ?? ev.title}
-                            </span>
+                              {ev.aka && (
+                                <span className={cn("shrink-0 rounded px-1 font-mono text-[9px] font-bold uppercase", akaBadgeClass(ev.akaColor))}>
+                                  {ev.aka}
+                                </span>
+                              )}
+                              <KIcon className="h-2.5 w-2.5 shrink-0 opacity-70" />
+                              <span className="truncate">{ev.code ? `${ev.code} · ` : ""}{ev.short ?? ev.title}</span>
+                            </div>
                           </TooltipTrigger>
                           <TooltipContent side="top" className="max-w-64">
                             <div className="text-xs font-medium">{ev.title}</div>
                             <div className="text-[11px] opacity-80">
                               {KIND_META[ev.kind].label}
+                              {ev.code ? ` · ${ev.code}` : ""}
                               {ev.sub ? ` · ${ev.sub}` : ""}
                             </div>
                             <div className="text-[11px] opacity-70">{fmtDate(ev.start)}{ev.end !== ev.start ? ` – ${fmtDate(ev.end)}` : ""}</div>
                           </TooltipContent>
                         </Tooltip>
-                      ))}
+                        );
+                      })}
+                      {evs.length > 4 && (
+                        <div className="px-1 text-[10px] text-muted-foreground">+{evs.length - 4} รายการ</div>
+                      )}
                       {evs.length > 6 && (
                         <div className="px-1 text-[10px] text-muted-foreground">+{evs.length - 6}</div>
                       )}
