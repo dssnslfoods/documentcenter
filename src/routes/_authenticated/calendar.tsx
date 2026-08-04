@@ -40,6 +40,7 @@ type Ev = {
   akaColor?: string | null;
   code?: string | null;
   short?: string;
+  projectName?: string;
 };
 
 const KIND_META: Record<Kind, { label: string; short: string; icon: typeof FileSignature; cls: string; bar: string }> = {
@@ -131,11 +132,11 @@ function CalendarPage() {
       (milestones.data ?? []).forEach((m: { id: string; project_id: string; description: string; due_date: string | null; projects: ProjRel | ProjRel[] | null }) => {
         if (!m.due_date) return;
         const proj = rel(m.projects);
-        list.push({ id: `m-${m.id}`, title: `${proj?.code ?? ""} · ${m.description}`, start: m.due_date, end: m.due_date, kind: "project_milestone", link: `/projects/${m.project_id}`, aka: proj?.customer_aka, akaColor: proj?.customer_aka_color, code: proj?.code, short: m.description, sub: proj?.name });
+        list.push({ id: `m-${m.id}`, title: `${proj?.code ?? ""} · ${m.description}`, start: m.due_date, end: m.due_date, kind: "project_milestone", link: `/projects/${m.project_id}`, aka: proj?.customer_aka, akaColor: proj?.customer_aka_color, code: proj?.code, short: m.description, projectName: proj?.name });
       });
       (projects.data ?? []).forEach((pr: { id: string; name: string; code?: string | null; end_date: string | null; customer_aka?: string | null; customer_aka_color?: string | null }) => {
         if (!pr.end_date) return;
-        list.push({ id: `pr-${pr.id}`, title: pr.name, start: pr.end_date, end: pr.end_date, kind: "project_end", link: `/projects/${pr.id}`, aka: pr.customer_aka, akaColor: pr.customer_aka_color, code: pr.code, short: pr.name });
+        list.push({ id: `pr-${pr.id}`, title: pr.name, start: pr.end_date, end: pr.end_date, kind: "project_end", link: `/projects/${pr.id}`, aka: pr.customer_aka, akaColor: pr.customer_aka_color, code: pr.code, short: pr.name, projectName: pr.name });
       });
       (custom.data ?? []).forEach((ev: { id: string; title: string; event_date: string }) => {
         list.push({ id: `e-${ev.id}`, title: ev.title, start: ev.event_date, end: ev.event_date, kind: "custom", link: "/calendar", short: ev.title });
@@ -155,6 +156,7 @@ function CalendarPage() {
             akaColor: proj?.customer_aka_color,
             code: proj?.code,
             short: t.name,
+            projectName: proj?.name,
           });
         });
       }
@@ -330,6 +332,9 @@ function CalendarPage() {
                           </TooltipTrigger>
                           <TooltipContent side="top" className="max-w-64">
                             <div className="text-xs font-medium">{ev.title}</div>
+                            {ev.projectName && (
+                              <div className="text-[11px] font-medium text-primary opacity-90">{ev.projectName}</div>
+                            )}
                             <div className="text-[11px] opacity-80">
                               {KIND_META[ev.kind].label}
                               {ev.code ? ` · ${ev.code}` : ""}
