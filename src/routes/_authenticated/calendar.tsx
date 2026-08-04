@@ -34,6 +34,8 @@ type Ev = {
   kind: Kind;
   link: string;
   sub?: string;
+  aka?: string | null;
+  akaColor?: string | null;
 };
 
 const KIND_META: Record<Kind, { label: string; icon: typeof FileSignature; cls: string; bar: string }> = {
