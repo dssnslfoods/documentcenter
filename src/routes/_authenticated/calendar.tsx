@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDate, daysUntil } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { akaBadgeClass } from "@/lib/aka-colors";
 
 export const Route = createFileRoute("/_authenticated/calendar")({
   head: () => ({ meta: [{ title: "ปฏิทินและกำหนดการ | Document Hub" }] }),
@@ -34,6 +35,8 @@ type Ev = {
   kind: Kind;
   link: string;
   sub?: string;
+  aka?: string | null;
+  akaColor?: string | null;
 };
 
 const KIND_META: Record<Kind, { label: string; icon: typeof FileSignature; cls: string; bar: string }> = {
@@ -103,32 +106,35 @@ function CalendarPage() {
 
       const [contracts, milestones, projects, custom, tasks] = await Promise.all([
         sb.from("contracts").select("id, contract_no, title, end_date").gte("end_date", s).lte("end_date", e).neq("status", "archived"),
-        sb.from("project_milestones").select("id, project_id, description, due_date, projects(name, code)").gte("due_date", s).lte("due_date", e),
-        sb.from("projects").select("id, name, end_date").gte("end_date", s).lte("end_date", e),
+        sb.from("project_milestones").select("id, project_id, description, due_date, projects(name, code, customer_aka, customer_aka_color)").gte("due_date", s).lte("due_date", e),
+        sb.from("projects").select("id, name, end_date, customer_aka, customer_aka_color").gte("end_date", s).lte("end_date", e),
         sb.from("calendar_events").select("id, title, event_date, module, record_id").gte("event_date", s).lte("event_date", e),
         // RLS on project_tasks limits rows to projects the user is a member of (or admin)
-        sb.from("project_tasks").select("id, project_id, name, start_date, end_date, status, progress, assignee_label, projects(name, code)").lte("start_date", e).gte("end_date", s),
+        sb.from("project_tasks").select("id, project_id, name, start_date, end_date, status, progress, assignee_label, projects(name, code, customer_aka, customer_aka_color)").lte("start_date", e).gte("end_date", s),
       ]);
+
+      type ProjRel = { name: string; code: string | null; customer_aka?: string | null; customer_aka_color?: string | null };
+      const rel = (p: ProjRel | ProjRel[] | null) => (Array.isArray(p) ? p[0] : p);
 
       const list: Ev[] = [];
       (contracts.data ?? []).forEach((c: { id: string; contract_no: string | null; title: string; end_date: string }) => {
         list.push({ id: `c-${c.id}`, title: `${c.contract_no ?? ""} · ${c.title}`, start: c.end_date, end: c.end_date, kind: "contract_end", link: `/contracts/${c.id}` });
       });
-      (milestones.data ?? []).forEach((m: { id: string; project_id: string; description: string; due_date: string | null; projects: { name: string; code: string | null } | { name: string; code: string | null }[] | null }) => {
+      (milestones.data ?? []).forEach((m: { id: string; project_id: string; description: string; due_date: string | null; projects: ProjRel | ProjRel[] | null }) => {
         if (!m.due_date) return;
-        const proj = Array.isArray(m.projects) ? m.projects[0] : m.projects;
-        list.push({ id: `m-${m.id}`, title: `${proj?.code ?? ""} · ${m.description}`, start: m.due_date, end: m.due_date, kind: "project_milestone", link: `/projects/${m.project_id}` });
+        const proj = rel(m.projects);
+        list.push({ id: `m-${m.id}`, title: `${proj?.code ?? ""} · ${m.description}`, start: m.due_date, end: m.due_date, kind: "project_milestone", link: `/projects/${m.project_id}`, aka: proj?.customer_aka, akaColor: proj?.customer_aka_color });
       });
-      (projects.data ?? []).forEach((pr: { id: string; name: string; end_date: string | null }) => {
+      (projects.data ?? []).forEach((pr: { id: string; name: string; end_date: string | null; customer_aka?: string | null; customer_aka_color?: string | null }) => {
         if (!pr.end_date) return;
-        list.push({ id: `pr-${pr.id}`, title: pr.name, start: pr.end_date, end: pr.end_date, kind: "project_end", link: `/projects/${pr.id}` });
+        list.push({ id: `pr-${pr.id}`, title: pr.name, start: pr.end_date, end: pr.end_date, kind: "project_end", link: `/projects/${pr.id}`, aka: pr.customer_aka, akaColor: pr.customer_aka_color });
       });
       (custom.data ?? []).forEach((ev: { id: string; title: string; event_date: string }) => {
         list.push({ id: `e-${ev.id}`, title: ev.title, start: ev.event_date, end: ev.event_date, kind: "custom", link: "/calendar" });
       });
       if (!tasks.error) {
-        (tasks.data ?? []).forEach((t: { id: string; project_id: string; name: string; start_date: string; end_date: string; progress: number | null; assignee_label: string | null; projects: { name: string; code: string | null } | { name: string; code: string | null }[] | null }) => {
-          const proj = Array.isArray(t.projects) ? t.projects[0] : t.projects;
+        (tasks.data ?? []).forEach((t: { id: string; project_id: string; name: string; start_date: string; end_date: string; progress: number | null; assignee_label: string | null; projects: ProjRel | ProjRel[] | null }) => {
+          const proj = rel(t.projects);
           list.push({
             id: `t-${t.id}`,
             title: t.name,
@@ -137,6 +143,8 @@ function CalendarPage() {
             end: t.end_date < t.start_date ? t.start_date : t.end_date,
             kind: "project_task",
             link: `/projects/${t.project_id}`,
+            aka: proj?.customer_aka,
+            akaColor: proj?.customer_aka_color,
           });
         });
       }
@@ -287,10 +295,15 @@ function CalendarPage() {
                       {evs.slice(0, 3).map((ev) => (
                         <div
                           key={ev.id}
-                          title={ev.title}
-                          className={cn("truncate rounded px-1 py-0.5 text-[10px] leading-tight", KIND_META[ev.kind].bar)}
+                          title={ev.aka ? `[${ev.aka}] ${ev.title}` : ev.title}
+                          className={cn("flex items-center gap-1 truncate rounded px-1 py-0.5 text-[10px] leading-tight", KIND_META[ev.kind].bar)}
                         >
-                          {ev.title}
+                          {ev.aka && (
+                            <span className={cn("shrink-0 rounded px-1 font-mono text-[9px] font-bold uppercase", akaBadgeClass(ev.akaColor))}>
+                              {ev.aka}
+                            </span>
+                          )}
+                          <span className="truncate">{ev.title}</span>
                         </div>
                       ))}
                       {evs.length > 3 && (
@@ -325,7 +338,14 @@ function CalendarPage() {
                             <meta.icon className="h-4 w-4" />
                           </span>
                           <div className="min-w-0 flex-1">
-                            <div className="truncate text-sm font-medium">{ev.title}</div>
+                            <div className="flex items-center gap-1.5 truncate text-sm font-medium">
+                              {ev.aka && (
+                                <span className={cn("shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase", akaBadgeClass(ev.akaColor))}>
+                                  {ev.aka}
+                                </span>
+                              )}
+                              <span className="truncate">{ev.title}</span>
+                            </div>
                             <div className="truncate text-xs text-muted-foreground">
                               {ev.sub ? `${meta.label} · ${ev.sub}` : meta.label}
                             </div>
@@ -358,7 +378,14 @@ function CalendarPage() {
                             <meta.icon className="h-4 w-4" />
                           </span>
                           <div className="min-w-0 flex-1">
-                            <div className="truncate text-sm font-medium">{ev.title}</div>
+                            <div className="flex items-center gap-1.5 truncate text-sm font-medium">
+                              {ev.aka && (
+                                <span className={cn("shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase", akaBadgeClass(ev.akaColor))}>
+                                  {ev.aka}
+                                </span>
+                              )}
+                              <span className="truncate">{ev.title}</span>
+                            </div>
                             <div className="truncate text-xs text-muted-foreground">{meta.label} · {fmtDate(ev.start)}</div>
                           </div>
                           <Badge className={d !== null && d <= 7 ? "border-0 bg-destructive/15 text-destructive" : "border-0 bg-muted text-muted-foreground"}>
