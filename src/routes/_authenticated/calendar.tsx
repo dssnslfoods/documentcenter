@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDate, daysUntil } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { akaBadgeClass } from "@/lib/aka-colors";
 
 export const Route = createFileRoute("/_authenticated/calendar")({
   head: () => ({ meta: [{ title: "ปฏิทินและกำหนดการ | Document Hub" }] }),
