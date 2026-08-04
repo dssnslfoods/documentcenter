@@ -40,6 +40,7 @@ type Ev = {
   akaColor?: string | null;
   code?: string | null;
   short?: string;
+  projectName?: string;
 };
 
 const KIND_META: Record<Kind, { label: string; short: string; icon: typeof FileSignature; cls: string; bar: string }> = {
