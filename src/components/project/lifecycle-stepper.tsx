@@ -1,22 +1,25 @@
 import { Check } from "lucide-react";
 import {
-  LIFECYCLE_PHASES,
-  phaseIndex,
+  lifecyclePhases,
+  visiblePhaseIndex,
   type ProjectLifecycleStatus,
 } from "@/lib/project-lifecycle";
 
 export function LifecycleStepper({
   status,
+  isInhouse = false,
 }: {
   status: ProjectLifecycleStatus;
+  isInhouse?: boolean;
 }) {
-  const currentIdx = phaseIndex(status);
+  const phases = lifecyclePhases(isInhouse);
+  const currentIdx = visiblePhaseIndex(status, isInhouse);
   const isLost = status === "lost";
 
   return (
     <div className="w-full overflow-x-auto">
       <ol className="flex min-w-max items-center gap-0 p-1">
-        {LIFECYCLE_PHASES.map((phase, i) => {
+        {phases.map((phase, i) => {
           const isDone = i < currentIdx;
           const isCurrent = i === currentIdx;
           const isLostAtWon = isLost && phase.key === "won";
