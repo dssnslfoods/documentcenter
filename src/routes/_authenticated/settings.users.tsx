@@ -605,6 +605,96 @@ function UsersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* แก้ไขข้อมูลผู้ใช้ */}
+      <Dialog open={!!editTarget} onOpenChange={(v) => { if (!v) setEditTarget(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>แก้ไขข้อมูลผู้ใช้</DialogTitle>
+            <DialogDescription>{editTarget?.email}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>อีเมล *</Label>
+              <Input type="email" value={editForm.email}
+                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
+            </div>
+            <div>
+              <Label>ชื่อ-นามสกุล</Label>
+              <Input value={editForm.fullName}
+                onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })} />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label>เบอร์โทรศัพท์</Label>
+                <Input value={editForm.phone}
+                  onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
+              </div>
+              <div>
+                <Label>ตำแหน่ง</Label>
+                <Input value={editForm.position}
+                  onChange={(e) => setEditForm({ ...editForm, position: e.target.value })} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditTarget(null)}>ยกเลิก</Button>
+            <Button onClick={() => updateUser.mutate()} disabled={updateUser.isPending || !editForm.email.trim()}>
+              บันทึก
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* รีเซ็ตรหัสผ่าน */}
+      <Dialog open={!!pwTarget} onOpenChange={(v) => { if (!v) { setPwTarget(null); setPwDone(false); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>รีเซ็ตรหัสผ่าน</DialogTitle>
+            <DialogDescription>{pwTarget?.email}</DialogDescription>
+          </DialogHeader>
+          {pwDone ? (
+            <div className="space-y-3">
+              <Alert>
+                <AlertTitle>รีเซ็ตรหัสผ่านสำเร็จ</AlertTitle>
+                <AlertDescription>แจ้งรหัสผ่านใหม่ให้ผู้ใช้ และแนะนำให้เปลี่ยนทันทีหลังเข้าสู่ระบบ</AlertDescription>
+              </Alert>
+              <div className="rounded-md border bg-muted/40 p-3 font-mono text-sm">
+                <div>Email: {pwTarget?.email}</div>
+                <div>Password: {newPassword}</div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline"
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(`Email: ${pwTarget?.email}\nPassword: ${newPassword}`);
+                    toast.success("คัดลอกข้อมูลเข้าสู่ระบบแล้ว");
+                  }}>
+                  <Copy className="h-4 w-4 mr-1" /> คัดลอก
+                </Button>
+                <Button onClick={() => { setPwTarget(null); setPwDone(false); }}>ปิด</Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div>
+                <Label>รหัสผ่านใหม่ *</Label>
+                <div className="flex gap-2">
+                  <Input value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                  <Button type="button" variant="outline" onClick={() => setNewPassword(genPassword())}>
+                    สุ่มใหม่
+                  </Button>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">อย่างน้อย 8 ตัวอักษร</p>
+              </div>
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setPwTarget(null)}>ยกเลิก</Button>
+                <Button onClick={() => resetPassword.mutate()} disabled={resetPassword.isPending}>
+                  รีเซ็ตรหัสผ่าน
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
