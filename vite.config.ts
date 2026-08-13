@@ -16,4 +16,8 @@ export default defineConfig({
   vite: {
     plugins: [mcpPlugin()],
   },
+  // Self-hosted on Cloud Run (behind Firebase Hosting) — plain Node HTTP server output.
+  nitro: {
+    preset: "node-server",
+  },
 });

@@ -15,7 +15,7 @@ Built with React 19 + TanStack Start v1 + TypeScript + Tailwind v4 + shadcn/ui +
 - **8 แท็บในหน้าโครงการ** — ภาพรวม, RFQ/Spec, ใบเสนอราคา Supplier (AI scan), ใบเสนอราคาลูกค้า (AI scan), สัญญา/งวดงาน, ดำเนินโครงการ (Gantt เขียนเอง), สมาชิกโครงการ, ประวัติการแก้ไข (field-level diff)
 - **RBAC สองชั้น** — บทบาทระดับระบบ (`platform_owner` / `super_admin` / `management` / `dept_manager` / `staff`) × บทบาทและสิทธิ์ละเอียดระดับโครงการ (`exec` / `dept_head` / `staff` + permission ต่อฟีเจอร์)
 - **Multi-tenant** — แยกข้อมูลตามองค์กร, platform owner ต้อง "สลับเข้า" หรือได้รับ Support Access ชั่วคราวจึงเห็นข้อมูลองค์กร
-- **AI Scan ใบเสนอราคา** — อัปโหลดรูป/PDF → Gemini (ผ่าน Lovable AI Gateway) → เติมฟอร์มอัตโนมัติพร้อม confidence รายฟิลด์
+- **AI Scan ใบเสนอราคา** — อัปโหลดรูป/PDF → Gemini API (เรียกตรง) → เติมฟอร์มอัตโนมัติพร้อม confidence รายฟิลด์
 - **การมอบหมายงาน (Task Assignment)** — สถานะ `draft → assigned → acknowledged → in_review → accepted` (แยก `revision` ได้), Kanban board, ไทม์ไลน์พอร์ตโฟลิโอทุกโครงการ
 - **VAT, Price masking, AKA ลูกค้า, Calendar, Global smart search (Postgres FTS), Auto code generation, MCP + OAuth** สำหรับ AI agent ภายนอก
 
@@ -34,7 +34,7 @@ Built with React 19 + TanStack Start v1 + TypeScript + Tailwind v4 + shadcn/ui +
 | Forms | react-hook-form + zod |
 | Backend | External Supabase (Postgres + Auth + Storage) |
 | Server logic | `createServerFn` (`@tanstack/react-start`) ในไฟล์ `*.functions.ts` |
-| AI | Lovable AI Gateway → `google/gemini-2.5-flash` |
+| AI | Gemini API (เรียกตรง) → `gemini-2.5-flash` |
 | Agent | MCP server (`/mcp`) + OAuth 2.1 consent flow |
 
 ---
@@ -54,7 +54,7 @@ Built with React 19 + TanStack Start v1 + TypeScript + Tailwind v4 + shadcn/ui +
 | `EXTERNAL_SUPABASE_URL` | server fn `getSupabaseConfig()` |
 | `EXTERNAL_SUPABASE_ANON_KEY` | ส่งให้ browser ผ่าน server fn |
 | `EXTERNAL_SUPABASE_SERVICE_ROLE_KEY` | `src/lib/supabase-admin.ts` (server only) |
-| `LOVABLE_API_KEY` | AI gateway (scan ใบเสนอราคา) |
+| `GEMINI_API_KEY` | เรียก Gemini API โดยตรง (scan ใบเสนอราคา) |
 
 ### 3) เปิด Email Auth ใน Supabase
 

@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Copy, Trash2, Plus, FileText, Pencil, X, Check, ArrowUp, ArrowDown } from "lucide-react";
+import { Copy, Trash2, Plus, FileText, Pencil, X, Check, ArrowUp, ArrowDown, Sparkles, Loader2, ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/page-header";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDateTime } from "@/lib/format";
+import { rewriteSpecText } from "@/lib/rewrite-spec.functions";
+
+function fileToDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("อ่านไฟล์ไม่สำเร็จ"));
+    reader.readAsDataURL(file);
+  });
+}
 
 type NoteType = "rfq_spec" | "tor" | "other";
 
@@ -42,6 +53,61 @@ export function ProjectSpecNotesList({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
+  const [rewriting, setRewriting] = useState(false);
+  const [editRewriting, setEditRewriting] = useState(false);
+  const addImageInputRef = useRef<HTMLInputElement>(null);
+  const editImageInputRef = useRef<HTMLInputElement>(null);
+
+  const rewriteFn = useServerFn(rewriteSpecText);
+
+  const runRewrite = async (
+    payload: { text?: string; image?: string },
+    setText: (v: string) => void,
+    setBusy: (v: boolean) => void,
+  ) => {
+    setBusy(true);
+    try {
+      const result = await rewriteFn({ data: payload });
+      setText(result.text);
+      toast.success("จัดรูปแบบเรียบร้อย");
+    } catch (e) {
+      toast.error("จัดรูปแบบไม่สำเร็จ", { description: (e as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const rewrite = (text: string, setText: (v: string) => void, setBusy: (v: boolean) => void) => {
+    const trimmed = text.trim();
+    if (!trimmed) {
+      toast.error("กรุณากรอกเนื้อหาก่อน");
+      return;
+    }
+    void runRewrite({ text: trimmed }, setText, setBusy);
+  };
+
+  const rewriteFromImage = async (
+    file: File,
+    currentText: string,
+    setText: (v: string) => void,
+    setBusy: (v: boolean) => void,
+  ) => {
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    if (!file.type.startsWith("image/") && !isPdf) {
+      toast.error("รองรับเฉพาะไฟล์รูปภาพหรือ PDF", { description: "อัปโหลดไฟล์ JPG, PNG หรือ PDF" });
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("ไฟล์ใหญ่เกินไป (สูงสุด 8MB)");
+      return;
+    }
+    try {
+      const image = await fileToDataUrl(file);
+      await runRewrite({ text: currentText.trim() || undefined, image }, setText, setBusy);
+    } catch (e) {
+      toast.error("อ่านไฟล์ไม่สำเร็จ", { description: (e as Error).message });
+    }
+  };
 
   const { data: notes, isLoading } = useQuery({
     queryKey: key,
@@ -162,6 +228,36 @@ export function ProjectSpecNotesList({
               className="font-mono text-sm"
             />
             <div className="flex gap-2 justify-end">
+              <input
+                ref={addImageInputRef}
+                type="file"
+                accept="image/*,application/pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = "";
+                  if (f) void rewriteFromImage(f, content, setContent, setRewriting);
+                }}
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={rewriting}
+                onClick={() => addImageInputRef.current?.click()}
+                className="mr-auto"
+              >
+                {rewriting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <ImagePlus className="h-4 w-4 mr-1" />}
+                แนบรูปภาพ
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={rewriting || !content.trim()}
+                onClick={() => rewrite(content, setContent, setRewriting)}
+              >
+                {rewriting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1" />}
+                จัดรูปแบบด้วย AI
+              </Button>
               <Button size="sm" variant="ghost" onClick={() => { setAdding(false); setTitle(""); setContent(""); }}>
                 ยกเลิก
               </Button>
@@ -190,6 +286,36 @@ export function ProjectSpecNotesList({
                       className="font-mono text-sm"
                     />
                     <div className="flex gap-2 justify-end">
+                      <input
+                        ref={editImageInputRef}
+                        type="file"
+                        accept="image/*,application/pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          e.target.value = "";
+                          if (f) void rewriteFromImage(f, editContent, setEditContent, setEditRewriting);
+                        }}
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={editRewriting}
+                        onClick={() => editImageInputRef.current?.click()}
+                        className="mr-auto"
+                      >
+                        {editRewriting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <ImagePlus className="h-4 w-4 mr-1" />}
+                        แนบรูปภาพ
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={editRewriting || !editContent.trim()}
+                        onClick={() => rewrite(editContent, setEditContent, setEditRewriting)}
+                      >
+                        {editRewriting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1" />}
+                        จัดรูปแบบด้วย AI
+                      </Button>
                       <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
                         <X className="h-4 w-4 mr-1" /> ยกเลิก
                       </Button>

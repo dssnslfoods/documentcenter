@@ -78,38 +78,54 @@ confidence คือความมั่นใจของแต่ละช่
 items คือรายการสินค้า/บริการในตารางของใบเสนอราคา (เรียงตามเอกสาร) หากไม่มีให้ใส่ []
 ข้อมูลที่ไม่พบให้ใส่ null`;
 
+const GEMINI_MODEL = "gemini-2.5-flash";
+
+function parseDataUrl(dataUrl: string): { mimeType: string; base64: string } {
+  const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/s);
+  if (!match) throw new Error("รูปแบบไฟล์ไม่ถูกต้อง");
+  return { mimeType: match[1], base64: match[2] };
+}
+
 export const scanQuotation = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => input.parse(data))
   .handler(async ({ data }): Promise<ScannedQuotation> => {
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("ยังไม่ได้ตั้งค่า AI (LOVABLE_API_KEY)");
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) throw new Error("ยังไม่ได้ตั้งค่า AI (GEMINI_API_KEY)");
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: SYSTEM },
-          {
-            role: "user",
-            content: [
-              { type: "text", text: "ดึงข้อมูลจากใบเสนอราคานี้" },
-              data.image.startsWith("data:application/pdf")
-                ? { type: "file", file: { filename: data.filename || "quotation.pdf", file_data: data.image } }
-                : { type: "image_url", image_url: { url: data.image } },
-            ],
-          },
-        ],
-      }),
-    });
+    const { mimeType, base64 } = parseDataUrl(data.image);
+
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+      {
+        method: "POST",
+        headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: SYSTEM }] },
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { text: "ดึงข้อมูลจากใบเสนอราคานี้" },
+                { inlineData: { mimeType, data: base64 } },
+              ],
+            },
+          ],
+          generationConfig: { responseMimeType: "application/json" },
+        }),
+      },
+    );
 
     if (res.status === 429) throw new Error("มีการเรียกใช้ AI ถี่เกินไป กรุณาลองใหม่อีกครั้ง");
-    if (res.status === 402) throw new Error("เครดิต AI หมด กรุณาเติมเครดิตใน Workspace");
-    if (!res.ok) throw new Error(`สแกนไม่สำเร็จ (${res.status})`);
+    if (!res.ok) {
+      const errBody = await res.text();
+      console.error("Gemini scan error:", res.status, errBody);
+      throw new Error(`สแกนไม่สำเร็จ (${res.status})`);
+    }
 
-    const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-    const text = json.choices?.[0]?.message?.content ?? "";
+    const json = (await res.json()) as {
+      candidates?: { content?: { parts?: { text?: string }[] } }[];
+    };
+    const text = json.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) throw new Error("ไม่สามารถอ่านข้อมูลจากเอกสารได้");
 
