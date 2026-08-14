@@ -1,13 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
-import { ArrowLeft, Loader2, Lock, Trophy, XCircle, CheckCircle2, CircleDashed, Eye } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowLeft, Loader2, Lock, Trophy, XCircle, CheckCircle2, CircleDashed, Eye, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { getSupabase } from "@/lib/supabase";
 import { LifecycleStepper } from "@/components/project/lifecycle-stepper";
 import { OverviewTab } from "@/components/project/overview-tab";
+import { DeleteProjectDialog } from "@/components/project/delete-project-dialog";
 import { ProjectDocumentsList } from "@/components/project/documents-list";
 import { ProjectSpecNotesList } from "@/components/project/spec-notes-list";
 import { SupplierQuotationsTab } from "@/components/project/supplier-quotations-tab";
@@ -101,6 +102,7 @@ function ProjectDetail() {
     },
   });
   const autoAdvancedRef = useRef<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const isAdmin = perms?.isAdmin ?? false;
   const status = (p?.status ?? "draft") as ProjectLifecycleStatus;
@@ -180,9 +182,31 @@ function ProjectDetail() {
 
   return (
     <div className="space-y-6">
-      <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/projects" })} className="-ml-2">
-        <ArrowLeft className="mr-2 h-4 w-4" />กลับรายการโครงการ
-      </Button>
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/projects" })} className="-ml-2">
+          <ArrowLeft className="mr-2 h-4 w-4" />กลับรายการโครงการ
+        </Button>
+        {perms?.isAdmin && (
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={() => setDeleteOpen(true)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />ลบโครงการ
+            </Button>
+            <DeleteProjectDialog
+              projectId={p?.id ?? id}
+              projectCode={p?.code ?? ""}
+              projectName={p?.name ?? ""}
+              open={deleteOpen}
+              onOpenChange={setDeleteOpen}
+              onDeleted={() => navigate({ to: "/projects" })}
+            />
+          </>
+        )}
+      </div>
 
       {/* Header + auto-detect status banner */}
       <div className="tile grid gap-4 p-4 sm:p-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-5">
