@@ -11,6 +11,7 @@ import { getSupabase } from "@/lib/supabase";
 import { fmtDate, fmtCurrency } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { getProjectFileUrl } from "@/lib/project-files";
+import { usePageGuard } from "@/hooks/use-page-access";
 
 export const Route = createFileRoute("/_authenticated/quotations/")({
   head: () => ({
@@ -23,7 +24,7 @@ export const Route = createFileRoute("/_authenticated/quotations/")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: QuotationsList,
+  component: GuardedQuotationsList,
 });
 
 type FinalRow = {
@@ -83,6 +84,12 @@ function useFinalProjectQuotations() {
       return rows.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
     },
   });
+}
+
+function GuardedQuotationsList() {
+  const guard = usePageGuard("quotations", "ใบเสนอราคา");
+  if (!guard.allowed) return guard.node;
+  return <QuotationsList />;
 }
 
 function QuotationsList() {

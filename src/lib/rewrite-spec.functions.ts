@@ -1,11 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireUser } from "@/lib/server-auth";
 
 const input = z
   .object({
-    text: z.string().optional(),
-    /** data URL: data:image/png;base64,.... หรือ data:application/pdf;base64,.... */
-    image: z.string().min(20).optional(),
+    accessToken: z.string().min(10),
+    text: z.string().max(20_000).optional(),
+    /** data URL: data:image/png;base64,.... หรือ data:application/pdf;base64,.... (ไฟล์ไม่เกิน 8MB) */
+    image: z.string().min(20).max(11_500_000).optional(),
   })
   .refine((d) => !!d.text?.trim() || !!d.image, {
     message: "ต้องมีข้อความหรือรูปภาพอย่างน้อยหนึ่งอย่าง",
@@ -42,6 +44,7 @@ function parseDataUrl(dataUrl: string): { mimeType: string; base64: string } {
 export const rewriteSpecText = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => input.parse(data))
   .handler(async ({ data }): Promise<{ text: string }> => {
+    await requireUser(data.accessToken);
     const key = process.env.GEMINI_API_KEY;
     if (!key) throw new Error("ยังไม่ได้ตั้งค่า AI (GEMINI_API_KEY)");
 

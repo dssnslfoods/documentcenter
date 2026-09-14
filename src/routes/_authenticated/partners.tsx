@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getSupabase } from "@/lib/supabase";
 import { PartnerFormDialog, type Partner } from "@/components/partner-form-dialog";
+import { usePageGuard } from "@/hooks/use-page-access";
 
 export const Route = createFileRoute("/_authenticated/partners")({
   head: () => ({
@@ -19,8 +20,14 @@ export const Route = createFileRoute("/_authenticated/partners")({
       { name: "description", content: "ฐานข้อมูลคู่ค้า Supplier และลูกค้าสำหรับใช้ในโครงการและใบเสนอราคา" },
     ],
   }),
-  component: Partners,
+  component: GuardedPartners,
 });
+
+function GuardedPartners() {
+  const guard = usePageGuard("partners", "คู่ค้าและลูกค้า");
+  if (!guard.allowed) return guard.node;
+  return <Partners />;
+}
 
 function Partners() {
   const qc = useQueryClient();

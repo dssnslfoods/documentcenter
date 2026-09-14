@@ -7,9 +7,18 @@ import { getSupabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 
-const searchSchema = z.object({ redirect: z.string().optional() });
+const searchSchema = z.object({
+  redirect: z.string().optional(),
+  /** ถูกพากลับมาจาก auth gate: บัญชีถูกปิด หรือยังไม่ถูกเพิ่มเข้าองค์กร */
+  reason: z.enum(["inactive", "pending"]).optional(),
+});
+
+const REASON_MESSAGE = {
+  inactive: "บัญชีนี้ถูกปิดการใช้งาน กรุณาติดต่อผู้ดูแลระบบขององค์กร",
+  pending: "บัญชีนี้ยังไม่ได้ถูกเพิ่มเข้าองค์กร กรุณาติดต่อผู้ดูแลระบบขององค์กร",
+} as const;
 
 export const Route = createFileRoute("/auth")({
   validateSearch: searchSchema,
@@ -27,7 +36,7 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const navigate = useNavigate();
   const search = useSearch({ from: "/auth" });
-  const [tab, setTab] = useState<"signin" | "signup" | "forgot">("signin");
+  const [tab, setTab] = useState<"signin" | "forgot">("signin");
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
@@ -41,30 +50,28 @@ function AuthPage() {
         </div>
 
         <div className="rounded-lg border bg-card p-6 shadow-sm">
-          <Tabs value={tab} onValueChange={(v) => setTab(v as "signin" | "signup" | "forgot")}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">เข้าสู่ระบบ</TabsTrigger>
-              <TabsTrigger value="signup">สมัครใช้งาน</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="signin" className="mt-4">
+          {search.reason && (
+            <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+              {REASON_MESSAGE[search.reason]}
+            </div>
+          )}
+          <Tabs value={tab} onValueChange={(v) => setTab(v as "signin" | "forgot")}>
+            <TabsContent value="signin" className="mt-0">
               <SignInForm
                 onForgot={() => setTab("forgot")}
                 onSuccess={() => navigate({ to: search.redirect ?? "/dashboard" })}
               />
             </TabsContent>
 
-            <TabsContent value="signup" className="mt-4">
-              <SignUpForm onSuccess={() => setTab("signin")} />
-            </TabsContent>
-
-            <TabsContent value="forgot" className="mt-4">
+            <TabsContent value="forgot" className="mt-0">
               <ForgotForm onBack={() => setTab("signin")} />
             </TabsContent>
           </Tabs>
         </div>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
+          บัญชีผู้ใช้สร้างโดยผู้ดูแลระบบขององค์กร
+          <br />
           <Link to="/" className="hover:underline">← กลับหน้าหลัก</Link>
         </p>
       </div>
@@ -106,55 +113,6 @@ function SignInForm({ onSuccess, onForgot }: { onSuccess: () => void; onForgot: 
         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         เข้าสู่ระบบ
       </Button>
-    </form>
-  );
-}
-
-function SignUpForm({ onSuccess }: { onSuccess: () => void }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password.length < 8) return toast.error("รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร");
-    setLoading(true);
-    const { error } = await getSupabase().auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`,
-        data: { full_name: fullName },
-      },
-    });
-    setLoading(false);
-    if (error) return toast.error("สมัครใช้งานไม่สำเร็จ", { description: error.message });
-    toast.success("สมัครใช้งานสำเร็จ", { description: "โปรดตรวจสอบอีเมลเพื่อยืนยันบัญชี (หากเปิดใช้งาน)" });
-    onSuccess();
-  };
-
-  return (
-    <form onSubmit={submit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="fullname">ชื่อ-นามสกุล</Label>
-        <Input id="fullname" required value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="สมชาย ใจดี" />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="email2">อีเมลองค์กร</Label>
-        <Input id="email2" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="password2">รหัสผ่าน (อย่างน้อย 8 ตัวอักษร)</Label>
-        <Input id="password2" type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} />
-      </div>
-      <Button type="submit" className="w-full" disabled={loading}>
-        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        สมัครใช้งาน
-      </Button>
-      <p className="text-xs text-muted-foreground">
-        สิทธิ์และแผนกจะถูกกำหนดโดยผู้ดูแลระบบหลังการยืนยันบัญชี
-      </p>
     </form>
   );
 }

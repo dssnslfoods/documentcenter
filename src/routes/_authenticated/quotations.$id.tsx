@@ -9,10 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getSupabase } from "@/lib/supabase";
 import { fmtDate, fmtCurrency } from "@/lib/format";
 import { QuotationStatusBadge } from "@/components/status-badge";
+import { usePageGuard } from "@/hooks/use-page-access";
 
 export const Route = createFileRoute("/_authenticated/quotations/$id")({
   head: () => ({ meta: [{ title: "รายละเอียดใบเสนอราคา | Document Hub" }] }),
-  component: QuotationDetail,
+  component: GuardedQuotationDetail,
 });
 
 const NEXT_STATUS: Record<string, string[]> = {
@@ -34,6 +35,12 @@ const LABELS: Record<string, string> = {
   approved: "อนุมัติ", rejected: "ปฏิเสธ", won: "ชนะงาน", lost: "แพ้งาน",
   expired: "หมดอายุ", converted_to_contract: "แปลงเป็นสัญญา", converted_to_po: "แปลงเป็น PO",
 };
+
+function GuardedQuotationDetail() {
+  const guard = usePageGuard("quotations", "ใบเสนอราคา");
+  if (!guard.allowed) return guard.node;
+  return <QuotationDetail />;
+}
 
 function QuotationDetail() {
   const { id } = Route.useParams();

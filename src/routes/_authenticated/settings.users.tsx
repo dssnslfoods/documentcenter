@@ -180,7 +180,8 @@ function UsersPage() {
   const changeRole = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: Role }) => {
       // ห้ามลบบทบาท platform_owner จากหน้าจัดการผู้ใช้ระดับองค์กร
-      await sb.from("user_roles").delete().eq("user_id", userId).neq("role", "platform_owner");
+      const { error: delErr } = await sb.from("user_roles").delete().eq("user_id", userId).neq("role", "platform_owner");
+      if (delErr) throw delErr;
       const { error } = await sb.from("user_roles").insert({ user_id: userId, role });
       if (error) throw error;
     },
@@ -197,10 +198,12 @@ function UsersPage() {
 
   const promoteThenChange = useMutation({
     mutationFn: async ({ userId, role, successor }: { userId: string; role: Role; successor: string }) => {
-      await sb.from("user_roles").delete().eq("user_id", successor).neq("role", "platform_owner");
+      const { error: delSuccessorErr } = await sb.from("user_roles").delete().eq("user_id", successor).neq("role", "platform_owner");
+      if (delSuccessorErr) throw delSuccessorErr;
       const { error: insErr } = await sb.from("user_roles").insert({ user_id: successor, role: "super_admin" });
       if (insErr) throw insErr;
-      await sb.from("user_roles").delete().eq("user_id", userId).neq("role", "platform_owner");
+      const { error: delErr } = await sb.from("user_roles").delete().eq("user_id", userId).neq("role", "platform_owner");
+      if (delErr) throw delErr;
       const { error } = await sb.from("user_roles").insert({ user_id: userId, role });
       if (error) throw error;
     },
@@ -243,20 +246,22 @@ function UsersPage() {
       const pw = invForm.password;
       if (!email || !pw) throw new Error("กรุณากรอกอีเมลและรหัสผ่าน");
       if (pw.length < 8) throw new Error("รหัสผ่านต้องยาวอย่างน้อย 8 ตัวอักษร");
-      const res = await adminInviteUser({ email, password: pw, fullName: invForm.fullName || email, organizationId: myOrg?.activeId ?? null });
-      // If user came back (no email confirmation), update role/dept immediately
-      if (res.userId) {
-        if (invForm.role && invForm.role !== "staff") {
-          await sb.from("user_roles").delete().eq("user_id", res.userId);
-          await sb.from("user_roles").insert({ user_id: res.userId, role: invForm.role });
-        }
-        if (invForm.departmentId !== "none") {
-          await sb.from("profiles").update({ department_id: invForm.departmentId }).eq("id", res.userId);
-        }
-        if (invForm.fullName) {
-          await sb.from("profiles").update({ full_name: invForm.fullName }).eq("id", res.userId);
-        }
-      }
+      const orgId = myOrg?.activeId;
+      if (!orgId) throw new Error("ไม่พบองค์กรปัจจุบัน");
+      const res = await adminInviteUser({ email, password: pw, fullName: invForm.fullName || email });
+      if (!res.userId) throw new Error("สร้างบัญชีไม่สำเร็จ — ระบบไม่ได้คืนรหัสผู้ใช้");
+      // บัญชีใหม่ยังไม่มีองค์กรและบทบาท (db/0057) — ต้องเพิ่มเข้าองค์กรก่อน แล้วจึงกำหนดบทบาท
+      const { error: profileErr } = await sb
+        .from("profiles")
+        .update({
+          organization_id: orgId,
+          full_name: invForm.fullName || email,
+          ...(invForm.departmentId !== "none" ? { department_id: invForm.departmentId } : {}),
+        })
+        .eq("id", res.userId);
+      if (profileErr) throw profileErr;
+      const { error: roleErr } = await sb.from("user_roles").insert({ user_id: res.userId, role: invForm.role || "staff" });
+      if (roleErr) throw roleErr;
       return { email, password: pw, needsConfirmation: res.needsConfirmation };
     },
     onSuccess: (r) => {

@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/page-header";
-import { getSupabase } from "@/lib/supabase";
+import { getAccessToken, getSupabase } from "@/lib/supabase";
 import { fmtDateTime } from "@/lib/format";
 import { rewriteSpecText } from "@/lib/rewrite-spec.functions";
 
@@ -67,7 +67,7 @@ export function ProjectSpecNotesList({
   ) => {
     setBusy(true);
     try {
-      const result = await rewriteFn({ data: payload });
+      const result = await rewriteFn({ data: { ...payload, accessToken: await getAccessToken() } });
       setText(result.text);
       toast.success("จัดรูปแบบเรียบร้อย");
     } catch (e) {

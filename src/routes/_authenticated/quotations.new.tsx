@@ -18,6 +18,7 @@ import { PartnerFormDialog } from "@/components/partner-form-dialog";
 import { useVatRates, calcVat, pickVatRate } from "@/lib/vat";
 import { ScanQuotationCard } from "@/components/scan-quotation-card";
 import type { ScannedQuotation } from "@/lib/scan-quotation.functions";
+import { usePageGuard } from "@/hooks/use-page-access";
 
 const schema = z.object({
   project_id: z.string().uuid("กรุณาเลือกโครงการ"),
@@ -41,7 +42,7 @@ const searchSchema = z.object({ project: z.string().uuid().optional() });
 export const Route = createFileRoute("/_authenticated/quotations/new")({
   head: () => ({ meta: [{ title: "เพิ่มใบเสนอราคา | Document Hub" }] }),
   validateSearch: searchSchema,
-  component: NewQuotation,
+  component: GuardedNewQuotation,
 });
 
 function FieldConfidence({ score }: { score: number | null | undefined }) {
@@ -63,6 +64,12 @@ function FieldConfidence({ score }: { score: number | null | undefined }) {
       {Math.round(score * 100)}%
     </span>
   );
+}
+
+function GuardedNewQuotation() {
+  const guard = usePageGuard("quotations", "ใบเสนอราคา");
+  if (!guard.allowed) return guard.node;
+  return <NewQuotation />;
 }
 
 function NewQuotation() {

@@ -93,10 +93,7 @@ function OrgAdminsPage() {
       if (!form.organizationId) throw new Error("กรุณาเลือกองค์กร");
 
       const promote = async (userId: string) => {
-        await sb.from("user_roles").delete().eq("user_id", userId).neq("role", "platform_owner");
-        const { error } = await sb.from("user_roles").insert({ user_id: userId, role: "super_admin" });
-        if (error) throw error;
-        await sb
+        const { error: profileErr } = await sb
           .from("profiles")
           .update({
             organization_id: form.organizationId,
@@ -104,6 +101,11 @@ function OrgAdminsPage() {
             is_active: true,
           })
           .eq("id", userId);
+        if (profileErr) throw profileErr;
+        const { error: delErr } = await sb.from("user_roles").delete().eq("user_id", userId).neq("role", "platform_owner");
+        if (delErr) throw delErr;
+        const { error } = await sb.from("user_roles").insert({ user_id: userId, role: "super_admin" });
+        if (error) throw error;
       };
 
       let res: { userId: string | null; needsConfirmation: boolean };
@@ -112,7 +114,6 @@ function OrgAdminsPage() {
           email,
           password: form.password,
           fullName: form.fullName || email,
-          organizationId: form.organizationId,
         });
       } catch (e) {
         const msg = (e as Error).message ?? "";

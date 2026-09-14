@@ -27,6 +27,14 @@ export async function ensureSupabase(): Promise<SupabaseClient> {
   return initPromise;
 }
 
+/** Access token of the signed-in user, for server functions that verify the caller. */
+export async function getAccessToken(): Promise<string> {
+  const { data } = await getSupabase().auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error("เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่");
+  return token;
+}
+
 export function getSupabase(): SupabaseClient {
   if (!client) {
     throw new Error(

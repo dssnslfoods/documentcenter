@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { scanQuotation, type ScannedQuotation } from "@/lib/scan-quotation.functions";
+import { getAccessToken } from "@/lib/supabase";
 
 const LABELS: Record<keyof ScannedQuotation, string> = {
   title: "หัวข้อ",
@@ -77,7 +78,7 @@ export function ScanQuotationCard({
     setLastResult(null);
     try {
       const image = await fileToDataUrl(file);
-      const result = await scan({ data: { image, filename: file.name } });
+      const result = await scan({ data: { accessToken: await getAccessToken(), image, filename: file.name } });
       setLastResult(result);
       onScanned(result);
       onFile?.(file);

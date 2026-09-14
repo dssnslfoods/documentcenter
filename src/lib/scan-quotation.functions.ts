@@ -1,9 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireUser } from "@/lib/server-auth";
 
 const input = z.object({
-  /** data URL: data:image/png;base64,.... หรือ data:application/pdf;base64,.... */
-  image: z.string().min(20),
+  accessToken: z.string().min(10),
+  /** data URL: data:image/png;base64,.... หรือ data:application/pdf;base64,.... (ไฟล์ไม่เกิน 8MB) */
+  image: z.string().min(20).max(11_500_000),
   /** ชื่อไฟล์ (ใช้เมื่อเป็น PDF) */
   filename: z.string().optional(),
 });
@@ -89,6 +91,7 @@ function parseDataUrl(dataUrl: string): { mimeType: string; base64: string } {
 export const scanQuotation = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => input.parse(data))
   .handler(async ({ data }): Promise<ScannedQuotation> => {
+    await requireUser(data.accessToken);
     const key = process.env.GEMINI_API_KEY;
     if (!key) throw new Error("ยังไม่ได้ตั้งค่า AI (GEMINI_API_KEY)");
 

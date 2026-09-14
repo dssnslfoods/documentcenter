@@ -5,11 +5,18 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDateTime } from "@/lib/format";
+import { usePageGuard } from "@/hooks/use-page-access";
 
 export const Route = createFileRoute("/_authenticated/audit-log")({
   head: () => ({ meta: [{ title: "Audit Log | Document Hub" }] }),
-  component: AuditLog,
+  component: GuardedAuditLog,
 });
+
+function GuardedAuditLog() {
+  const guard = usePageGuard("audit-log", "Audit Log");
+  if (!guard.allowed) return guard.node;
+  return <AuditLog />;
+}
 
 function AuditLog() {
   const { data, isLoading } = useQuery({
