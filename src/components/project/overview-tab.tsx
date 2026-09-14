@@ -74,8 +74,9 @@ export function OverviewTab({
   const updateStatus = useMutation({
     mutationFn: async ({ status, extra }: { status: ProjectLifecycleStatus; extra?: Record<string, unknown> }) => {
       const patch: Record<string, unknown> = { status, ...extra };
-      const { error } = await sb.from("projects").update(patch).eq("id", project.id);
+      const { data, error } = await sb.from("projects").update(patch).eq("id", project.id).select("id");
       if (error) throw error;
+      if (!data?.length) throw new Error("คุณไม่มีสิทธิ์เปลี่ยนสถานะโครงการนี้");
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["project", project.id] });
@@ -87,13 +88,15 @@ export function OverviewTab({
 
   const updateProgress = useMutation({
     mutationFn: async (progress: number) => {
-      const { error } = await sb.from("projects").update({ progress }).eq("id", project.id);
+      const { data, error } = await sb.from("projects").update({ progress }).eq("id", project.id).select("id");
       if (error) throw error;
+      if (!data?.length) throw new Error("คุณไม่มีสิทธิ์แก้ไขโครงการนี้");
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["project", project.id] });
       toast.success("อัปเดตความคืบหน้าสำเร็จ");
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const progress = project.progress ?? 0;

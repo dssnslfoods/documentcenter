@@ -76,7 +76,9 @@ export function MilestonesTab({
     onSuccess: () => {
       toast.success("ลบเรียบร้อย");
       qc.invalidateQueries({ queryKey: ["milestones", projectId] });
+      qc.invalidateQueries({ queryKey: ["project-signals", projectId] });
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const updateStatus = useMutation({
@@ -90,6 +92,7 @@ export function MilestonesTab({
     onSuccess: () => {
       toast.success("อัปเดตสถานะแล้ว");
       qc.invalidateQueries({ queryKey: ["milestones", projectId] });
+      qc.invalidateQueries({ queryKey: ["project-signals", projectId] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -126,6 +129,7 @@ export function MilestonesTab({
               onSaved={() => {
                 setOpen(false);
                 qc.invalidateQueries({ queryKey: ["milestones", projectId] });
+                qc.invalidateQueries({ queryKey: ["project-signals", projectId] });
               }}
             />
           </Dialog>

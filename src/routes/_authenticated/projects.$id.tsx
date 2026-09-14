@@ -5,6 +5,9 @@ import { ArrowLeft, Loader2, Lock, Trophy, XCircle, CheckCircle2, CircleDashed, 
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getSupabase } from "@/lib/supabase";
 import { LifecycleStepper } from "@/components/project/lifecycle-stepper";
 import { OverviewTab } from "@/components/project/overview-tab";
@@ -103,6 +106,8 @@ function ProjectDetail() {
   });
   const autoAdvancedRef = useRef<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [lostOpen, setLostOpen] = useState(false);
+  const [lostReason, setLostReason] = useState("");
 
   const isAdmin = perms?.isAdmin ?? false;
   const status = (p?.status ?? "draft") as ProjectLifecycleStatus;
@@ -153,9 +158,11 @@ function ProjectDetail() {
 
 
   // (autoAdvancedRef declared above)
-  const advance = async (next: ProjectLifecycleStatus, silent = false) => {
-    const { error } = await sb.from("projects").update({ status: next }).eq("id", id);
+  const advance = async (next: ProjectLifecycleStatus, silent = false, extra?: Record<string, unknown>) => {
+    const { data, error } = await sb.from("projects").update({ status: next, ...extra }).eq("id", id).select("id");
     if (error) { if (!silent) toast.error(error.message); return; }
+    // RLS ไม่ให้สิทธิ์ = อัปเดต 0 แถวโดยไม่มี error
+    if (!data?.length) { if (!silent) toast.error("คุณไม่มีสิทธิ์เปลี่ยนสถานะโครงการนี้"); return; }
     if (!silent) toast.success(`อัปเดตสถานะเป็น: ${LIFECYCLE_LABEL[next]}`);
     else toast.success(`ระบบตรวจพบข้อมูลครบ → เลื่อนไปยัง "${LIFECYCLE_LABEL[next]}" อัตโนมัติ`);
     qc.invalidateQueries({ queryKey: ["project", id] });
@@ -166,6 +173,8 @@ function ProjectDetail() {
   useEffect(() => {
     if (!canEditProject) return;
     if (!gate.ready || !gate.nextIfReady) return;
+    // ปิดโครงการ = ล็อกถาวรและต้องมีสรุปผล — ห้ามเลื่อนอัตโนมัติ ให้ผู้ใช้กดเองที่แท็บภาพรวม
+    if (gate.nextIfReady === "completed") return;
     const key = `${id}:${status}→${gate.nextIfReady}`;
     if (autoAdvancedRef.current === key) return;
     autoAdvancedRef.current = key;
@@ -270,7 +279,7 @@ function ProjectDetail() {
                     size="lg"
                     variant={isWin ? "default" : "outline"}
                     className={`rounded-full ${isWin ? "bg-success text-success-foreground hover:bg-success/90" : "border-destructive/40 text-destructive hover:bg-destructive/10"}`}
-                    onClick={() => advance(n)}
+                    onClick={() => (isWin ? advance(n) : setLostOpen(true))}
                   >
                     {isWin ? <Trophy className="mr-2 h-4 w-4" /> : <XCircle className="mr-2 h-4 w-4" />}
                     {LIFECYCLE_LABEL[n]}
@@ -278,15 +287,41 @@ function ProjectDetail() {
                 );
               })}
             </div>
+            <Dialog open={lostOpen} onOpenChange={setLostOpen}>
+              <DialogContent>
+                <DialogHeader><DialogTitle>{LIFECYCLE_LABEL.lost}</DialogTitle></DialogHeader>
+                <div className="space-y-2">
+                  <Label>เหตุผลที่แพ้งาน</Label>
+                  <Textarea rows={4} value={lostReason} onChange={(e) => setLostReason(e.target.value)} />
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setLostOpen(false)}>ยกเลิก</Button>
+                  <Button
+                    disabled={!lostReason.trim()}
+                    onClick={async () => {
+                      await advance("lost", false, { lost_reason: lostReason.trim() });
+                      setLostOpen(false);
+                      setLostReason("");
+                    }}
+                  >
+                    ยืนยัน
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         ) : gate.nextIfReady ? (
           <div className="flex max-w-sm flex-col items-stretch gap-1.5 rounded-xl border bg-muted/40 p-3 md:items-end md:text-right">
             <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
               {gate.ready ? <CheckCircle2 className="h-3.5 w-3.5 text-success" /> : <CircleDashed className="h-3.5 w-3.5" />}
-              ระบบเลื่อนขั้นอัตโนมัติ
+              {gate.nextIfReady === "completed" ? "พร้อมปิดโครงการ" : "ระบบเลื่อนขั้นอัตโนมัติ"}
             </div>
             <div className="text-sm font-medium text-foreground">
-              {gate.ready ? `กำลังเลื่อนไป "${LIFECYCLE_LABEL[gate.nextIfReady]}"…` : `รอ: ${gate.need}`}
+              {!gate.ready
+                ? `รอ: ${gate.need}`
+                : gate.nextIfReady === "completed"
+                  ? "งวดงานเสร็จครบแล้ว — กด “ปิดโครงการ” พร้อมสรุปผลที่แท็บภาพรวม"
+                  : `กำลังเลื่อนไป "${LIFECYCLE_LABEL[gate.nextIfReady]}"…`}
             </div>
             <div className="text-[11px] text-muted-foreground">
               ถัดไป: <span className="font-medium text-foreground">{LIFECYCLE_LABEL[gate.nextIfReady]}</span>
