@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/page-header";
 import { getSupabase } from "@/lib/supabase";
-import { fmtDate, fmtCurrency } from "@/lib/format";
+import { fmtDate, fmtCurrency, toLocalISODate } from "@/lib/format";
+import { fetchMilestonePayments } from "@/lib/project-financials";
 
 type Status = "pending" | "completed" | "postponed" | "failed";
 type PayType = "percentage" | "fixed_amount";
@@ -24,13 +25,17 @@ const STATUS_META: Record<Status, { label: string; icon: React.ComponentType<{ c
   failed:    { label: "ไม่สำเร็จ",     icon: XCircle,      tone: "bg-destructive/10 text-destructive" },
 };
 
+// payment_value ไม่ถูก select ตรง (db/0058) — เติมจาก RPC เฉพาะผู้มีสิทธิ์เห็นเงิน
+const MILESTONE_COLUMNS =
+  "id, milestone_number, description, due_date, payment_type, status, actual_completion_date, postponed_to_date, status_reason, notes, deliverable_details";
+
 type Row = {
   id: string;
   milestone_number: number;
   description: string;
   due_date: string | null;
   payment_type: PayType;
-  payment_value: number;
+  payment_value: number | null;
   status: Status;
   actual_completion_date: string | null;
   postponed_to_date: string | null;
@@ -56,48 +61,59 @@ export function MilestonesTab({
   const [editing, setEditing] = useState<string | null>(null);
 
   const { data: rows, isLoading } = useQuery({
-    queryKey: ["milestones", projectId],
+    queryKey: ["milestones", projectId, canSeePayment],
     queryFn: async () => {
       const { data, error } = await sb
         .from("project_milestones")
-        .select("*")
+        .select(MILESTONE_COLUMNS)
         .eq("project_id", projectId)
         .order("milestone_number");
       if (error) throw error;
-      return (data ?? []) as Row[];
+      const payments = canSeePayment ? await fetchMilestonePayments(projectId) : new Map<string, number>();
+      return ((data ?? []) as Omit<Row, "payment_value">[]).map((r) => ({ ...r, payment_value: payments.get(r.id) ?? null }));
     },
   });
 
+  const afterChange = () => {
+    qc.invalidateQueries({ queryKey: ["milestones", projectId] });
+    qc.invalidateQueries({ queryKey: ["project-signals", projectId] });
+  };
+
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await sb.from("project_milestones").delete().eq("id", id);
+      const { data, error } = await sb.from("project_milestones").delete().eq("id", id).select("id");
       if (error) throw error;
+      if (!data?.length) throw new Error("คุณไม่มีสิทธิ์ลบงวดงานนี้");
     },
     onSuccess: () => {
       toast.success("ลบเรียบร้อย");
-      qc.invalidateQueries({ queryKey: ["milestones", projectId] });
-      qc.invalidateQueries({ queryKey: ["project-signals", projectId] });
+      afterChange();
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status, reason, postponedTo }: { id: string; status: Status; reason?: string; postponedTo?: string }) => {
-      const patch: Record<string, unknown> = { status, status_reason: reason ?? null };
-      if (status === "completed") patch.actual_completion_date = new Date().toISOString().slice(0, 10);
-      if (status === "postponed" && postponedTo) patch.postponed_to_date = postponedTo;
-      const { error } = await sb.from("project_milestones").update(patch).eq("id", id);
+      // ล้างวันที่ของสถานะเดิม เพื่อไม่ให้ "เสร็จจริง" / "เลื่อนเป็น" ค้างเมื่อเปลี่ยนสถานะ
+      const patch: Record<string, unknown> = {
+        status,
+        status_reason: reason ?? null,
+        actual_completion_date: status === "completed" ? toLocalISODate() : null,
+        postponed_to_date: status === "postponed" ? postponedTo ?? null : null,
+      };
+      const { data, error } = await sb.from("project_milestones").update(patch).eq("id", id).select("id");
       if (error) throw error;
+      if (!data?.length) throw new Error("คุณไม่มีสิทธิ์แก้ไขงวดงานนี้");
     },
     onSuccess: () => {
       toast.success("อัปเดตสถานะแล้ว");
-      qc.invalidateQueries({ queryKey: ["milestones", projectId] });
-      qc.invalidateQueries({ queryKey: ["project-signals", projectId] });
+      afterChange();
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const paidAmount = (r: Row) => {
+    if (r.payment_value == null) return 0;
     if (r.payment_type === "fixed_amount") return r.payment_value;
     if (contractValue) return (contractValue * r.payment_value) / 100;
     return 0;
@@ -105,6 +121,8 @@ export function MilestonesTab({
 
   const totalPaid = (rows ?? []).filter((r) => r.status === "completed").reduce((s, r) => s + paidAmount(r), 0);
   const completedCount = (rows ?? []).filter((r) => r.status === "completed").length;
+  // เลขงวดถัดไปต่อจากเลขสูงสุด (ลบงวดกลางแล้วเพิ่มใหม่จะไม่ได้เลขซ้ำ)
+  const nextNumber = (rows ?? []).reduce((m, r) => Math.max(m, r.milestone_number), 0) + 1;
 
   return (
     <div className="space-y-4">
@@ -124,12 +142,14 @@ export function MilestonesTab({
             </DialogTrigger>
             <MilestoneDialog
               projectId={projectId}
-              nextNumber={(rows?.length ?? 0) + 1}
+              nextNumber={nextNumber}
+              otherRows={rows ?? []}
+              canSeePayment={canSeePayment}
+              contractValue={contractValue}
               onClose={() => setOpen(false)}
               onSaved={() => {
                 setOpen(false);
-                qc.invalidateQueries({ queryKey: ["milestones", projectId] });
-                qc.invalidateQueries({ queryKey: ["project-signals", projectId] });
+                afterChange();
               }}
             />
           </Dialog>
@@ -163,7 +183,7 @@ export function MilestonesTab({
                         <span>กำหนด: {fmtDate(r.due_date)}</span>
                         {r.actual_completion_date && <span>เสร็จจริง: {fmtDate(r.actual_completion_date)}</span>}
                         {r.postponed_to_date && <span>เลื่อนเป็น: {fmtDate(r.postponed_to_date)}</span>}
-                        {canSeePayment && (
+                        {canSeePayment && r.payment_value != null && (
                           <span>
                             จ่าย: {r.payment_type === "percentage" ? `${r.payment_value}% (${fmtCurrency(paidAmount(r), "THB")})` : fmtCurrency(r.payment_value, "THB")}
                           </span>
@@ -180,6 +200,10 @@ export function MilestonesTab({
                             const nv = v as Status;
                             if (nv === "postponed") {
                               const d = prompt("เลื่อนไปวันที่ (YYYY-MM-DD)");
+                              if (d && !/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+                                toast.error("รูปแบบวันที่ต้องเป็น YYYY-MM-DD");
+                                return;
+                              }
                               const reason = prompt("เหตุผลการเลื่อน") ?? "";
                               if (d) updateStatus.mutate({ id: r.id, status: nv, reason, postponedTo: d });
                             } else if (nv === "failed") {
@@ -210,10 +234,13 @@ export function MilestonesTab({
                             projectId={projectId}
                             nextNumber={r.milestone_number}
                             row={r}
+                            otherRows={(rows ?? []).filter((x) => x.id !== r.id)}
+                            canSeePayment={canSeePayment}
+                            contractValue={contractValue}
                             onClose={() => setEditing(null)}
                             onSaved={() => {
                               setEditing(null);
-                              qc.invalidateQueries({ queryKey: ["milestones", projectId] });
+                              afterChange();
                             }}
                           />
                         </Dialog>
@@ -254,12 +281,18 @@ function MilestoneDialog({
   projectId,
   nextNumber,
   row,
+  otherRows,
+  canSeePayment,
+  contractValue,
   onClose,
   onSaved,
 }: {
   projectId: string;
   nextNumber: number;
   row?: Row;
+  otherRows: Row[];
+  canSeePayment: boolean;
+  contractValue: number | null;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -268,31 +301,51 @@ function MilestoneDialog({
   const [description, setDescription] = useState(row?.description ?? "");
   const [dueDate, setDueDate] = useState(row?.due_date ?? "");
   const [payType, setPayType] = useState<PayType>(row?.payment_type ?? "percentage");
-  const [payValue, setPayValue] = useState(row ? String(row.payment_value ?? "") : "");
+  const [payValue, setPayValue] = useState(row?.payment_value != null ? String(row.payment_value) : "");
   const [notes, setNotes] = useState(row?.notes ?? "");
   const [deliverable, setDeliverable] = useState(row?.deliverable_details ?? "");
   const [saving, setSaving] = useState(false);
 
+  const otherPercent = otherRows
+    .filter((r) => r.payment_type === "percentage")
+    .reduce((s, r) => s + (r.payment_value ?? 0), 0);
+  const otherFixed = otherRows
+    .filter((r) => r.payment_type === "fixed_amount")
+    .reduce((s, r) => s + (r.payment_value ?? 0), 0);
+
+  const validatePayment = (value: number): string | null => {
+    if (!Number.isFinite(value) || value < 0) return "ค่าการจ่ายต้องเป็นตัวเลขตั้งแต่ 0 ขึ้นไป";
+    if (payType === "percentage") {
+      if (value > 100) return "เปอร์เซ็นต์ต้องไม่เกิน 100";
+      if (otherPercent + value > 100) {
+        return `รวมเปอร์เซ็นต์ทุกงวดเกิน 100% (งวดอื่นรวม ${otherPercent}% + งวดนี้ ${value}%)`;
+      }
+    }
+    return null;
+  };
+
   const submit = async () => {
     if (!description) return toast.error("กรุณาระบุรายละเอียดงวด");
+    const value = payValue ? Number(payValue) : 0;
+    if (canSeePayment) {
+      const err = validatePayment(value);
+      if (err) return toast.error(err);
+    }
     setSaving(true);
     try {
-      const payload = {
+      const payload: Record<string, unknown> = {
         description,
         due_date: dueDate || null,
-        payment_type: payType,
-        payment_value: payValue ? Number(payValue) : 0,
         deliverable_details: deliverable || null,
         notes: notes || null,
+        // ผู้ที่ไม่เห็นยอดเงิน: ไม่แตะค่าการจ่ายเดิม
+        ...(canSeePayment ? { payment_type: payType, payment_value: value } : {}),
       };
-      const { error } = isEdit
-        ? await sb.from("project_milestones").update(payload).eq("id", row!.id)
-        : await sb.from("project_milestones").insert({
-            project_id: projectId,
-            milestone_number: nextNumber,
-            ...payload,
-          });
-      if (error) throw error;
+      const res = isEdit
+        ? await sb.from("project_milestones").update(payload).eq("id", row!.id).select("id")
+        : await sb.from("project_milestones").insert({ project_id: projectId, milestone_number: nextNumber, ...payload }).select("id");
+      if (res.error) throw res.error;
+      if (!res.data?.length) throw new Error("คุณไม่มีสิทธิ์บันทึกงวดงานนี้");
       toast.success(isEdit ? "แก้ไขเรียบร้อย" : "เพิ่มงวดเรียบร้อย");
       onSaved();
     } catch (e) {
@@ -301,6 +354,8 @@ function MilestoneDialog({
       setSaving(false);
     }
   };
+
+  const fixedPreview = payType === "fixed_amount" && payValue ? otherFixed + Number(payValue) : null;
 
   return (
     <DialogContent className="max-w-lg">
@@ -314,22 +369,38 @@ function MilestoneDialog({
           <Label>รายละเอียดงวด <span className="text-destructive">*</span></Label>
           <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="เช่น งวดที่ 1: ติดตั้งอุปกรณ์" />
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <Label>ประเภทการจ่าย</Label>
-            <Select value={payType} onValueChange={(v) => setPayType(v as PayType)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="percentage">เปอร์เซ็นต์ (%)</SelectItem>
-                <SelectItem value="fixed_amount">จำนวนคงที่ (บาท)</SelectItem>
-              </SelectContent>
-            </Select>
+        {canSeePayment && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label>ประเภทการจ่าย</Label>
+              <Select value={payType} onValueChange={(v) => setPayType(v as PayType)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="percentage">เปอร์เซ็นต์ (%)</SelectItem>
+                  <SelectItem value="fixed_amount">จำนวนคงที่ (บาท)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>ค่า</Label>
+              <Input
+                type="number"
+                min="0"
+                max={payType === "percentage" ? 100 : undefined}
+                value={payValue}
+                onChange={(e) => setPayValue(e.target.value)}
+                placeholder={payType === "percentage" ? "30" : "500000"}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                {payType === "percentage"
+                  ? `งวดอื่นรวม ${otherPercent}% · คงเหลือ ${Math.max(0, 100 - otherPercent)}%`
+                  : contractValue && fixedPreview != null && fixedPreview > contractValue
+                    ? `ยอดคงที่รวม ${fmtCurrency(fixedPreview, "THB")} เกินมูลค่าสัญญา ${fmtCurrency(contractValue, "THB")}`
+                    : null}
+              </p>
+            </div>
           </div>
-          <div>
-            <Label>ค่า</Label>
-            <Input type="number" value={payValue} onChange={(e) => setPayValue(e.target.value)} placeholder={payType === "percentage" ? "30" : "500000"} />
-          </div>
-        </div>
+        )}
         <div>
           <Label>วันที่กำหนด</Label>
           <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
@@ -357,4 +428,3 @@ function MilestoneDialog({
     </DialogContent>
   );
 }
-

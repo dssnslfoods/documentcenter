@@ -94,7 +94,9 @@ export async function syncContractValueFromFinalQuotation(projectId: string): Pr
         contract_value_incl_vat: null,
       };
 
-  await sb.from("projects").update(patch).eq("id", projectId);
+  const { data: updated, error: updateError } = await sb.from("projects").update(patch).eq("id", projectId).select("id");
+  if (updateError) throw updateError;
+  if (!updated?.length) throw new Error("ไม่มีสิทธิ์อัปเดตมูลค่าสัญญาของโครงการ (เฉพาะผู้บริหารโครงการ)");
 
   return summary;
 }

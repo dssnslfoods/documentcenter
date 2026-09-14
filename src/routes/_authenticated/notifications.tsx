@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,6 +15,7 @@ export const Route = createFileRoute("/_authenticated/notifications")({
 
 function Notifications() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [marking, setMarking] = useState(false);
   const { data, isLoading } = useQuery({
     queryKey: ["notifications"],
@@ -53,6 +54,16 @@ function Notifications() {
     queryClient.invalidateQueries({ queryKey: ["notifications-unread"] });
   };
 
+  /** ลิงก์ภายในระบบเท่านั้น (ขึ้นต้นด้วย "/" แต่ไม่ใช่ "//") */
+  const internalLink = (link: unknown): string | null =>
+    typeof link === "string" && link.startsWith("/") && !link.startsWith("//") ? link : null;
+
+  const openNotification = (n: any) => {
+    if (!n.is_read) void markOneRead(n.id);
+    const link = internalLink(n.link);
+    if (link) navigate({ to: link });
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -76,7 +87,12 @@ function Notifications() {
                 <li
                   key={n.id}
                   className={`flex cursor-pointer items-start gap-3 p-4 transition-colors hover:bg-muted/30 ${n.is_read ? "opacity-70" : ""}`}
-                  onClick={() => !n.is_read && markOneRead(n.id)}
+                  role={internalLink(n.link) ? "link" : undefined}
+                  tabIndex={internalLink(n.link) ? 0 : undefined}
+                  onClick={() => openNotification(n)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") openNotification(n);
+                  }}
                 >
                   <div className={`mt-1 h-2 w-2 shrink-0 rounded-full ${n.is_read ? "bg-muted-foreground" : "bg-primary"}`} />
                   <div className="min-w-0 flex-1">

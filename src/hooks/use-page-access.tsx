@@ -27,11 +27,16 @@ export function useAccessMatrix() {
     queryKey: ["role-page-access"],
     staleTime: 60_000,
     queryFn: async () => {
-      const { data, error } = await getSupabase()
-        .from("role_page_access")
-        .select("role, page_key, allowed");
+      const sb = getSupabase();
+      const [{ data, error }, { data: orgId }] = await Promise.all([
+        sb.from("role_page_access").select("role, page_key, allowed, organization_id"),
+        sb.rpc("current_org_id"),
+      ]);
       if (error) return { rows: [] as { role: AppRole; page_key: string; allowed: boolean }[], missing: true };
-      return { rows: (data ?? []) as { role: AppRole; page_key: string; allowed: boolean }[], missing: false };
+      // สิทธิ์เมนูแยกตามองค์กร — ผู้ดูแลแพลตฟอร์มในโหมดสนับสนุนอาจเห็นแถวของหลายองค์กร จึงกรองเฉพาะองค์กรปัจจุบัน
+      const rows = ((data ?? []) as { role: AppRole; page_key: string; allowed: boolean; organization_id: string }[])
+        .filter((r) => !orgId || r.organization_id === orgId);
+      return { rows, missing: false };
     },
   });
 }

@@ -28,7 +28,7 @@ import { getSupabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/use-supabase";
 import { usePageGuard } from "@/hooks/use-page-access";
 import { useProjectPermissions } from "@/hooks/use-project-permissions";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, toLocalISODate, addLocalDays } from "@/lib/format";
 import { TaskAssignmentDialog } from "@/components/project/task-assignment-dialog";
 import { LIFECYCLE_LABEL, STATUS_TONE, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 import { ASSIGNMENT_META, type AssignmentStatus } from "@/lib/task-assignment";
@@ -60,6 +60,7 @@ type Task = {
   end_date: string;
   progress: number;
   status: string;
+  parent_id: string | null;
   assignee_id: string | null;
   assignee_label: string | null;
   assignment_status: AssignmentStatus | null;
@@ -76,12 +77,8 @@ const BAR_TONE: Record<AssignmentStatus, string> = {
   accepted: "bg-success/70",
 };
 
-const iso = (d: Date) => d.toISOString().slice(0, 10);
-const addDays = (n: number) => {
-  const d = new Date();
-  d.setDate(d.getDate() + n);
-  return iso(d);
-};
+// วันที่ตามปฏิทินท้องถิ่น (toISOString เป็น UTC ทำให้ "วันนี้" เลื่อนเป็นเมื่อวานช่วงเช้า)
+const addDays = (n: number) => toLocalISODate(addLocalDays(new Date(), n));
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/);
@@ -200,9 +197,10 @@ function AssignmentBoard() {
       if (error) throw error;
       const perms = ROLE_PERMISSIONS.staff;
       if (perms.length) {
-        await sb
+        const { error: permError } = await sb
           .from("project_member_permissions")
           .insert(perms.map((k) => ({ project_member_id: inserted.id, permission_key: k, granted: true })));
+        if (permError) throw permError;
       }
     },
     onSuccess: () => {
@@ -215,8 +213,13 @@ function AssignmentBoard() {
 
   const removeMember = useMutation({
     mutationFn: async (m: Member) => {
-      const { error } = await sb.from("project_members").delete().eq("id", m.memberId);
+      const { data: deleted, error } = await sb
+        .from("project_members")
+        .delete()
+        .eq("id", m.memberId)
+        .select("id");
       if (error) throw error;
+      if (!deleted?.length) throw new Error("ไม่มีสิทธิ์นำสมาชิกออก (เฉพาะผู้บริหารโครงการ) หรือสมาชิกถูกนำออกไปแล้ว");
     },
     onSuccess: () => {
       toast.success("นำสมาชิกออกจากโครงการแล้ว");
@@ -235,7 +238,7 @@ function AssignmentBoard() {
       const { data } = await sb
         .from("project_tasks")
         .select(
-          "id, name, description, start_date, end_date, progress, status, assignee_id, assignee_label, assignment_status",
+          "id, name, description, start_date, end_date, progress, status, parent_id, assignee_id, assignee_label, assignment_status",
         )
         .eq("project_id", id)
         .order("start_date");
@@ -243,7 +246,10 @@ function AssignmentBoard() {
     },
   });
 
-  const canManage = !!perms.data?.canEditTimeline || !!perms.data?.isAdmin;
+  const locked = !!perms.data?.isLocked;
+  const canManage = !locked && (!!perms.data?.canEditTimeline || !!perms.data?.isAdmin);
+  // เพิ่ม/นำสมาชิกออก: ฐานข้อมูลอนุญาตเฉพาะผู้บริหารโครงการ (exec) / ผู้ดูแลระบบสูงสุด
+  const canManageMembers = !!perms.data?.canManageTeam;
   const list = tasks.data ?? [];
 
   // ── ขั้นตอนปัจจุบันตามแผนงาน + นับถอยหลัง ──
@@ -258,16 +264,16 @@ function AssignmentBoard() {
   const current = useMemo(() => {
     if (!list.length) return null;
     const running = list
-      .filter((t) => t.status !== "completed")
+      .filter((t) => t.status !== "done")
       .filter((t) => dayLeft(t.start_date) <= 0 && dayLeft(t.end_date) >= 0)
       .sort((a, b) => dayLeft(a.end_date) - dayLeft(b.end_date));
     if (running.length) return { task: running[0], kind: "running" as const };
     const overdue = list
-      .filter((t) => t.status !== "completed" && dayLeft(t.end_date) < 0)
+      .filter((t) => t.status !== "done" && dayLeft(t.end_date) < 0)
       .sort((a, b) => dayLeft(b.end_date) - dayLeft(a.end_date));
     if (overdue.length) return { task: overdue[0], kind: "overdue" as const };
     const upcoming = list
-      .filter((t) => t.status !== "completed" && dayLeft(t.start_date) > 0)
+      .filter((t) => t.status !== "done" && dayLeft(t.start_date) > 0)
       .sort((a, b) => dayLeft(a.start_date) - dayLeft(b.start_date));
     if (upcoming.length) return { task: upcoming[0], kind: "upcoming" as const };
     return null;
@@ -374,7 +380,8 @@ function AssignmentBoard() {
 
 
   const openQuick = (t: Task) => {
-    if (!canManage) return;
+    // มอบหมายภารกิจได้เฉพาะงานหลัก (ภารกิจจะถูกสร้างเป็นงานย่อย 1 ระดับ)
+    if (!canManage || t.parent_id) return;
     setQuickTask(t);
     setMissionTitle("");
     setMission(t.description ?? "");
@@ -467,7 +474,7 @@ function AssignmentBoard() {
             <div className="flex items-center gap-2 px-1 pb-1 text-sm font-medium">
               <Users className="h-4 w-4 text-primary" />
               สมาชิกโครงการ
-              {canManage && (
+              {canManageMembers && (
                 <Button
                   size="sm"
                   variant="ghost"
@@ -508,7 +515,7 @@ function AssignmentBoard() {
                         </span>
                       </span>
                     </button>
-                    {canManage && (
+                    {canManageMembers && (
                       <Button
                         size="icon"
                         variant="ghost"
@@ -599,7 +606,7 @@ function AssignmentBoard() {
                     </div>
 
                     <div className="mt-2 flex flex-wrap gap-2">
-                      {canManage && (
+                      {canManage && !t.parent_id && (
                         <Button size="sm" variant={selectedMember ? "default" : "outline"} onClick={() => openQuick(t)}>
                           <Zap className="mr-2 h-4 w-4" />
                           มอบหมายภารกิจ

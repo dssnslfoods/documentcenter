@@ -39,7 +39,7 @@ export function TeamTab({
   const sb = getSupabase();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [editMember, setEditMember] = useState<{ id: string; label: string } | null>(null);
+  const [editMember, setEditMember] = useState<{ id: string; userId: string; label: string } | null>(null);
   const [editRole, setEditRole] = useState<Member | null>(null);
 
   const { data: members, isLoading, error } = useQuery({
@@ -125,8 +125,30 @@ export function TeamTab({
       if (m.project_role === "exec" && execCount <= 1) {
         throw new Error("โครงการต้องมีผู้บริหารโครงการอย่างน้อย 1 คน");
       }
-      const { error } = await sb.from("project_members").delete().eq("id", m.id);
+      // ห้ามนำออกถ้ายังมีงานที่รับผิดชอบค้างอยู่ (ยังไม่เสร็จ/ยังไม่รับมอบ)
+      const { data: assigned, error: taskError } = await sb
+        .from("project_tasks")
+        .select("id, name, status, assignment_status")
+        .eq("project_id", projectId)
+        .eq("assignee_id", m.user_id);
+      if (taskError) throw taskError;
+      const open = (assigned ?? []).filter(
+        (t) => t.status !== "done" && t.assignment_status !== "accepted",
+      );
+      if (open.length) {
+        const names = open.slice(0, 5).map((t) => `“${t.name}”`).join(", ");
+        const more = open.length > 5 ? ` และอีก ${open.length - 5} งาน` : "";
+        throw new Error(
+          `ยังมีงานที่รับผิดชอบค้างอยู่ ${open.length} งาน: ${names}${more} — โปรดย้ายงานให้ผู้อื่นก่อนนำออก`,
+        );
+      }
+      const { data: deleted, error } = await sb
+        .from("project_members")
+        .delete()
+        .eq("id", m.id)
+        .select("id");
       if (error) throw error;
+      if (!deleted?.length) throw new Error("ไม่มีสิทธิ์ลบสมาชิก หรือสมาชิกถูกลบไปแล้ว");
     },
     onSuccess: () => {
       toast.success("ลบสมาชิกเรียบร้อย");
@@ -286,7 +308,7 @@ export function TeamTab({
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => setEditMember({ id: m.id, label: m.profiles?.full_name || m.profiles?.email || "-" })}
+                        onClick={() => setEditMember({ id: m.id, userId: m.user_id, label: m.profiles?.full_name || m.profiles?.email || "-" })}
                         title="แก้ไขสิทธิ์"
                       >
                         <ShieldCheck className="h-4 w-4" />
@@ -315,6 +337,7 @@ export function TeamTab({
         onOpenChange={(v) => !v && setEditMember(null)}
         projectMemberId={editMember?.id ?? null}
         memberLabel={editMember?.label ?? ""}
+        memberIsSuperAdmin={!!(allUsers ?? []).find((u) => u.id === editMember?.userId)?.roles.includes("super_admin")}
       />
 
       <Dialog open={!!editRole} onOpenChange={(v) => !v && setEditRole(null)}>

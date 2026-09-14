@@ -71,13 +71,17 @@ export function ProjectDocumentsList({
 
   const remove = useMutation({
     mutationFn: async (row: { id: string; file_url: string }) => {
-      await removeProjectFile(row.file_url);
-      const { error } = await sb.from("project_documents").delete().eq("id", row.id);
+      // ลบรายการในฐานข้อมูลก่อน (ตรวจสิทธิ์และโครงการที่ปิดแล้วที่นี่) แล้วค่อยลบไฟล์จริง
+      // เดิมลบไฟล์ก่อน — ถ้าฐานข้อมูลปฏิเสธ ไฟล์จะหายแต่รายการยังค้างอยู่
+      const { data, error } = await sb.from("project_documents").delete().eq("id", row.id).select("id");
       if (error) throw error;
+      if (!data?.length) throw new Error("คุณไม่มีสิทธิ์ลบไฟล์นี้");
+      await removeProjectFile(row.file_url);
     },
     onSuccess: () => {
       toast.success("ลบไฟล์เรียบร้อย");
       qc.invalidateQueries({ queryKey: ["project-docs", projectId, type] });
+      qc.invalidateQueries({ queryKey: ["project-signals", projectId] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -105,6 +109,7 @@ export function ProjectDocumentsList({
       if (ok > 0) {
         toast.success(`อัปโหลดสำเร็จ ${ok} ไฟล์`);
         qc.invalidateQueries({ queryKey: ["project-docs", projectId, type] });
+        qc.invalidateQueries({ queryKey: ["project-signals", projectId] });
       }
     } finally {
       setUploading(false);

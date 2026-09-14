@@ -57,7 +57,8 @@ function AccessSettings() {
     );
     const { error } = await getSupabase()
       .from("role_page_access")
-      .upsert(payload, { onConflict: "role,page_key" });
+      // organization_id ถูกเติมโดย trigger set_org_id (องค์กรปัจจุบัน) — สิทธิ์เมนูแยกตามองค์กร (db/0058)
+      .upsert(payload, { onConflict: "organization_id,role,page_key" });
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("บันทึกสิทธิ์เมนูเรียบร้อย");

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { getSupabase } from "@/lib/supabase";
 import { fmtDateTime, fmtCurrency } from "@/lib/format";
 import { LIFECYCLE_LABEL } from "@/lib/project-lifecycle";
+import { ASSIGNMENT_META, type AssignmentStatus } from "@/lib/task-assignment";
 import { useCanSeeMoney } from "@/hooks/use-page-access";
 
 type Change = { field: string; old: unknown; new: unknown };
@@ -83,6 +84,41 @@ const FIELD_LABEL: Record<string, string> = {
   notes: "หมายเหตุ",
 };
 
+/** ชื่อฟิลด์ที่ความหมายขึ้นกับตาราง (เช่น name ของงาน ≠ ชื่อโครงการ) */
+const ENTITY_FIELD_LABEL: Record<string, Record<string, string>> = {
+  project_tasks: {
+    name: "ชื่องาน",
+    description: "รายละเอียดงาน",
+    status: "สถานะงาน",
+    assignee_id: "ผู้รับผิดชอบ (สมาชิก)",
+    assignment_status: "สถานะการมอบหมาย",
+    parent_id: "งานหลัก",
+    milestone_id: "งวดงาน",
+    sort_order: "ลำดับการแสดง",
+  },
+  project_milestones: { name: "ชื่องวดงาน", description: "รายละเอียดงวดงาน", status: "สถานะงวดงาน" },
+  project_documents: { name: "ชื่อเอกสาร", status: "สถานะเอกสาร" },
+  project_spec_notes: { name: "ชื่อหัวข้อ", status: "สถานะ" },
+  project_members: { name: "ชื่อสมาชิก", status: "สถานะ" },
+  supplier_quotations: { name: "ชื่อใบเสนอราคา", status: "สถานะใบเสนอราคา" },
+  customer_quotations: { name: "ชื่อใบเสนอราคา", status: "สถานะใบเสนอราคา" },
+};
+
+const TASK_STATUS_LABEL: Record<string, string> = {
+  not_started: "ยังไม่เริ่ม",
+  in_progress: "กำลังดำเนินการ",
+  done: "เสร็จสิ้น",
+  blocked: "ติดปัญหา",
+};
+
+function fieldLabel(entity: string, field: string): string {
+  const specific = ENTITY_FIELD_LABEL[entity]?.[field];
+  if (specific) return specific;
+  if (entity !== "project" && field === "name") return "ชื่อ";
+  if (entity !== "project" && field === "status") return "สถานะ";
+  return FIELD_LABEL[field] ?? field;
+}
+
 const MONEY_FIELDS = new Set([
   "contract_value",
   "budget",
@@ -94,11 +130,16 @@ const MONEY_FIELDS = new Set([
   "payment_value",
 ]);
 
-function renderValue(field: string, v: unknown): string {
+function renderValue(field: string, v: unknown, entity = "project"): string {
   if (v === null || v === undefined || v === "") return "—";
   if (typeof v === "boolean") return v ? "ใช่" : "ไม่ใช่";
-  if (field === "status" && typeof v === "string")
-    return LIFECYCLE_LABEL[v as keyof typeof LIFECYCLE_LABEL] ?? v;
+  if (field === "status" && typeof v === "string") {
+    if (entity === "project") return LIFECYCLE_LABEL[v as keyof typeof LIFECYCLE_LABEL] ?? v;
+    if (entity === "project_tasks") return TASK_STATUS_LABEL[v] ?? v;
+    return v;
+  }
+  if (field === "assignment_status" && typeof v === "string")
+    return ASSIGNMENT_META[v as AssignmentStatus]?.label ?? v;
   if (MONEY_FIELDS.has(field)) return fmtCurrency(Number(v), "THB");
   if (typeof v === "object") return JSON.stringify(v);
   return String(v);
@@ -153,9 +194,9 @@ export function ProjectHistoryTab({ projectId }: { projectId: string }) {
         h.entity_label ?? "",
         ENTITY_LABEL[e] ?? e,
         ...(h.changes ?? []).flatMap((c) => [
-          FIELD_LABEL[c.field] ?? c.field,
-          renderValue(c.field, c.old),
-          renderValue(c.field, c.new),
+          fieldLabel(e, c.field),
+          renderValue(c.field, c.old, e),
+          renderValue(c.field, c.new, e),
         ]),
       ]
         .join(" ")
@@ -272,11 +313,13 @@ export function ProjectHistoryTab({ projectId }: { projectId: string }) {
                   <tbody>
                     {visibleChanges.map((c, i) => (
                       <tr key={`${h.id}-${c.field}-${i}`} className="border-t">
-                        <td className="px-3 py-2 font-medium">{FIELD_LABEL[c.field] ?? c.field}</td>
+                        <td className="px-3 py-2 font-medium">{fieldLabel(h.entity || "project", c.field)}</td>
                         <td className="px-3 py-2 text-muted-foreground line-through decoration-muted-foreground/40">
-                          {renderValue(c.field, c.old)}
+                          {renderValue(c.field, c.old, h.entity || "project")}
                         </td>
-                        <td className="px-3 py-2 font-medium text-foreground">{renderValue(c.field, c.new)}</td>
+                        <td className="px-3 py-2 font-medium text-foreground">
+                          {renderValue(c.field, c.new, h.entity || "project")}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

@@ -115,6 +115,8 @@ type Lane = {
 
 const DAY = 86_400_000;
 const t = (d: string | null | undefined) => (d ? new Date(`${d}T00:00:00`).getTime() : NaN);
+/** ปลายแถบ = สิ้นสุดวันสุดท้าย (รวมวันสิ้นสุด) */
+const tEnd = (d: string | null | undefined) => t(d) + DAY;
 
 const HEALTH: Record<string, { label: string; dot: string }> = {
   green: { label: "ปกติ", dot: "bg-success" },
@@ -267,7 +269,8 @@ export function PortfolioTimeline() {
           .from("project_tasks")
           .select("project_id, name, start_date, end_date, status, is_milestone_marker")
           .is("parent_id", null)
-          .is("assignee_id", null),
+          // งานหลักที่ยังไม่มอบหมาย (รวมงานที่ระบุผู้รับผิดชอบแล้วแต่ยังเป็นร่าง) แสดงเป็นขั้นตอน
+          .or("assignee_id.is.null,assignment_status.eq.draft"),
         sb.from("project_milestones").select("project_id, milestone_number, description, due_date, status"),
         sb
           .from("project_tasks")
@@ -332,9 +335,9 @@ export function PortfolioTimeline() {
 
         const starts = [t(p.start_date), ...tasks.map((x) => t(x.start_date))].filter((n) => !Number.isNaN(n));
         const ends = [
-          t(p.end_date),
-          ...tasks.map((x) => t(x.end_date)),
-          ...mss.map((x) => t(x.due_date)),
+          tEnd(p.end_date),
+          ...tasks.map((x) => tEnd(x.end_date)),
+          ...mss.map((x) => tEnd(x.due_date)),
         ].filter((n) => !Number.isNaN(n));
         if (!starts.length || !ends.length) return null;
 
@@ -366,7 +369,7 @@ export function PortfolioTimeline() {
             const base = {
               assignee: data.nameById.get(a.assignee_id) ?? a.assignee_label ?? "ไม่ระบุชื่อ",
               start: t(a.start_date),
-              end: t(a.end_date),
+              end: tEnd(a.end_date),
               endDate: a.end_date,
               status: (a.assignment_status as AssignmentStatus) ?? "draft",
               done: a.status === "done" || a.assignment_status === "accepted" || p.status === "completed",
@@ -388,7 +391,7 @@ export function PortfolioTimeline() {
             key: `${p.id}-${x.name}-${x.start_date}`,
             label: x.name,
             start: t(x.start_date),
-            end: Math.max(t(x.end_date), t(x.start_date)),
+            end: Math.max(tEnd(x.end_date), tEnd(x.start_date)),
             endDate: x.end_date,
             done: x.status === "done" || p.status === "completed",
             active: x.status === "in_progress" && p.status !== "completed",

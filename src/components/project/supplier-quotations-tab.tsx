@@ -76,14 +76,20 @@ export function SupplierQuotationsTab({
     },
   });
 
+  const afterChange = () => {
+    qc.invalidateQueries({ queryKey: ["supplier-quotations", projectId] });
+    qc.invalidateQueries({ queryKey: ["project-signals", projectId] });
+  };
+
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await sb.from("supplier_quotations").delete().eq("id", id);
+      const { data, error } = await sb.from("supplier_quotations").delete().eq("id", id).select("id");
       if (error) throw error;
+      if (!data?.length) throw new Error("คุณไม่มีสิทธิ์ลบใบเสนอราคานี้");
     },
     onSuccess: () => {
       toast.success("ลบเรียบร้อย");
-      qc.invalidateQueries({ queryKey: ["supplier-quotations", projectId] });
+      afterChange();
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -91,20 +97,23 @@ export function SupplierQuotationsTab({
   // โครงการหนึ่งมีได้หลายใบเสนอราคาจาก supplier — เลือกเป็น Final ได้มากกว่า 1 รายการ
   const toggleFinal = useMutation({
     mutationFn: async ({ id, next }: { id: string; next: boolean }) => {
-      const { error } = await sb
+      const { data, error } = await sb
         .from("supplier_quotations")
         .update({ is_selected: next })
-        .eq("id", id);
+        .eq("id", id)
+        .select("id");
       if (error) throw error;
+      if (!data?.length) throw new Error("คุณไม่มีสิทธิ์แก้ไขใบเสนอราคานี้");
       // เมื่อมีใบเสนอราคา Supplier เป็น Final แล้ว โครงการนี้ถือว่ามีการใช้ Supplier
       // จึงไม่ใช่งานผลิตภายในอีกต่อไป
       if (next) {
-        await sb.from("projects").update({ is_inhouse: false }).eq("id", projectId).eq("is_inhouse", true);
+        const { error: inhouseErr } = await sb.from("projects").update({ is_inhouse: false }).eq("id", projectId).eq("is_inhouse", true);
+        if (inhouseErr) throw inhouseErr;
       }
     },
     onSuccess: (_d, v) => {
       toast.success(v.next ? "เพิ่มเป็น Final แล้ว" : "ยกเลิก Final แล้ว");
-      qc.invalidateQueries({ queryKey: ["supplier-quotations", projectId] });
+      afterChange();
       qc.invalidateQueries({ queryKey: ["supplier-final-count", projectId] });
       qc.invalidateQueries({ queryKey: ["project", projectId], refetchType: "all" });
     },
@@ -166,10 +175,11 @@ export function SupplierQuotationsTab({
               projectId={projectId}
               partners={partners ?? []}
               existing={rows ?? []}
+              canSeePrice={canSeePrice}
               onClose={() => setOpen(false)}
               onSaved={(scanned) => {
                 setOpen(false);
-                qc.invalidateQueries({ queryKey: ["supplier-quotations", projectId] });
+                afterChange();
                 // ถามทุกครั้งที่สแกนแล้วได้รายการสินค้า/บริการ
                 const items = scanned?.items ?? [];
                 if (items.length > 0) {
@@ -188,7 +198,7 @@ export function SupplierQuotationsTab({
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {rows.map((r) => {
-            const isCheap = cheapest != null && Number(r.quotation_amount) === cheapest;
+            const isCheap = canSeePrice && cheapest != null && Number(r.quotation_amount) === cheapest;
             const supplierLabel = r.partners?.name || r.supplier_name || "-";
             return (
               <Card key={r.id} className={r.is_selected ? "ring-2 ring-success" : isCheap ? "ring-1 ring-primary/40" : ""}>
@@ -320,11 +330,12 @@ export function SupplierQuotationsTab({
           <EditDialog
             row={editRow}
             partners={partners ?? []}
+            existing={rows ?? []}
             canSeePrice={canSeePrice}
             onClose={() => setEditRow(null)}
             onSaved={() => {
               setEditRow(null);
-              qc.invalidateQueries({ queryKey: ["supplier-quotations", projectId] });
+              afterChange();
             }}
           />
         )}
@@ -336,12 +347,14 @@ export function SupplierQuotationsTab({
 function EditDialog({
   row,
   partners,
+  existing,
   canSeePrice,
   onClose,
   onSaved,
 }: {
   row: Row;
   partners: { id: string; name: string }[];
+  existing: Row[];
   canSeePrice: boolean;
   onClose: () => void;
   onSaved: () => void;
@@ -357,10 +370,22 @@ function EditDialog({
   const [vatRateId, setVatRateId] = useState<string | undefined>(undefined);
   const [saving, setSaving] = useState(false);
 
-  const currentVat = (vatRates ?? []).find((v) => Number(v.rate) === Number(row.vat_rate ?? 0));
-  const effectiveId = vatRateId ?? currentVat?.id ?? "none";
+  // ไม่เปลี่ยน VAT = ใช้อัตราเดิมที่บันทึกไว้ (อัตราอาจถูกปิดใช้งานหรือยังโหลดไม่เสร็จ — เดิมถูกรีเซ็ตเป็น 0%)
+  const storedRate = Number(row.vat_rate ?? 0);
+  const currentVat = (vatRates ?? []).find((v) => Number(v.rate) === storedRate);
+  const effectiveId = vatRateId ?? currentVat?.id ?? (storedRate > 0 ? "stored" : "none");
   const selectedVat = (vatRates ?? []).find((v) => v.id === effectiveId);
-  const { pct, vatAmount, total } = calcVat(Number(amount) || 0, selectedVat ? Number(selectedVat.rate) : 0);
+  const effectiveRate = vatRateId === undefined ? storedRate : selectedVat ? Number(selectedVat.rate) : 0;
+  const { pct, vatAmount, total } = calcVat(Number(amount) || 0, effectiveRate);
+
+  const supplierChanged = (supplierId || null) !== (row.supplier_id ?? null)
+    || (!supplierId && (supplierName || null) !== (row.supplier_name ?? null));
+  const nextVersion = (() => {
+    const matches = existing.filter((r) =>
+      r.id !== row.id && (supplierId ? r.supplier_id === supplierId : !r.supplier_id && r.supplier_name === supplierName),
+    );
+    return matches.length ? Math.max(...matches.map((r) => r.version ?? 1)) + 1 : 1;
+  })();
 
   const submit = async () => {
     setSaving(true);
@@ -371,15 +396,17 @@ function EditDialog({
         supplier_name: supplierId ? null : supplierName || null,
         received_date: date || null,
         notes: notes || null,
+        ...(supplierChanged ? { version: nextVersion } : {}),
       };
       if (canSeePrice) {
         payload.quotation_amount = amount ? Number(amount) : null;
-        payload.vat_rate = selectedVat ? Number(selectedVat.rate) : 0;
+        payload.vat_rate = effectiveRate;
         payload.vat_amount = amount ? vatAmount : null;
         payload.amount_incl_vat = amount ? total : null;
       }
-      const { error } = await sb.from("supplier_quotations").update(payload).eq("id", row.id);
+      const { data, error } = await sb.from("supplier_quotations").update(payload).eq("id", row.id).select("id");
       if (error) throw error;
+      if (!data?.length) throw new Error("คุณไม่มีสิทธิ์แก้ไขใบเสนอราคานี้");
       toast.success("แก้ไขเรียบร้อย");
       onSaved();
     } catch (e) {
@@ -428,9 +455,12 @@ function EditDialog({
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label>อัตรา VAT</Label>
-              <Select value={effectiveId} onValueChange={setVatRateId}>
+              <Select value={effectiveId} onValueChange={(v) => setVatRateId(v === "stored" ? undefined : v)}>
                 <SelectTrigger><SelectValue placeholder="ไม่คิด VAT" /></SelectTrigger>
                 <SelectContent>
+                  {effectiveId === "stored" || (!currentVat && storedRate > 0) ? (
+                    <SelectItem value="stored">อัตราเดิม ({storedRate.toFixed(2)}%)</SelectItem>
+                  ) : null}
                   <SelectItem value="none">ไม่คิด VAT (0%)</SelectItem>
                   {(vatRates ?? []).map((v) => (
                     <SelectItem key={v.id} value={v.id}>{v.label} ({Number(v.rate).toFixed(2)}%)</SelectItem>
@@ -477,12 +507,14 @@ function AddDialog({
   projectId,
   partners,
   existing,
+  canSeePrice,
   onClose,
   onSaved,
 }: {
   projectId: string;
   partners: { id: string; name: string }[];
   existing: Row[];
+  canSeePrice: boolean;
   onClose: () => void;
   onSaved: (scanned?: { supplier: string; items: ScannedItem[] }) => void;
 }) {
@@ -518,7 +550,7 @@ function AddDialog({
     try {
       const file_urls: string[] = [];
       if (file) file_urls.push(await uploadProjectFile(projectId, file));
-      const { error } = await sb.from("supplier_quotations").insert({
+      const { data: inserted, error } = await sb.from("supplier_quotations").insert({
         project_id: projectId,
         supplier_id: supplierId || null,
         supplier_name: supplierName || null,
@@ -531,8 +563,9 @@ function AddDialog({
         title: title || null,
         version: nextVersion,
         file_urls,
-      });
+      }).select("id");
       if (error) throw error;
+      if (!inserted?.length) throw new Error("คุณไม่มีสิทธิ์เพิ่มใบเสนอราคาในโครงการนี้");
       toast.success("บันทึกเรียบร้อย");
       const items = (scanned?.items ?? []).filter((it) => it.description);
       const supplierLabel =
@@ -551,6 +584,7 @@ function AddDialog({
       <div className="-mx-1 flex-1 space-y-3 overflow-y-auto px-1">
 
         <ScanQuotationCard
+          hideAmounts={!canSeePrice}
           onFile={(f) => setFile(f)}
           onScanned={(d) => {
 
@@ -631,15 +665,18 @@ function AddDialog({
           </div>
         )}
         <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <Label>ยอดเงินก่อน VAT (บาท)</Label>
-            <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
-          </div>
+          {canSeePrice && (
+            <div>
+              <Label>ยอดเงินก่อน VAT (บาท)</Label>
+              <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            </div>
+          )}
           <div>
             <Label>วันที่ได้รับ</Label>
             <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
         </div>
+        {canSeePrice && (
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label>อัตรา VAT</Label>
@@ -659,6 +696,7 @@ function AddDialog({
             <div className="mt-1 flex justify-between border-t pt-1 font-semibold"><span>ยอดสุทธิ</span><span className="tabular-nums">{fmtNum(total)}</span></div>
           </div>
         </div>
+        )}
         <div>
           <Label>หมายเหตุ</Label>
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />

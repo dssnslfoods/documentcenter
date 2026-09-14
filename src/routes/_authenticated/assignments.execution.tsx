@@ -18,7 +18,7 @@ import {
 import { getSupabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/use-supabase";
 import { usePageGuard } from "@/hooks/use-page-access";
-import { fmtDate, daysUntil } from "@/lib/format";
+import { fmtDate, daysUntil, toLocalISODate } from "@/lib/format";
 import { Crown, UserRound, ArrowUpDown, Tag, FolderKanban, MessagesSquare } from "lucide-react";
 import { akaBadgeClass } from "@/lib/aka-colors";
 import { TaskAssignmentDialog } from "@/components/project/task-assignment-dialog";
@@ -210,7 +210,7 @@ function AssignmentsExecution() {
   const filteredRows = hideCompleted ? rows.filter((r) => r.projects?.status !== "completed") : rows;
   const open = filteredRows.filter((r) => r.status !== "done" && r.projects?.status !== "completed");
   const done = filteredRows.filter((r) => r.status === "done" || r.projects?.status === "completed");
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toLocalISODate();
   const trackedAll = sortCards(toMissionCards(assigned.data ?? []), sortKey, sortDir);
   const tracked = hideCompleted ? trackedAll.filter((r) => r.projects?.status !== "completed") : trackedAll;
   const led = execProjects.data ?? [];

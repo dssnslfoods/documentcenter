@@ -12,6 +12,7 @@ import { getSupabase } from "@/lib/supabase";
 import { LifecycleStepper } from "@/components/project/lifecycle-stepper";
 import { OverviewTab } from "@/components/project/overview-tab";
 import { DeleteProjectDialog } from "@/components/project/delete-project-dialog";
+import { PROJECT_COLUMNS, withFinancials } from "@/lib/project-financials";
 import { ProjectDocumentsList } from "@/components/project/documents-list";
 import { ProjectSpecNotesList } from "@/components/project/spec-notes-list";
 import { SupplierQuotationsTab } from "@/components/project/supplier-quotations-tab";
@@ -68,16 +69,22 @@ function ProjectDetail() {
   const qc = useQueryClient();
   const { data: perms, isLoading: permsLoading } = useProjectPermissions(id);
   const { canSeeMoney } = useCanSeeMoney();
+  // ราคาในหัวโครงการ = มูลค่าจากใบเสนอราคาลูกค้า Final → ใช้สิทธิ์รายสมาชิก ไม่ใช่สิทธิ์ตามบทบาทรวม
+  const canSeeHeaderPrice = canSeeMoney && (perms?.canSeeCustomerPrice ?? false);
 
   const { data: p, isLoading } = useQuery({
     queryKey: ["project", id],
     queryFn: async () => {
       const { data, error } = await sb
         .from("projects")
-        .select("*, departments(name_th)")
+        .select(`${PROJECT_COLUMNS}, departments(name_th)`)
         .eq("id", id).single();
       if (error) throw error;
-      return data;
+      // มูลค่าสัญญา/งบประมาณอ่านผ่าน RPC ที่ตรวจสิทธิ์เห็นเงิน (db/0058)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const [withMoney] = await withFinancials([data as any]);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return withMoney as any;
     },
   });
 
@@ -254,13 +261,13 @@ function ProjectDetail() {
 
           <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
             {p.project_type && <span>ประเภท {p.project_type}</span>}
-            {canSeeMoney && (p.contract_value ?? p.budget) != null && (
+            {canSeeHeaderPrice && (p.contract_value ?? p.budget) != null && (
               <span>มูลค่าสัญญา (ก่อน VAT) <span className="font-semibold text-foreground tabular-nums">{fmtCurrency(p.contract_value ?? p.budget, "THB")}</span></span>
             )}
-            {canSeeMoney && p.vat_rate != null && (
-              <span>VAT {Number(p.vat_rate).toFixed(2)}% <span className="tabular-nums">{fmtCurrency(p.vat_amount ?? 0, "THB")}</span></span>
+            {canSeeHeaderPrice && p.vat_rate != null && p.vat_amount != null && (
+              <span>VAT {Number(p.vat_rate).toFixed(2)}% <span className="tabular-nums">{fmtCurrency(p.vat_amount, "THB")}</span></span>
             )}
-            {canSeeMoney && p.contract_value_incl_vat != null && (
+            {canSeeHeaderPrice && p.contract_value_incl_vat != null && (
               <span>รวม VAT <span className="font-semibold text-foreground tabular-nums">{fmtCurrency(p.contract_value_incl_vat, "THB")}</span></span>
             )}
           </div>
@@ -310,7 +317,7 @@ function ProjectDetail() {
               </DialogContent>
             </Dialog>
           </div>
-        ) : gate.nextIfReady ? (
+        ) : gate.nextIfReady && canEditProject ? (
           <div className="flex max-w-sm flex-col items-stretch gap-1.5 rounded-xl border bg-muted/40 p-3 md:items-end md:text-right">
             <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
               {gate.ready ? <CheckCircle2 className="h-3.5 w-3.5 text-success" /> : <CircleDashed className="h-3.5 w-3.5" />}
@@ -454,6 +461,7 @@ function ProjectDetail() {
                   uploadLabel="อัปโหลดสัญญา / ใบสั่งจ้าง"
                   uploadHint="รองรับไฟล์ PDF, Word และรูปภาพ (เลือกได้หลายไฟล์)"
                   accept="application/pdf,image/*,.doc,.docx"
+                  canEdit={editAdmin || (perms?.canUpload ?? false)}
                 />
               </SectionCard>
 

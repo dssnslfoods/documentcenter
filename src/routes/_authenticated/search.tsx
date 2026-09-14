@@ -31,7 +31,8 @@ function SmartSearch() {
     return () => clearTimeout(t);
   }, [q, navigate]);
 
-  const term = q.trim();
+  // ตัดอักขระไวยากรณ์ของ filter ออก (คำค้นที่มี , หรือ ( ) ทำให้ค้นหาพัง)
+  const term = q.replace(/[,()"\\]/g, " ").trim();
   const enabled = term.length >= 2;
 
   const { data: projects } = useQuery({

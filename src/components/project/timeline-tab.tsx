@@ -11,9 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/page-header";
 import { getSupabase } from "@/lib/supabase";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, toLocalISODate, parseLocalDate, addLocalDays } from "@/lib/format";
+import { useAuth } from "@/hooks/use-supabase";
 import { TaskAssignmentDialog } from "@/components/project/task-assignment-dialog";
-import { ASSIGNMENT_META, type AssignmentStatus } from "@/lib/task-assignment";
+import { ASSIGNMENT_META, reassignmentPatch, type AssignmentStatus } from "@/lib/task-assignment";
 
 type TaskStatus = "not_started" | "in_progress" | "done" | "blocked";
 
@@ -42,9 +43,10 @@ type Task = {
 };
 
 const DAY = 86_400_000;
-const toDate = (s: string) => new Date(`${s}T00:00:00`);
-const toISO = (d: Date) => d.toISOString().slice(0, 10);
-const addDays = (d: Date, n: number) => new Date(d.getTime() + n * DAY);
+// วันที่ในแผนงานเป็นวันปฏิทินท้องถิ่น (ไม่ใช้ toISOString ซึ่งเป็น UTC)
+const toDate = parseLocalDate;
+const toISO = toLocalISODate;
+const addDays = addLocalDays;
 const diffDays = (a: Date, b: Date) => Math.round((a.getTime() - b.getTime()) / DAY);
 const TH_MONTH = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
 
@@ -107,8 +109,9 @@ export function TimelineTab({
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await sb.from("project_tasks").delete().eq("id", id);
+      const { data: deleted, error } = await sb.from("project_tasks").delete().eq("id", id).select("id");
       if (error) throw error;
+      if (!deleted?.length) throw new Error("ไม่มีสิทธิ์ลบงานนี้ หรืองานถูกลบไปแล้ว");
     },
     onSuccess: () => {
       toast.success("ลบงานเรียบร้อย");
@@ -119,21 +122,46 @@ export function TimelineTab({
 
   const missingTable = /project_tasks/.test(tasksError?.message ?? "");
 
-  // ---- Ordered rows: parents then their children ----
+  // ---- Ordered rows: parents then their children (any depth) ----
   const rows = useMemo(() => {
     const list = tasks ?? [];
-    const roots = list.filter((t) => !t.parent_id);
+    const ids = new Set(list.map((t) => t.id));
     const out: { task: Task; depth: number }[] = [];
-    for (const r of roots) {
-      out.push({ task: r, depth: 0 });
-      list.filter((c) => c.parent_id === r.id).forEach((c) => out.push({ task: c, depth: 1 }));
-    }
-    // orphans (parent deleted/filtered)
-    list
-      .filter((t) => t.parent_id && !roots.some((r) => r.id === t.parent_id))
-      .forEach((t) => out.push({ task: t, depth: 0 }));
+    const seen = new Set<string>();
+    const walk = (t: Task, depth: number) => {
+      if (seen.has(t.id)) return;
+      seen.add(t.id);
+      out.push({ task: t, depth });
+      list.filter((c) => c.parent_id === t.id).forEach((c) => walk(c, depth + 1));
+    };
+    // roots + orphans (parent deleted/filtered)
+    list.filter((t) => !t.parent_id || !ids.has(t.parent_id)).forEach((t) => walk(t, 0));
     return out;
   }, [tasks]);
+
+  const subtaskCount = (id: string) => {
+    const list = tasks ?? [];
+    let n = 0;
+    const stack = [id];
+    while (stack.length) {
+      const cur = stack.pop()!;
+      for (const c of list) {
+        if (c.parent_id === cur) {
+          n += 1;
+          stack.push(c.id);
+        }
+      }
+    }
+    return n;
+  };
+
+  const confirmRemove = (t: Task) => {
+    const n = subtaskCount(t.id);
+    const detail = n
+      ? `งานย่อยอีก ${n} รายการ และประวัติการติดตามงานทั้งหมดจะถูกลบไปด้วย`
+      : "ประวัติการติดตามงานของงานนี้จะถูกลบไปด้วย";
+    if (window.confirm(`ลบงาน "${t.name}"?\n${detail}\nไม่สามารถกู้คืนได้`)) remove.mutate(t.id);
+  };
 
   const range = useMemo(() => {
     const list = tasks ?? [];
@@ -168,10 +196,13 @@ export function TimelineTab({
   const openEdit = (t: Task) => { setEditing(t); setDialogOpen(true); };
 
 
+  // ความคืบหน้าเฉลี่ยคิดจากงานย่อยสุด (leaf) เพื่อไม่ให้งานหลักและงานย่อยถูกนับซ้ำ
   const overall = useMemo(() => {
     const list = tasks ?? [];
-    if (!list.length) return 0;
-    return Math.round(list.reduce((s, t) => s + (t.progress ?? 0), 0) / list.length);
+    const parentIds = new Set(list.map((t) => t.parent_id).filter(Boolean));
+    const leaves = list.filter((t) => !parentIds.has(t.id));
+    if (!leaves.length) return 0;
+    return Math.round(leaves.reduce((s, t) => s + (t.progress ?? 0), 0) / leaves.length);
   }, [tasks]);
 
   const exportExcel = async () => {
@@ -241,7 +272,7 @@ export function TimelineTab({
     });
     r1.height = 20;
 
-    const today = new Date(toISO(new Date()) + "T00:00:00");
+    const today = toDate(toISO(new Date()));
 
     rows.forEach(({ task, depth }, i) => {
       const row = ws.getRow(3 + i);
@@ -386,7 +417,7 @@ export function TimelineTab({
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(task)}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => remove.mutate(task.id)}>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" title="ลบงาน" disabled={remove.isPending} onClick={() => confirmRemove(task)}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </>
@@ -552,6 +583,7 @@ function TaskDialog({
 }) {
   const sb = getSupabase();
   const qc = useQueryClient();
+  const { user } = useAuth();
   const baseStart = defaultStart || toISO(new Date());
   const baseEnd = toISO(addDays(toDate(baseStart), 1));
 
@@ -563,10 +595,11 @@ function TaskDialog({
   const [progress, setProgress] = useState(String(task?.progress ?? 0));
   const [status, setStatus] = useState<TaskStatus>(task?.status ?? "not_started");
   const [parentId, setParentId] = useState(task?.parent_id ?? "none");
+  // assignee_id มีค่า = สมาชิกภายใน (assignee_label เป็นแค่ชื่อที่แคชไว้); ไม่มี id แต่มี label = ภายนอก
   const [assignee, setAssignee] = useState(
-    task?.assignee_label ? "external" : task?.assignee_id ?? "none",
+    task?.assignee_id ?? (task?.assignee_label ? "external" : "none"),
   );
-  const [assigneeLabel, setAssigneeLabel] = useState(task?.assignee_label ?? "");
+  const [assigneeLabel, setAssigneeLabel] = useState(task?.assignee_id ? "" : task?.assignee_label ?? "");
   const [remembered, setRemembered] = useState<string[]>(() => loadRememberedAssignees());
   useEffect(() => {
     if (open) setRemembered(loadRememberedAssignees());
@@ -578,6 +611,8 @@ function TaskDialog({
     mutationFn: async () => {
       if (!name.trim()) throw new Error("กรุณาระบุชื่องาน");
       if (toDate(end) < toDate(start)) throw new Error("วันสิ้นสุดต้องไม่ก่อนวันเริ่ม");
+      const nextAssigneeId = assignee === "none" || assignee === "external" ? null : assignee;
+      const reassign = task ? reassignmentPatch(task, nextAssigneeId, user?.id ?? null) : null;
       const payload = {
         project_id: projectId,
         name: name.trim(),
@@ -587,25 +622,46 @@ function TaskDialog({
         progress: Math.max(0, Math.min(100, Number(progress) || 0)),
         status,
         parent_id: parentId === "none" ? null : parentId,
-        assignee_id: assignee === "none" || assignee === "external" ? null : assignee,
-        assignee_label: assignee === "external" ? assigneeLabel.trim() || null : null,
+        assignee_id: nextAssigneeId,
+        assignee_label:
+          assignee === "external"
+            ? assigneeLabel.trim() || null
+            : members.find((m) => m.id === nextAssigneeId)?.name ?? null,
         milestone_id: milestoneId === "none" ? null : milestoneId,
         sort_order: Number(sortOrder) || 0,
+        // เปลี่ยนตัวผู้รับผิดชอบ → เริ่มขั้นตอนมอบหมายใหม่ (ทับสถานะ/ความคืบหน้าที่กรอกไว้)
+        ...(reassign?.patch ?? {}),
       };
-      const { error } = task
-        ? await sb.from("project_tasks").update(payload).eq("id", task.id)
-        : await sb.from("project_tasks").insert(payload);
+      const { data: saved, error } = task
+        ? await sb.from("project_tasks").update(payload).eq("id", task.id).select("id")
+        : await sb.from("project_tasks").insert(payload).select("id");
       if (error) {
         if (/assignee_label/.test(error.message)) {
           throw new Error("กรุณารัน db/0022_task_assignee_label.sql ใน Supabase ก่อน จึงจะระบุผู้รับผิดชอบภายนอกได้");
         }
         throw error;
       }
+      if (!saved?.length) throw new Error("ไม่มีสิทธิ์บันทึกงานนี้ หรืองานถูกลบไปแล้ว");
+      if (task && reassign?.notify && user) {
+        const { error: logError } = await sb.from("project_task_updates").insert({
+          task_id: task.id,
+          project_id: projectId,
+          author_id: user.id,
+          kind: "assign",
+          message: `มอบหมายงานใหม่ · ผู้รับผิดชอบ: ${members.find((m) => m.id === nextAssigneeId)?.name ?? "-"}`,
+        });
+        if (logError) throw logError;
+      }
     },
     onSuccess: () => {
       if (assignee === "external" && assigneeLabel.trim()) setRemembered(rememberAssignee(assigneeLabel));
       toast.success(task ? "บันทึกการแก้ไขแล้ว" : "เพิ่มงานเรียบร้อย");
       qc.invalidateQueries({ queryKey: ["project-tasks", projectId] });
+      qc.invalidateQueries({ queryKey: ["assignment-board-tasks", projectId] });
+      if (task) {
+        qc.invalidateQueries({ queryKey: ["task-assignment", task.id] });
+        qc.invalidateQueries({ queryKey: ["task-updates", task.id] });
+      }
       onOpenChange(false);
     },
     onError: (e: Error) => toast.error(e.message),

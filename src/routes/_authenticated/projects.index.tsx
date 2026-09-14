@@ -14,6 +14,7 @@ import { canCreateProjects } from "@/lib/project-roles";
 import { ProjectMembersPeek } from "@/components/project/project-members-peek";
 import { akaBadgeClass } from "@/lib/aka-colors";
 import { getSupabase } from "@/lib/supabase";
+import { withFinancials } from "@/lib/project-financials";
 import { fmtDate, fmtCurrency } from "@/lib/format";
 import {
   LIFECYCLE_LABEL, LIFECYCLE_PHASES, STATUS_TONE,
@@ -100,7 +101,7 @@ function ProjectsList() {
       const sb = getSupabase();
       let query = sb
         .from("projects")
-        .select("id, code, name, status, health_status, customer_name, customer_aka, customer_aka_color, project_type, contract_value, start_date, end_date, budget, updated_at", { count: "exact" })
+        .select("id, code, name, status, health_status, customer_name, customer_aka, customer_aka_color, project_type, start_date, end_date, updated_at", { count: "exact" })
         .is("archived_at", null);
       if (view === "pipeline") {
         query = query.order(pipelineSort.field, { ascending: pipelineSort.direction === "asc", nullsFirst: false });
@@ -114,12 +115,16 @@ function ProjectsList() {
       } else {
         query = query.limit(300);
       }
-      if (q.trim()) query = query.or(`name.ilike.%${q}%,code.ilike.%${q}%,customer_name.ilike.%${q}%,description.ilike.%${q}%`);
+      // ตัดอักขระไวยากรณ์ของ filter ออก (คำค้นที่มี , หรือ ( ) ทำให้ค้นหาพัง)
+      const term = q.replace(/[,()"\\]/g, " ").trim();
+      if (term) query = query.or(`name.ilike.%${term}%,code.ilike.%${term}%,customer_name.ilike.%${term}%,description.ilike.%${term}%`);
       if (status !== "all" && view === "list") query = query.eq("status", status);
       if (health !== "all") query = query.eq("health_status", health);
       const { data, count, error } = await query;
       if (error) throw error;
-      return { data: (data ?? []) as ProjectRow[], count: count ?? 0 };
+      // มูลค่าสัญญาอ่านผ่าน RPC ที่ตรวจสิทธิ์เห็นเงินรายโครงการ (db/0058)
+      const rows = await withFinancials((data ?? []) as Omit<ProjectRow, "contract_value" | "budget">[]);
+      return { data: rows as ProjectRow[], count: count ?? 0 };
     },
   });
 

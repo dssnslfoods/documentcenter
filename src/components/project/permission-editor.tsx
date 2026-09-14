@@ -71,16 +71,30 @@ const TAB_GROUPS: TabGroup[] = [
   },
 ];
 
+/**
+ * ตัวแก้ไขนี้เปิดได้เฉพาะสมาชิกบทบาท "ผู้บริหารโครงการ" (exec)
+ * - exec เข้าถึงทุกแท็บและแก้ไขได้เสมอ (ทั้งใน useProjectPermissions และ has_project_permission ในฐานข้อมูล)
+ *   สวิตช์เข้าถึงแท็บ / สิทธิ์แก้ไข จึงแสดงเป็นค่าคงที่
+ * - ค่าที่มีผลจริงคือ "เห็นราคา" ต่อแท็บ (priceSet ใน use-project-permissions) — ซ่อนราคาในหน้าจอเท่านั้น
+ *   และไม่มีผลกับผู้ดูแลระบบสูงสุด (super_admin เห็นราคาเสมอ)
+ * - dept_head / staff ไม่ใช้ค่าที่บันทึกไว้เลย (สิทธิ์ผูกกับบทบาท)
+ */
+const PRICE_KEYS = new Set<PermissionKey>(["view_supplier_quotation", "view_customer_quotation", "view_milestones"]);
+const isPriceOption = (k: PermissionKey) => PRICE_KEYS.has(k);
+
 export function PermissionEditorDialog({
   open,
   onOpenChange,
   projectMemberId,
   memberLabel,
+  memberIsSuperAdmin = false,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   projectMemberId: string | null;
   memberLabel: string;
+  /** ผู้ดูแลระบบสูงสุดเห็นราคาเสมอ — การตั้งค่าไม่มีผล */
+  memberIsSuperAdmin?: boolean;
 }) {
   const sb = getSupabase();
   const qc = useQueryClient();
@@ -114,6 +128,12 @@ export function PermissionEditorDialog({
       current.forEach((p) => {
         if (p.granted) s.add(p.permission_key as PermissionKey);
       });
+      // สะท้อนผลจริงของ priceSet: exec เห็นราคาเว้นแต่มีคีย์ "ซ่อนราคา" และไม่มีคีย์ "เห็นราคา"
+      TAB_GROUPS.forEach((g) => {
+        g.options.forEach((o) => {
+          if (isPriceOption(o.key) && !s.has(g.access)) s.add(o.key);
+        });
+      });
       setChecked(s);
     }
   }, [current]);
@@ -125,44 +145,41 @@ export function PermissionEditorDialog({
     setChecked(new Set((tpl.permissions as PermissionKey[]) ?? []));
   };
 
-  const hasAccess = (g: TabGroup) =>
-    checked.has(g.access) || g.options.some((o) => o.key.startsWith("view_") && checked.has(o.key));
+  const priceOptions = TAB_GROUPS.flatMap((g) => g.options.filter((o) => isPriceOption(o.key)));
+  const priceLocked = memberIsSuperAdmin;
 
-  const toggleAccess = (g: TabGroup, on: boolean) => {
-    const s = new Set(checked);
-    if (on) {
-      s.add(g.access);
-    } else {
-      s.delete(g.access);
-      g.options.forEach((o) => s.delete(o.key));
-    }
-    setChecked(s);
-  };
-
-  const toggleOption = (k: PermissionKey, g: TabGroup) => {
+  const toggleOption = (k: PermissionKey) => {
+    if (!isPriceOption(k) || priceLocked) return;
     const s = new Set(checked);
     if (s.has(k)) s.delete(k);
-    else {
-      s.add(k);
-      s.add(g.access); // ensure tab access when granting an option
-    }
+    else s.add(k);
     setChecked(s);
   };
 
-  const allOn = () => {
-    const s = new Set<PermissionKey>();
-    TAB_GROUPS.forEach((g) => {
-      s.add(g.access);
-      g.options.forEach((o) => s.add(o.key));
-    });
+  const setAllPrices = (on: boolean) => {
+    const s = new Set(checked);
+    priceOptions.forEach((o) => (on ? s.add(o.key) : s.delete(o.key)));
     setChecked(s);
   };
 
   const save = useMutation({
     mutationFn: async () => {
       if (!projectMemberId) return;
-      await sb.from("project_member_permissions").delete().eq("project_member_id", projectMemberId);
-      const rows = Array.from(checked).map((k) => ({
+      // exec เข้าถึงทุกแท็บ/แก้ไขได้เสมอ → บันทึกชุดสิทธิ์เต็ม แล้วกำหนดเฉพาะการเห็นราคา
+      // ราคาที่ไม่อนุญาตบันทึกเป็นคีย์ "ซ่อนราคา" (priceSet จะซ่อนราคาเมื่อพบคีย์นี้)
+      const keys = new Set<PermissionKey>();
+      TAB_GROUPS.forEach((g) => {
+        const price = g.options.find((o) => isPriceOption(o.key));
+        g.options.filter((o) => !isPriceOption(o.key)).forEach((o) => keys.add(o.key));
+        if (price) keys.add(checked.has(price.key) ? price.key : g.access);
+        else keys.add(g.access);
+      });
+      const { error: deleteError } = await sb
+        .from("project_member_permissions")
+        .delete()
+        .eq("project_member_id", projectMemberId);
+      if (deleteError) throw deleteError;
+      const rows = Array.from(keys).map((k) => ({
         project_member_id: projectMemberId,
         permission_key: k,
         granted: true,
@@ -193,11 +210,21 @@ export function PermissionEditorDialog({
         </DialogHeader>
 
         <div className="min-w-0 space-y-4">
+          <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">ผู้บริหารโครงการเข้าถึงทุกแท็บและแก้ไขข้อมูลได้เต็มสิทธิ์เสมอ</span>{" "}
+            — การตั้งค่าที่มีผลในหน้านี้คือ <span className="font-medium text-foreground">การเห็นราคา</span> ในแต่ละแท็บเท่านั้น
+            (ซ่อนในหน้าจอ) ส่วนหัวหน้าแผนก/เจ้าหน้าที่ใช้สิทธิ์ตามบทบาท ปรับได้ที่ปุ่มแก้ไขบทบาท
+            {priceLocked && (
+              <div className="mt-1 font-medium text-foreground">
+                สมาชิกนี้เป็นผู้ดูแลระบบสูงสุด จึงเห็นราคาทุกแท็บเสมอ — การตั้งค่าไม่มีผล
+              </div>
+            )}
+          </div>
           <div className="flex flex-wrap items-end gap-3">
             <div className="min-w-[220px] flex-1">
               <Label>Apply Template</Label>
-              <Select value={templateId} onValueChange={applyTemplate}>
-                <SelectTrigger><SelectValue placeholder="เลือก Template (จะแทนที่ทั้งหมด)" /></SelectTrigger>
+              <Select value={templateId} onValueChange={applyTemplate} disabled={priceLocked}>
+                <SelectTrigger><SelectValue placeholder="เลือก Template (มีผลเฉพาะการเห็นราคา)" /></SelectTrigger>
                 <SelectContent>
                   {(templates ?? []).map((t) => (
                     <SelectItem key={t.id} value={t.id}>{t.template_name}</SelectItem>
@@ -206,8 +233,12 @@ export function PermissionEditorDialog({
               </Select>
             </div>
             <div className="flex gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={allOn}>เลือกทุกแท็บ</Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => setChecked(new Set())}>ล้างทั้งหมด</Button>
+              <Button type="button" variant="outline" size="sm" disabled={priceLocked} onClick={() => setAllPrices(true)}>
+                เห็นราคาทุกแท็บ
+              </Button>
+              <Button type="button" variant="outline" size="sm" disabled={priceLocked} onClick={() => setAllPrices(false)}>
+                ซ่อนราคาทุกแท็บ
+              </Button>
             </div>
           </div>
 
@@ -224,7 +255,7 @@ export function PermissionEditorDialog({
                       className="whitespace-nowrap rounded-full px-3 py-1.5 text-xs data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm"
                     >
                       <span className="flex items-center gap-1">
-                        {hasAccess(g) && <Check className="h-3 w-3 text-primary" />}
+                        <Check className="h-3 w-3 text-primary" />
                         {g.label}
                       </span>
                     </TabsTrigger>
@@ -237,28 +268,36 @@ export function PermissionEditorDialog({
                   <div className="w-full space-y-4 rounded-md border p-4">
                     <div className="flex items-center justify-between gap-4">
                       <div className="min-w-0">
-                        <div className="text-sm font-medium">ให้เข้าถึงแท็บ “{g.label}”</div>
-                        <p className="text-xs text-muted-foreground">{PERMISSION_LABEL[g.access]}</p>
+                        <div className="text-sm font-medium">เข้าถึงแท็บ “{g.label}”</div>
+                        <p className="text-xs text-muted-foreground">
+                          {PERMISSION_LABEL[g.access]} · ผู้บริหารโครงการเข้าถึงได้เสมอ
+                        </p>
                       </div>
-                      <Switch className="shrink-0" checked={hasAccess(g)} onCheckedChange={(v) => toggleAccess(g, v)} />
+                      <Switch className="shrink-0" checked disabled />
                     </div>
 
                     {g.options.length > 0 && (
                       <div className="space-y-2 border-t pt-3">
                         <div className="text-xs font-medium text-muted-foreground">สิทธิ์เพิ่มเติมในแท็บนี้</div>
-                        {g.options.map((o) => (
-                          <label
-                            key={o.key}
-                            className={`flex items-center gap-2 rounded-md p-1.5 text-sm hover:bg-muted/60 ${hasAccess(g) ? "cursor-pointer" : "opacity-50"}`}
-                          >
-                            <Checkbox
-                              checked={checked.has(o.key)}
-                              disabled={!hasAccess(g)}
-                              onCheckedChange={() => toggleOption(o.key, g)}
-                            />
-                            <span>{o.label}</span>
-                          </label>
-                        ))}
+                        {g.options.map((o) => {
+                          const editable = isPriceOption(o.key) && !priceLocked;
+                          return (
+                            <label
+                              key={o.key}
+                              className={`flex items-center gap-2 rounded-md p-1.5 text-sm hover:bg-muted/60 ${editable ? "cursor-pointer" : "opacity-60"}`}
+                            >
+                              <Checkbox
+                                checked={isPriceOption(o.key) ? priceLocked || checked.has(o.key) : true}
+                                disabled={!editable}
+                                onCheckedChange={() => toggleOption(o.key)}
+                              />
+                              <span>{o.label}</span>
+                              {!isPriceOption(o.key) && (
+                                <span className="text-xs text-muted-foreground">(ได้เสมอ)</span>
+                              )}
+                            </label>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -268,13 +307,15 @@ export function PermissionEditorDialog({
           )}
 
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span>แท็บที่เข้าถึงได้:</span>
-            {TAB_GROUPS.filter(hasAccess).length === 0 ? (
-              <span>ยังไม่ได้เลือก</span>
+            <span>เห็นราคา:</span>
+            {priceOptions.filter((o) => priceLocked || checked.has(o.key)).length === 0 ? (
+              <span>ซ่อนราคาทุกแท็บ</span>
             ) : (
-              TAB_GROUPS.filter(hasAccess).map((g) => (
-                <Badge key={g.value} variant="secondary">{g.label}</Badge>
-              ))
+              priceOptions
+                .filter((o) => priceLocked || checked.has(o.key))
+                .map((o) => (
+                  <Badge key={o.key} variant="secondary">{o.label}</Badge>
+                ))
             )}
           </div>
         </div>

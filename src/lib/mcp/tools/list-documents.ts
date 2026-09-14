@@ -44,7 +44,9 @@ export default defineTool({
       .order("created_at", { ascending: false })
       .limit(limit ?? 20);
     if (query) {
-      q = q.or(`title.ilike.%${query}%,doc_number.ilike.%${query}%`);
+      // ตัดอักขระที่เป็นไวยากรณ์ของ filter (, ( ) " \) ออก ไม่ให้ผู้เรียกแทรกเงื่อนไขเพิ่มเองได้
+      const term = query.replace(/[,()"\\]/g, " ").trim();
+      if (term) q = q.or(`title.ilike.%${term}%,doc_number.ilike.%${term}%`);
     }
     const { data, error } = await q;
     if (error) {

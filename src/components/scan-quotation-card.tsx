@@ -49,13 +49,18 @@ function fileToDataUrl(file: File) {
 }
 
 /** สแกนรูปใบเสนอราคาแล้วเติมข้อมูลลงฟอร์มอัตโนมัติ พร้อมแสดงค่า confidence */
+const MONEY_FIELDS = new Set<string>(["amount_before_tax", "discount", "tax", "total_amount"]);
+
 export function ScanQuotationCard({
   onScanned,
   onFile,
+  hideAmounts = false,
 }: {
   onScanned: (d: ScannedQuotation) => void;
   /** ไฟล์ที่ใช้สแกน — ส่งกลับเพื่อให้ผู้เรียกเก็บไฟล์แนบไว้ด้วย */
   onFile?: (file: File) => void;
+  /** ซ่อนยอดเงินในผลการอ่าน สำหรับผู้ที่ไม่มีสิทธิ์เห็นราคา */
+  hideAmounts?: boolean;
 }) {
   const scan = useServerFn(scanQuotation);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -92,7 +97,7 @@ export function ScanQuotationCard({
 
   const confidenceFields = lastResult?.confidence
     ? (Object.entries(lastResult.confidence) as [keyof ScannedQuotation["confidence"], number | null | undefined][])
-        .filter(([key]) => key !== "confidence" && key !== "items")
+        .filter(([key]) => key !== "confidence" && key !== "items" && !(hideAmounts && MONEY_FIELDS.has(key)))
         .map(([key, score]) => ({ key, label: LABELS[key] ?? key, score, value: lastResult[key as keyof ScannedQuotation] }))
         .filter((item) => (item.value != null && typeof item.value !== "object") || item.score != null)
         .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))

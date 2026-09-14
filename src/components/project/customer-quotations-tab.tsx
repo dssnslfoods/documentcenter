@@ -66,10 +66,12 @@ export function CustomerQuotationsTab({
   const afterChange = async () => {
     try {
       await syncContractValueFromFinalQuotation(projectId);
-    } catch {
-      /* keep the UI responsive even if the project row is not writable */
+    } catch (e) {
+      // บันทึกใบเสนอราคาสำเร็จแล้ว แต่มูลค่าสัญญาของโครงการยังไม่อัปเดต — แจ้งให้รู้ ไม่เงียบไว้
+      toast.warning("อัปเดตมูลค่าสัญญาของโครงการไม่สำเร็จ", { description: (e as Error).message });
     }
     qc.invalidateQueries({ queryKey: ["customer-quotations", projectId] });
+    qc.invalidateQueries({ queryKey: ["project-signals", projectId] });
     qc.invalidateQueries({ queryKey: ["customer-quotation-final", projectId] });
     qc.invalidateQueries({ queryKey: ["project", projectId], refetchType: "all" });
     qc.invalidateQueries({ queryKey: ["projects"], refetchType: "all" });
@@ -78,8 +80,9 @@ export function CustomerQuotationsTab({
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await sb.from("customer_quotations").delete().eq("id", id);
+      const { data, error } = await sb.from("customer_quotations").delete().eq("id", id).select("id");
       if (error) throw error;
+      if (!data?.length) throw new Error("คุณไม่มีสิทธิ์ลบใบเสนอราคานี้");
     },
     onSuccess: async () => {
       toast.success("ลบเรียบร้อย");
@@ -91,8 +94,9 @@ export function CustomerQuotationsTab({
   // ใบเสนอราคาให้ลูกค้าเลือกเป็น Final ได้มากกว่า 1 ใบ (เหมือนฝั่ง Supplier)
   const toggleFinal = useMutation({
     mutationFn: async ({ id, next }: { id: string; next: boolean }) => {
-      const { error } = await sb.from("customer_quotations").update({ is_final: next }).eq("id", id);
+      const { data, error } = await sb.from("customer_quotations").update({ is_final: next }).eq("id", id).select("id");
       if (error) throw error;
+      if (!data?.length) throw new Error("คุณไม่มีสิทธิ์แก้ไขใบเสนอราคานี้");
     },
     onSuccess: async (_d, v) => {
       toast.success(
@@ -167,6 +171,7 @@ export function CustomerQuotationsTab({
             </DialogTrigger>
             <AddDialog
               projectId={projectId}
+              canSeePrice={canSeePrice}
               onClose={() => setOpen(false)}
               onSaved={async () => {
                 setOpen(false);
@@ -291,11 +296,13 @@ function EditDialog({
   const [vatRateId, setVatRateId] = useState<string | undefined>(undefined);
   const [saving, setSaving] = useState(false);
 
-  // เริ่มต้นจากอัตรา VAT เดิมที่บันทึกไว้ (ไม่ย้อนหลังอัตโนมัติ)
-  const currentVat = (vatRates ?? []).find((v) => Number(v.rate) === Number(row.vat_rate ?? 0));
-  const effectiveId = vatRateId ?? currentVat?.id ?? "none";
+  // ไม่เปลี่ยน VAT = ใช้อัตราเดิมที่บันทึกไว้ (อัตราอาจถูกปิดใช้งานหรือยังโหลดไม่เสร็จ — เดิมถูกรีเซ็ตเป็น 0%)
+  const storedRate = Number(row.vat_rate ?? 0);
+  const currentVat = (vatRates ?? []).find((v) => Number(v.rate) === storedRate);
+  const effectiveId = vatRateId ?? currentVat?.id ?? (storedRate > 0 ? "stored" : "none");
   const selectedVat = (vatRates ?? []).find((v) => v.id === effectiveId);
-  const { pct, vatAmount, total } = calcVat(Number(amount) || 0, selectedVat ? Number(selectedVat.rate) : 0);
+  const effectiveRate = vatRateId === undefined ? storedRate : selectedVat ? Number(selectedVat.rate) : 0;
+  const { pct, vatAmount, total } = calcVat(Number(amount) || 0, effectiveRate);
 
   const submit = async () => {
     setSaving(true);
@@ -307,12 +314,13 @@ function EditDialog({
       };
       if (canSeePrice) {
         payload.quotation_amount = amount ? Number(amount) : null;
-        payload.vat_rate = selectedVat ? Number(selectedVat.rate) : 0;
+        payload.vat_rate = effectiveRate;
         payload.vat_amount = amount ? vatAmount : null;
         payload.amount_incl_vat = amount ? total : null;
       }
-      const { error } = await sb.from("customer_quotations").update(payload).eq("id", row.id);
+      const { data, error } = await sb.from("customer_quotations").update(payload).eq("id", row.id).select("id");
       if (error) throw error;
+      if (!data?.length) throw new Error("คุณไม่มีสิทธิ์แก้ไขใบเสนอราคานี้");
       toast.success("แก้ไขเรียบร้อย");
       onSaved();
     } catch (e) {
@@ -346,9 +354,12 @@ function EditDialog({
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label>อัตรา VAT</Label>
-              <Select value={effectiveId} onValueChange={setVatRateId}>
+              <Select value={effectiveId} onValueChange={(v) => setVatRateId(v === "stored" ? undefined : v)}>
                 <SelectTrigger><SelectValue placeholder="ไม่คิด VAT" /></SelectTrigger>
                 <SelectContent>
+                  {!currentVat && storedRate > 0 ? (
+                    <SelectItem value="stored">อัตราเดิม ({storedRate.toFixed(2)}%)</SelectItem>
+                  ) : null}
                   <SelectItem value="none">ไม่คิด VAT (0%)</SelectItem>
                   {(vatRates ?? []).map((v) => (
                     <SelectItem key={v.id} value={v.id}>{v.label} ({Number(v.rate).toFixed(2)}%)</SelectItem>
@@ -381,10 +392,12 @@ function EditDialog({
 
 function AddDialog({
   projectId,
+  canSeePrice,
   onClose,
   onSaved,
 }: {
   projectId: string;
+  canSeePrice: boolean;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -406,7 +419,7 @@ function AddDialog({
     try {
       let path: string | null = null;
       if (file) path = await uploadProjectFile(projectId, file);
-      const { error } = await sb.from("customer_quotations").insert({
+      const { data: inserted, error } = await sb.from("customer_quotations").insert({
         project_id: projectId,
         title: title || null,
         quotation_amount: amount ? Number(amount) : null,
@@ -417,8 +430,9 @@ function AddDialog({
         notes: notes || null,
         file_url: path,
         is_final: isFinal,
-      });
+      }).select("id");
       if (error) throw error;
+      if (!inserted?.length) throw new Error("คุณไม่มีสิทธิ์เพิ่มใบเสนอราคาในโครงการนี้");
       toast.success("บันทึกเรียบร้อย");
       onSaved();
     } catch (e) {
@@ -433,6 +447,7 @@ function AddDialog({
       <DialogHeader><DialogTitle>เพิ่มใบเสนอราคาให้ลูกค้า</DialogTitle></DialogHeader>
       <div className="-mx-1 flex-1 space-y-3 overflow-y-auto px-1">
         <ScanQuotationCard
+          hideAmounts={!canSeePrice}
           onFile={(f) => setFile(f)}
           onScanned={(d) => {
             if (d.amount_before_tax != null) setAmount(String(d.amount_before_tax));
@@ -454,15 +469,18 @@ function AddDialog({
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <Label>ยอดเสนอก่อน VAT (บาท)</Label>
-            <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
-          </div>
+          {canSeePrice && (
+            <div>
+              <Label>ยอดเสนอก่อน VAT (บาท)</Label>
+              <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            </div>
+          )}
           <div>
             <Label>วันที่ส่ง</Label>
             <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
         </div>
+        {canSeePrice && (
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label>อัตรา VAT</Label>
@@ -482,6 +500,7 @@ function AddDialog({
             <div className="mt-1 flex justify-between border-t pt-1 font-semibold"><span>ยอดสุทธิ</span><span className="tabular-nums">{fmtNum(total)}</span></div>
           </div>
         </div>
+        )}
         <div>
           <Label>หมายเหตุ / เหตุผลการปรับ</Label>
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />

@@ -12,8 +12,10 @@ import { ROLES } from "@/lib/pages";
 import { canCreateProjects } from "@/lib/project-roles";
 import { getSupabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/use-supabase";
-import { fmtCurrency, fmtDate, fmtNumber } from "@/lib/format";
-import { ContractStatusBadge } from "@/components/status-badge";
+import { fmtCurrency, fmtDate, fmtNumber, toLocalISODate, addLocalDays } from "@/lib/format";
+import { Badge } from "@/components/ui/badge";
+import { fetchProjectFinancials } from "@/lib/project-financials";
+import { LIFECYCLE_LABEL, STATUS_TONE, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { HEALTH_LABEL, HEALTH_DOT, healthFromString, type ProjectHealth } from "@/lib/project-health";
@@ -119,68 +121,80 @@ function Dashboard() {
   });
 
 
+  // KPI จากข้อมูลโครงการ (ตาราง documents / contracts / quotations เดิมไม่มีการใช้งานแล้ว)
   const { data: kpi, isLoading } = useQuery({
     queryKey: ["dashboard-kpi", isExec],
-    enabled: can("documents") || can("contracts") || can("quotations"),
+    enabled: can("documents") || can("projects") || can("quotations"),
     queryFn: async () => {
       const sb = getSupabase();
-      const in30 = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
-      const today = new Date().toISOString().slice(0, 10);
+      const today = toLocalISODate();
+      const in30 = toLocalISODate(addLocalDays(new Date(), 30));
 
-      const [docs, activeDocs, expiring, expired, quotPending, valSum] = await Promise.all([
-        sb.from("documents").select("id", { count: "exact", head: true }),
-        sb.from("documents").select("id", { count: "exact", head: true }).eq("status", "active"),
-        sb.from("contracts").select("id", { count: "exact", head: true }).eq("status", "active").lte("end_date", in30).gte("end_date", today),
-        sb.from("contracts").select("id", { count: "exact", head: true }).lt("end_date", today).neq("status", "archived"),
-        sb.from("quotations").select("id", { count: "exact", head: true }).in("status", ["submitted", "under_review", "negotiation"]),
-        sb.from("contracts").select("value_amount").eq("status", "active"),
+      const [active, proposals, docs] = await Promise.all([
+        sb.from("projects").select("id, end_date").in("status", ["won", "in_progress"]).is("archived_at", null),
+        sb.from("projects").select("id", { count: "exact", head: true }).eq("status", "proposal_submitted").is("archived_at", null),
+        sb.from("project_documents").select("id, projects(status)"),
       ]);
+      if (active.error) throw active.error;
+      if (proposals.error) throw proposals.error;
+      if (docs.error) throw docs.error;
 
-      const totalValue = (valSum.data ?? []).reduce((s: number, r: { value_amount: number | null }) => s + (r.value_amount ?? 0), 0);
+      const activeRows = (active.data ?? []) as { id: string; end_date: string | null }[];
+      const financials = canSeeMoney ? await fetchProjectFinancials(activeRows.map((r) => r.id)) : new Map();
+      const totalValue = Array.from(financials.values()).reduce((s, f) => s + (f.contract_value ?? 0), 0);
+      const docRows = (docs.data ?? []) as { projects: { status: string } | { status: string }[] | null }[];
+      const openDocs = docRows.filter((d) => {
+        const proj = Array.isArray(d.projects) ? d.projects[0] : d.projects;
+        return proj && !["completed", "lost"].includes(proj.status);
+      }).length;
 
       return {
-        totalDocs: docs.count ?? 0,
-        activeDocs: activeDocs.count ?? 0,
-        expiring30: expiring.count ?? 0,
-        expired: expired.count ?? 0,
-        quotPending: quotPending.count ?? 0,
+        totalDocs: docRows.length,
+        activeDocs: openDocs,
+        expiring30: activeRows.filter((r) => r.end_date && r.end_date >= today && r.end_date <= in30).length,
+        expired: activeRows.filter((r) => r.end_date && r.end_date < today).length,
+        quotPending: proposals.count ?? 0,
         totalContractValue: totalValue,
       };
     },
   });
 
+  const DOC_TYPE_LABEL: Record<string, string> = {
+    rfq_spec: "RFQ / Spec", tor: "TOR", contract: "สัญญา / ใบสั่งจ้าง", final_quotation: "ใบเสนอราคา Final", other: "อื่นๆ",
+  };
+
   const { data: docsByType } = useQuery({
     queryKey: ["docs-by-type"],
     enabled: can("documents"),
     queryFn: async () => {
-      const { data } = await getSupabase()
-        .from("documents")
-        .select("category_id, document_categories(name_th)")
-        .neq("status", "archived");
+      const { data, error } = await getSupabase().from("project_documents").select("document_type");
+      if (error) throw error;
       const map = new Map<string, number>();
-      (data ?? []).forEach((r: any) => {
-        const cat = Array.isArray(r.document_categories) ? r.document_categories[0] : r.document_categories;
-        const name = cat?.name_th ?? "อื่นๆ";
+      (data ?? []).forEach((r: { document_type: string | null }) => {
+        const name = DOC_TYPE_LABEL[r.document_type ?? "other"] ?? "อื่นๆ";
         map.set(name, (map.get(name) ?? 0) + 1);
       });
-      return Array.from(map, ([name, count]) => ({ name, count })).slice(0, 8);
+      return Array.from(map, ([name, count]) => ({ name, count }));
     },
   });
 
   const { data: upcomingContracts } = useQuery({
-    queryKey: ["upcoming-contracts"],
-    enabled: can("contracts"),
+    queryKey: ["upcoming-project-deadlines", canSeeMoney],
+    enabled: can("projects"),
     queryFn: async () => {
-      const today = new Date().toISOString().slice(0, 10);
-      const in90 = new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10);
-      const { data } = await getSupabase()
-        .from("contracts")
-        .select("id, contract_no, title, end_date, value_amount, status, partners(name)")
-        .gte("end_date", today)
-        .lte("end_date", in90)
+      const { data, error } = await getSupabase()
+        .from("projects")
+        .select("id, code, name, customer_name, end_date, status")
+        .in("status", ["won", "in_progress"])
+        .is("archived_at", null)
+        .gte("end_date", toLocalISODate())
+        .lte("end_date", toLocalISODate(addLocalDays(new Date(), 90)))
         .order("end_date", { ascending: true })
         .limit(10);
-      return data ?? [];
+      if (error) throw error;
+      const rows = (data ?? []) as { id: string; code: string; name: string; customer_name: string | null; end_date: string; status: ProjectLifecycleStatus }[];
+      const financials = canSeeMoney ? await fetchProjectFinancials(rows.map((r) => r.id)) : new Map();
+      return rows.map((r) => ({ ...r, contract_value: financials.get(r.id)?.contract_value ?? null }));
     },
   });
 
@@ -236,8 +250,8 @@ function Dashboard() {
     queryKey: ["upcoming-milestones", isExec, scopedIds.join(",")],
     enabled: scopeReady,
     queryFn: async () => {
-      const today = new Date().toISOString().slice(0, 10);
-      const in30 = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+      const today = toLocalISODate();
+      const in30 = toLocalISODate(addLocalDays(new Date(), 30));
       let q = getSupabase()
         .from("project_milestones")
         .select("id, description, due_date, status, project_id, projects(code, name)")
@@ -315,14 +329,14 @@ function Dashboard() {
           </div>
         </div>
 
-        {can("contracts") && (
+        {can("projects") && (
           <>
-            <KpiCard icon={Clock} label="สัญญาใกล้หมดอายุ (30 วัน)" value={fmtNumber(kpi?.expiring30)} loading={isLoading} tone="warning" href="/contracts" />
-            <KpiCard icon={AlertTriangle} label="สัญญาหมดอายุแล้ว" value={fmtNumber(kpi?.expired)} loading={isLoading} tone="destructive" href="/contracts" />
+            <KpiCard icon={Clock} label="โครงการใกล้ครบกำหนด (30 วัน)" value={fmtNumber(kpi?.expiring30)} loading={isLoading} tone="warning" href="/projects" />
+            <KpiCard icon={AlertTriangle} label="โครงการเลยกำหนดส่งมอบ" value={fmtNumber(kpi?.expired)} loading={isLoading} tone="destructive" href="/projects" />
           </>
         )}
-        {can("quotations") && (
-          <KpiCard icon={FileSignature} label="ใบเสนอราคารอพิจารณา" value={fmtNumber(kpi?.quotPending)} loading={isLoading} href="/quotations" />
+        {can("projects") && (
+          <KpiCard icon={FileSignature} label="รอผลการเสนอราคา" value={fmtNumber(kpi?.quotPending)} loading={isLoading} href="/projects" />
         )}
         {scopeReady && (
           <>
@@ -333,16 +347,16 @@ function Dashboard() {
       </div>
 
       {/* Secondary KPI row */}
-      {(can("documents") || can("contracts")) && (
+      {(can("documents") || can("projects")) && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {can("documents") && (
             <>
               <KpiCard icon={FileText} label="เอกสารทั้งหมด" value={fmtNumber(kpi?.totalDocs)} loading={isLoading} href="/documents" />
-              <KpiCard icon={CheckCircle2} label="เอกสารกำลังใช้งาน" value={fmtNumber(kpi?.activeDocs)} loading={isLoading} tone="success" href="/documents" />
+              <KpiCard icon={CheckCircle2} label="เอกสารของโครงการที่ยังเปิดอยู่" value={fmtNumber(kpi?.activeDocs)} loading={isLoading} tone="success" href="/documents" />
             </>
           )}
-          {can("contracts") && canSeeMoney && (
-            <KpiCard icon={DollarSign} label="มูลค่าสัญญาที่ใช้งาน" value={fmtCurrency(kpi?.totalContractValue)} loading={isLoading} tone="accent" href="/contracts" />
+          {can("projects") && canSeeMoney && (
+            <KpiCard icon={DollarSign} label="มูลค่าสัญญาโครงการที่ดำเนินการ (ก่อน VAT)" value={fmtCurrency(kpi?.totalContractValue)} loading={isLoading} tone="accent" href="/projects" />
           )}
         </div>
       )}
@@ -424,7 +438,7 @@ function Dashboard() {
         {can("documents") && (
         <Card className="tile">
           <CardHeader>
-            <CardTitle className="text-base">สัดส่วนหมวดเอกสาร</CardTitle>
+            <CardTitle className="text-base">สัดส่วนเอกสารโครงการ</CardTitle>
           </CardHeader>
           <CardContent>
             {docsByType && docsByType.length > 0 ? (
@@ -445,11 +459,11 @@ function Dashboard() {
         )}
       </div>
 
-      {can("contracts") && (
+      {can("projects") && (
       <Card className="tile">
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-base">สัญญาที่จะครบกำหนดใน 90 วัน</CardTitle>
-          <Link to="/contracts" className="text-xs text-primary hover:underline">ดูสัญญาทั้งหมด →</Link>
+          <CardTitle className="text-base">โครงการที่จะครบกำหนดใน 90 วัน</CardTitle>
+          <Link to="/projects" className="text-xs text-primary hover:underline">ดูโครงการทั้งหมด →</Link>
         </CardHeader>
         <CardContent>
           {upcomingContracts && upcomingContracts.length > 0 ? (
@@ -457,33 +471,32 @@ function Dashboard() {
               <table className="w-full text-sm">
                 <thead className="border-b text-left text-xs uppercase text-muted-foreground">
                   <tr>
-                    <th className="px-3 py-2">เลขที่</th>
-                    <th className="px-3 py-2">ชื่อสัญญา</th>
-                    <th className="px-3 py-2">คู่สัญญา</th>
-                    <th className="px-3 py-2">วันหมดอายุ</th>
-                    {canSeeMoney && <th className="px-3 py-2 text-right">มูลค่า</th>}
+                    <th className="px-3 py-2">รหัส</th>
+                    <th className="px-3 py-2">โครงการ</th>
+                    <th className="px-3 py-2">ลูกค้า</th>
+                    <th className="px-3 py-2">ครบกำหนด</th>
+                    {canSeeMoney && <th className="px-3 py-2 text-right">มูลค่าสัญญา</th>}
                     <th className="px-3 py-2">สถานะ</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {upcomingContracts.map((c: any) => {
-                    const partner = Array.isArray(c.partners) ? c.partners[0] : c.partners;
-                    return (
-                      <tr key={c.id} className="border-b last:border-0 hover:bg-muted/40">
-                        <td className="px-3 py-2 font-mono text-xs">{c.contract_no}</td>
-                        <td className="px-3 py-2 font-medium">{c.title}</td>
-                        <td className="px-3 py-2 text-muted-foreground">{partner?.name ?? "-"}</td>
-                        <td className="px-3 py-2">{fmtDate(c.end_date)}</td>
-                        {canSeeMoney && <td className="px-3 py-2 text-right font-mono tabular-nums">{fmtCurrency(c.value_amount)}</td>}
-                        <td className="px-3 py-2"><ContractStatusBadge status={c.status as never} /></td>
-                      </tr>
-                    );
-                  })}
+                  {upcomingContracts.map((c) => (
+                    <tr key={c.id} className="border-b last:border-0 hover:bg-muted/40">
+                      <td className="px-3 py-2 font-mono text-xs">{c.code}</td>
+                      <td className="px-3 py-2 font-medium">
+                        <Link to="/projects/$id" params={{ id: c.id }} className="hover:underline">{c.name}</Link>
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">{c.customer_name ?? "-"}</td>
+                      <td className="px-3 py-2">{fmtDate(c.end_date)}</td>
+                      {canSeeMoney && <td className="px-3 py-2 text-right font-mono tabular-nums">{fmtCurrency(c.contract_value)}</td>}
+                      <td className="px-3 py-2"><Badge variant="outline" className={STATUS_TONE[c.status]}>{LIFECYCLE_LABEL[c.status]}</Badge></td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
           ) : (
-            <p className="py-8 text-center text-sm text-muted-foreground">ไม่มีสัญญาที่จะครบกำหนดใน 90 วัน</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">ไม่มีโครงการที่จะครบกำหนดใน 90 วัน</p>
           )}
         </CardContent>
       </Card>

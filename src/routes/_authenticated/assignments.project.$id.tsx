@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { getSupabase } from "@/lib/supabase";
 import { usePageGuard } from "@/hooks/use-page-access";
 import { useProjectPermissions } from "@/hooks/use-project-permissions";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, toLocalISODate } from "@/lib/format";
 import { TimelineTab } from "@/components/project/timeline-tab";
 import { TaskAssignmentDialog } from "@/components/project/task-assignment-dialog";
 import { LifecycleStepper } from "@/components/project/lifecycle-stepper";
@@ -82,7 +82,7 @@ function AssignmentProjectTimeline() {
     },
   });
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toLocalISODate();
 
   const { current, upcoming } = useMemo(() => {
     const all = tasks.data ?? [];

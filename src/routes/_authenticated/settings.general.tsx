@@ -72,7 +72,7 @@ function GeneralPage() {
         value: value as unknown as object, // jsonb accepts string
         updated_at: new Date().toISOString(),
       }));
-      const { error } = await sb.from("system_settings").upsert(rows, { onConflict: "key" });
+      const { error } = await sb.from("system_settings").upsert(rows, { onConflict: "organization_id,key" }); // organization_id เติมโดย trigger (db/0058)
       if (error) throw error;
     },
     onSuccess: () => {

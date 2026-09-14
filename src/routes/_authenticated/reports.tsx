@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSupabase } from "@/lib/supabase";
 import { fmtCurrency, fmtNumber } from "@/lib/format";
 import { usePageGuard } from "@/hooks/use-page-access";
+import { fetchProjectFinancials } from "@/lib/project-financials";
+import { LIFECYCLE_LABEL, type ProjectLifecycleStatus } from "@/lib/project-lifecycle";
 
 export const Route = createFileRoute("/_authenticated/reports")({
   head: () => ({ meta: [{ title: "รายงาน | Document Hub" }] }),
@@ -20,11 +22,11 @@ const COLORS = [
   "oklch(0.63 0.17 148)", "oklch(0.58 0.22 27)", "oklch(0.55 0.15 300)",
 ];
 
-const CONTRACT_STATUS_LABELS: Record<string, string> = {
-  draft: "ร่าง", under_review: "กำลังตรวจ", pending_approval: "รออนุมัติ",
-  pending_signature: "รอลงนาม", active: "มีผล", near_expiry: "ใกล้หมดอายุ",
-  renewal_in_progress: "ต่ออายุ", expired: "หมดอายุ", terminated: "ยกเลิก", archived: "จัดเก็บ",
+const DOC_TYPE_LABEL: Record<string, string> = {
+  rfq_spec: "RFQ / Spec", tor: "TOR", contract: "สัญญา / ใบสั่งจ้าง", final_quotation: "ใบเสนอราคา Final", other: "อื่นๆ",
 };
+
+const WON: ProjectLifecycleStatus[] = ["won", "in_progress", "completed"];
 
 function ReportsPage() {
   const guard = usePageGuard("reports", "รายงาน");
@@ -33,21 +35,23 @@ function ReportsPage() {
     queryKey: ["reports-data"],
     queryFn: async () => {
       const sb = getSupabase();
-      const [contracts, docs, projects] = await Promise.all([
-        sb.from("contracts").select("status, value_amount, created_at"),
-        sb.from("documents").select("category_id, status, document_categories(name_th)"),
-        sb.from("projects").select("status, budget, created_at"),
+      // ข้อมูลจากโครงการ (ตาราง contracts / documents เดิมไม่มีการใช้งานแล้ว)
+      const [projectsRes, docsRes] = await Promise.all([
+        sb.from("projects").select("id, status, created_at").is("archived_at", null),
+        sb.from("project_documents").select("document_type, uploaded_at"),
       ]);
+      if (projectsRes.error) throw projectsRes.error;
+      if (docsRes.error) throw docsRes.error;
+      const projects = (projectsRes.data ?? []) as { id: string; status: ProjectLifecycleStatus; created_at: string }[];
+      const docs = (docsRes.data ?? []) as { document_type: string | null; uploaded_at: string | null }[];
 
-      // Contract status distribution
-      const contractStatus: Record<string, number> = {};
-      let totalContractValue = 0;
-      (contracts.data ?? []).forEach((c: { status: string; value_amount: number | null }) => {
-        contractStatus[c.status] = (contractStatus[c.status] ?? 0) + 1;
-        if (c.status === "active") totalContractValue += c.value_amount ?? 0;
-      });
+      const wonProjects = projects.filter((p) => WON.includes(p.status));
+      const financials = await fetchProjectFinancials(wonProjects.map((p) => p.id));
+      const valueOf = (id: string) => financials.get(id)?.contract_value ?? 0;
+      const totalContractValue = wonProjects.filter((p) => p.status !== "completed").reduce((s, p) => s + valueOf(p.id), 0);
+      const totalWonValue = wonProjects.reduce((s, p) => s + valueOf(p.id), 0);
 
-      // Monthly created (last 12 months) — contracts & projects
+      // Monthly (last 12 months) — contract documents & new projects
       const now = new Date();
       const months: { key: string; label: string; contracts: number; projects: number }[] = [];
       for (let i = 11; i >= 0; i--) {
@@ -56,59 +60,47 @@ function ReportsPage() {
         months.push({ key, label: d.toLocaleDateString("th-TH", { month: "short", year: "2-digit" }), contracts: 0, projects: 0 });
       }
       const mMap = new Map(months.map((m) => [m.key, m]));
-      (contracts.data ?? []).forEach((c: { created_at: string }) => {
-        const k = c.created_at.slice(0, 7);
-        const m = mMap.get(k); if (m) m.contracts += 1;
+      docs.filter((d) => d.document_type === "contract").forEach((d) => {
+        const m = mMap.get((d.uploaded_at ?? "").slice(0, 7)); if (m) m.contracts += 1;
       });
-      (projects.data ?? []).forEach((p: { created_at: string }) => {
-        const k = (p.created_at ?? "").slice(0, 7);
-        const m = mMap.get(k); if (m) m.projects += 1;
+      projects.forEach((p) => {
+        const m = mMap.get((p.created_at ?? "").slice(0, 7)); if (m) m.projects += 1;
       });
 
-      // Documents by category
       const catMap = new Map<string, number>();
-      (docs.data ?? []).forEach((d: { document_categories: { name_th: string } | { name_th: string }[] | null }) => {
-        const c = Array.isArray(d.document_categories) ? d.document_categories[0] : d.document_categories;
-        const name = c?.name_th ?? "อื่นๆ";
+      docs.forEach((d) => {
+        const name = DOC_TYPE_LABEL[d.document_type ?? "other"] ?? "อื่นๆ";
         catMap.set(name, (catMap.get(name) ?? 0) + 1);
       });
-      const docsByCat = Array.from(catMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 8);
+      const docsByCat = Array.from(catMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
 
-      // Projects
       const projStatus: Record<string, number> = {};
-      let totalProjectBudget = 0;
-      (projects.data ?? []).forEach((p: { status: string; budget: number | null }) => {
-        projStatus[p.status] = (projStatus[p.status] ?? 0) + 1;
-        totalProjectBudget += p.budget ?? 0;
-      });
+      projects.forEach((p) => { projStatus[p.status] = (projStatus[p.status] ?? 0) + 1; });
 
       // Win / Loss statistics
-      const won = (projects.data ?? []).filter((p: { status: string }) =>
-        ["won", "in_progress", "completed"].includes(p.status)).length;
+      const won = wonProjects.length;
       const lost = projStatus["lost"] ?? 0;
       const decided = won + lost;
       const winRate = decided > 0 ? Math.round((won / decided) * 100) : 0;
 
-      // Win/Loss by month (12 months)
       const wl = months.map((m) => ({ label: m.label, key: m.key, won: 0, lost: 0 }));
       const wlMap = new Map(wl.map((m) => [m.key, m]));
-      (projects.data ?? []).forEach((p: { status: string; created_at: string }) => {
+      projects.forEach((p) => {
         const m = wlMap.get((p.created_at ?? "").slice(0, 7));
         if (!m) return;
-        if (["won", "in_progress", "completed"].includes(p.status)) m.won += 1;
+        if (WON.includes(p.status)) m.won += 1;
         else if (p.status === "lost") m.lost += 1;
       });
 
       return {
-        contractStatus: Object.entries(contractStatus).map(([k, v]) => ({ name: CONTRACT_STATUS_LABELS[k] ?? k, value: v })),
+        contractStatus: Object.entries(projStatus).map(([k, v]) => ({ name: LIFECYCLE_LABEL[k as ProjectLifecycleStatus] ?? k, value: v })),
         totalContractValue,
-        totalProjectBudget,
-        totalContracts: (contracts.data ?? []).length,
-        totalDocs: (docs.data ?? []).length,
-        totalProjects: (projects.data ?? []).length,
+        totalWonValue,
+        totalContracts: won,
+        totalDocs: docs.length,
+        totalProjects: projects.length,
         months,
         docsByCat,
-        projStatus: Object.entries(projStatus).map(([k, v]) => ({ name: k, value: v })),
         won, lost, decided, winRate,
         winLossMonths: wl,
       };
@@ -131,12 +123,12 @@ function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="รายงาน" description="สรุปข้อมูลเชิงบริหารทุกโมดูล — สัญญา เอกสาร โครงการ" />
+      <PageHeader title="รายงาน" description="สรุปข้อมูลเชิงบริหาร — โครงการ สัญญา และเอกสาร" />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <KpiCard label="สัญญาทั้งหมด" value={fmtNumber(data.totalContracts)} sub={`มูลค่าใช้งาน ${fmtCurrency(data.totalContractValue)}`} />
-        <KpiCard label="เอกสารในระบบ" value={fmtNumber(data.totalDocs)} sub="ทุกหมวดหมู่" />
-        <KpiCard label="โครงการ" value={fmtNumber(data.totalProjects)} sub={`งบรวม ${fmtCurrency(data.totalProjectBudget)}`} />
+        <KpiCard label="โครงการที่ได้งาน" value={fmtNumber(data.totalContracts)} sub={`มูลค่าที่ยังดำเนินการ ${fmtCurrency(data.totalContractValue)} (ก่อน VAT)`} />
+        <KpiCard label="เอกสารโครงการ" value={fmtNumber(data.totalDocs)} sub="ทุกประเภท" />
+        <KpiCard label="โครงการ" value={fmtNumber(data.totalProjects)} sub={`มูลค่าสัญญารวม (ชนะงาน) ${fmtCurrency(data.totalWonValue)}`} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -167,7 +159,7 @@ function ReportsPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <CardHeader><CardTitle className="text-base">สัญญาและโครงการรายเดือน (12 เดือน)</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">โครงการใหม่และไฟล์สัญญารายเดือน (12 เดือน)</CardTitle></CardHeader>
           <CardContent className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data.months}>
@@ -176,7 +168,7 @@ function ReportsPage() {
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip />
                 <Legend />
-                <Line type="monotone" dataKey="contracts" name="สัญญา" stroke={COLORS[0]} strokeWidth={2} />
+                <Line type="monotone" dataKey="contracts" name="ไฟล์สัญญา" stroke={COLORS[0]} strokeWidth={2} />
                 <Line type="monotone" dataKey="projects" name="โครงการ" stroke={COLORS[2]} strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>
@@ -184,7 +176,7 @@ function ReportsPage() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-base">สัดส่วนสถานะสัญญา</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">สัดส่วนสถานะโครงการ</CardTitle></CardHeader>
           <CardContent className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -199,7 +191,7 @@ function ReportsPage() {
         </Card>
 
         <Card className="lg:col-span-2">
-          <CardHeader><CardTitle className="text-base">เอกสารแยกตามหมวดหมู่</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">เอกสารโครงการแยกตามประเภท</CardTitle></CardHeader>
           <CardContent className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.docsByCat} layout="vertical" margin={{ left: 60 }}>

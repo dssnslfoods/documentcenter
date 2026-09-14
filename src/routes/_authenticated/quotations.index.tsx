@@ -54,6 +54,9 @@ function useFinalProjectQuotations() {
           .select("id, project_id, quotation_amount, amount_incl_vat, received_date, file_urls, supplier_name, partners(name), projects(id, code, name)")
           .eq("is_selected", true),
       ]);
+      // เดิมไม่เช็ก error — ถ้าโหลดไม่สำเร็จจะแสดงเป็น "ไม่มีข้อมูล" แทน
+      if (cust.error) throw cust.error;
+      if (sup.error) throw sup.error;
 
       const pick = <T,>(v: unknown): T | null => (Array.isArray(v) ? (v[0] as T) ?? null : (v as T) ?? null);
       const rows: FinalRow[] = [];

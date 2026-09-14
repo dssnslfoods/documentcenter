@@ -45,9 +45,10 @@ export default defineTool({
       .limit(limit ?? 20);
     if (status) q = q.eq("status", status);
     if (expiring_within_days) {
-      const today = new Date();
-      const cutoff = new Date(today.getTime() + expiring_within_days * 86400_000);
-      q = q.lte("end_date", cutoff.toISOString().slice(0, 10)).gte("end_date", today.toISOString().slice(0, 10));
+      // เซิร์ฟเวอร์รันเป็น UTC — คำนวณ "วันนี้" ตามเวลาประเทศไทย
+      const bangkokDate = (ms: number) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok" }).format(new Date(ms));
+      const now = Date.now();
+      q = q.lte("end_date", bangkokDate(now + expiring_within_days * 86400_000)).gte("end_date", bangkokDate(now));
     }
     const { data, error } = await q;
     if (error) {

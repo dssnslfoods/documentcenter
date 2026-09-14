@@ -17,6 +17,7 @@ import { useProjectPermissions } from "@/hooks/use-project-permissions";
 import {
   ASSIGNMENT_META,
   UPDATE_KIND_LABEL,
+  reassignmentPatch,
   type AssignmentStatus,
   type TaskUpdate,
   type TaskUpdateKind,
@@ -70,7 +71,9 @@ export function TaskAssignmentDialog({
   });
 
   const projectPermissions = useProjectPermissions(task?.project_id);
-  const mayManage = canManage ?? Boolean(projectPermissions.data?.canEditTimeline);
+  /** โครงการปิดแล้ว — ฐานข้อมูลปฏิเสธการแก้ไขทุกอย่าง จึงซ่อนปุ่มดำเนินการ */
+  const locked = Boolean(projectPermissions.data?.isLocked);
+  const mayManage = !locked && (canManage ?? Boolean(projectPermissions.data?.canEditTimeline));
 
   useEffect(() => {
     if (!task) return;
@@ -132,7 +135,9 @@ export function TaskAssignmentDialog({
       if (editEndDate < editStartDate) throw new Error("วันส่งมอบต้องไม่น้อยกว่าวันเริ่มงาน");
 
       const selected = (members ?? []).find((member) => member.id === assignee);
-      const { error } = await sb
+      // เปลี่ยนตัวผู้รับผิดชอบ → เริ่มขั้นตอนมอบหมายใหม่ให้ผู้รับคนใหม่ (และแจ้งเตือนผ่าน trigger)
+      const reassign = reassignmentPatch(task, assignee, user?.id ?? null);
+      const { data: updated, error } = await sb
         .from("project_tasks")
         .update({
           name: editName.trim(),
@@ -141,9 +146,12 @@ export function TaskAssignmentDialog({
           end_date: editEndDate,
           assignee_id: assignee,
           assignee_label: selected?.name ?? task.assignee_label,
+          ...(reassign?.patch ?? {}),
         })
-        .eq("id", task.id);
+        .eq("id", task.id)
+        .select("id");
       if (error) throw error;
+      if (!updated?.length) throw new Error("ไม่มีสิทธิ์แก้ไขงานนี้ หรืองานถูกลบไปแล้ว");
 
       const changed = [
         task.name !== editName.trim() ? `ชื่อภารกิจ: ${editName.trim()}` : "",
@@ -152,14 +160,17 @@ export function TaskAssignmentDialog({
         task.end_date !== editEndDate ? `ส่งมอบ: ${fmtDate(editEndDate)}` : "",
         task.assignee_id !== assignee ? `ผู้รับผิดชอบ: ${selected?.name ?? "ยังไม่ระบุ"}` : "",
       ].filter(Boolean);
-      if (changed.length && user) {
-        await sb.from("project_task_updates").insert({
+      if ((changed.length || reassign?.notify) && user) {
+        const { error: logError } = await sb.from("project_task_updates").insert({
           task_id: task.id,
           project_id: task.project_id,
           author_id: user.id,
-          kind: "feedback",
-          message: `แก้ไขงาน · ${changed.join(" · ")}`,
+          kind: reassign?.notify ? "assign" : "feedback",
+          message: reassign?.notify
+            ? `มอบหมายงานใหม่ · ${changed.join(" · ")}`
+            : `แก้ไขงาน · ${changed.join(" · ")}`,
         });
+        if (logError) throw logError;
       }
     },
     onSuccess: () => {
@@ -177,7 +188,7 @@ export function TaskAssignmentDialog({
 
   const missingTable = /project_task_updates/.test(updatesError?.message ?? "");
 
-  const isAssignee = !!task?.assignee_id && task.assignee_id === user?.id;
+  const isAssignee = !locked && !!task?.assignee_id && task.assignee_id === user?.id;
   const st: AssignmentStatus = (task?.assignment_status ?? "draft") as AssignmentStatus;
 
   const act = useMutation({
@@ -191,12 +202,18 @@ export function TaskAssignmentDialog({
       requireMessage?: boolean;
     }) => {
       if (!task) return;
+      if (locked) throw new Error("โครงการปิดแล้ว ไม่สามารถแก้ไขข้อมูลได้");
       if (requireMessage && !message.trim()) throw new Error("กรุณาระบุรายละเอียด");
       const prog = progress === "" ? null : Math.max(0, Math.min(100, Number(progress) || 0));
       const fullPatch = { ...patch, ...(prog !== null ? { progress: prog } : {}) };
       if (Object.keys(fullPatch).length) {
-        const { error } = await sb.from("project_tasks").update(fullPatch).eq("id", task.id);
+        const { data: updated, error } = await sb
+          .from("project_tasks")
+          .update(fullPatch)
+          .eq("id", task.id)
+          .select("id");
         if (error) throw error;
+        if (!updated?.length) throw new Error("ไม่มีสิทธิ์อัปเดตงานนี้ หรืองานถูกลบไปแล้ว");
       }
       const { error: e2 } = await sb.from("project_task_updates").insert({
         task_id: task.id,
@@ -295,6 +312,11 @@ export function TaskAssignmentDialog({
                     ))}
                   </SelectContent>
                 </Select>
+                {assignee !== task.assignee_id && st !== "draft" && (
+                  <p className="text-xs text-warning">
+                    เปลี่ยนผู้รับผิดชอบแล้ว งานจะถูกมอบหมายใหม่ให้ผู้รับคนใหม่รับทราบอีกครั้ง
+                  </p>
+                )}
                 </div>
                 <Button size="sm" disabled={saveDetails.isPending} onClick={() => saveDetails.mutate()}>
                   {saveDetails.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -314,6 +336,12 @@ export function TaskAssignmentDialog({
               </div>
             ) : (
               <>
+                {locked ? (
+                  <div className="rounded-lg border bg-muted/40 p-3 text-sm text-muted-foreground">
+                    โครงการปิดแล้ว — ดูประวัติการติดตามงานได้อย่างเดียว ไม่สามารถส่งความคืบหน้า รับทราบ หรือส่งมอบงานได้
+                  </div>
+                ) : (
+                <>
                 <div className="space-y-2">
                   <Label>ข้อความ / รายละเอียด</Label>
                   <Textarea
@@ -344,7 +372,16 @@ export function TaskAssignmentDialog({
                       onClick={() =>
                         act.mutate({
                           kind: "assign",
-                          patch: { assignment_status: "assigned", assigned_at: now(), assigned_by: user!.id, acknowledged_at: null, submitted_at: null, accepted_at: null },
+                          patch: {
+                            assignment_status: "assigned",
+                            assigned_at: now(),
+                            assigned_by: user!.id,
+                            acknowledged_at: null,
+                            submitted_at: null,
+                            accepted_at: null,
+                            // มอบหมายซ้ำงานที่รับมอบ/เสร็จแล้ว → เปิดงานใหม่
+                            ...(st === "accepted" || task.status === "done" ? { status: "not_started", progress: 0 } : {}),
+                          },
                         })
                       }
                     >
@@ -436,6 +473,8 @@ export function TaskAssignmentDialog({
                     </>
                   )}
                 </div>
+                </>
+                )}
 
                 <div className="space-y-2">
                   <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">

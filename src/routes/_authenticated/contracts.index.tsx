@@ -30,7 +30,7 @@ type Row = {
   file_url: string;
   uploaded_at: string;
   project_id: string;
-  projects: { name: string; project_code: string | null } | null;
+  projects: { name: string; code: string | null } | null;
 };
 
 function ContractsList() {
@@ -43,7 +43,7 @@ function ContractsList() {
     queryFn: async () => {
       const { data, error } = await getSupabase()
         .from("project_documents")
-        .select("id, document_name, file_url, uploaded_at, project_id, projects(name, project_code)")
+        .select("id, document_name, file_url, uploaded_at, project_id, projects(name, code)")
         .eq("document_type", "contract")
         .order("uploaded_at", { ascending: false });
       if (error) throw error;
@@ -59,7 +59,7 @@ function ContractsList() {
     return (
       r.document_name.toLowerCase().includes(s) ||
       (r.projects?.name ?? "").toLowerCase().includes(s) ||
-      (r.projects?.project_code ?? "").toLowerCase().includes(s)
+      (r.projects?.code ?? "").toLowerCase().includes(s)
     );
   });
 
@@ -106,7 +106,7 @@ function ContractsList() {
                       <td className="px-4 py-3 font-medium">{r.document_name}</td>
                       <td className="px-4 py-3">
                         <Link to="/projects/$id" params={{ id: r.project_id }} className="text-primary hover:underline">
-                          {r.projects?.project_code ? `${r.projects.project_code} · ` : ""}{r.projects?.name ?? "-"}
+                          {r.projects?.code ? `${r.projects.code} · ` : ""}{r.projects?.name ?? "-"}
                         </Link>
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">{fmtDateTime(r.uploaded_at)}</td>
